@@ -2,10 +2,12 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { errorMiddleware } from "./middleware/error";
+import { organizationRoutes } from "./routes/organizations";
 
 const app = new Hono();
 
-// Middleware
+// Global middleware
 app.use("*", logger());
 app.use(
   "*",
@@ -14,19 +16,20 @@ app.use(
     credentials: true,
   })
 );
+app.use("*", errorMiddleware);
 
 // Health check
 app.get("/health", (c) => {
   return c.json({ status: "healthy", version: "0.1.0" });
 });
 
-// Module routers will be mounted here as they're built:
-// import { organizationRoutes } from "./routes/organizations";
-// import { assetRoutes } from "./routes/assets";
-// import { complianceRoutes } from "./routes/compliance";
-// app.route("/api/v1", organizationRoutes);
+// Module 1 routes
+app.route("/api/v1", organizationRoutes);
+
+// Future modules:
 // app.route("/api/v1", assetRoutes);
 // app.route("/api/v1", complianceRoutes);
+// app.route("/api/v1", reportRoutes);
 
 const port = Number(process.env.PORT) || 3001;
 

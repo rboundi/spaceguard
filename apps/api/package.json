@@ -13,19 +13,21 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@spaceguard/shared": "*",
-    "hono": "^4",
     "@hono/node-server": "^1",
+    "@hono/zod-validator": "^0.4",
+    "@spaceguard/shared": "*",
     "drizzle-orm": "^0.38",
-    "postgres": "^3.4",
-    "zod": "^3.24",
+    "hono": "^4",
     "ioredis": "^5",
-    "jose": "^6"
+    "jose": "^6",
+    "next": "16.2.0",
+    "postgres": "^3.4",
+    "zod": "^3.24"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.30",
-    "typescript": "^5.7",
+    "@types/node": "^22",
+    "drizzle-kit": "^0.31.10",
     "tsx": "^4",
-    "@types/node": "^22"
+    "typescript": "^5.7"
   }
 }
