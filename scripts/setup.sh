@@ -11,23 +11,16 @@ if [ ! -f .env ]; then
     echo "Created .env from template"
 fi
 
-echo "Installing npm dependencies..."
+echo "Installing npm dependencies (all workspaces)..."
 npm install
-
-if [ ! -f apps/web/package.json ]; then
-    echo "Initializing Next.js frontend..."
-    cd apps/web
-    npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir=false --import-alias="@/*" --use-npm --no-git
-    npm pkg set dependencies.@spaceguard/shared="*"
-    cd ../..
-fi
 
 echo ""
 echo "=== Setup Complete ==="
 echo ""
-echo "  Full stack:  npm run dev"
-echo "  API only:    npm run dev -w apps/api"
-echo "  Web only:    npm run dev -w apps/web"
+echo "Run these in separate terminals:"
+echo "  API:  npm run dev -w apps/api      ->  http://localhost:3001"
+echo "  Web:  npm run dev -w apps/web      ->  http://localhost:3000"
 echo ""
-echo "  API:     http://localhost:3001"
-echo "  Web:     http://localhost:3000"
+echo "Or run both with: npm run dev"
+echo ""
+echo "Verify DB: psql postgresql://spaceguard:spaceguard_dev@localhost:5432/spaceguard"
