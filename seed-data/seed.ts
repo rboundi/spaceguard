@@ -31,59 +31,45 @@ async function seed() {
 
     console.log(`Seeding ${requirements.length} NIS2 requirements...`);
 
-    // Insert all rows using ON CONFLICT (title) DO NOTHING for idempotency.
-    // The unique constraint on title means re-running this script is always safe.
-    const rows = requirements.map((r) => ({
-      regulation: r.regulation as
-        | "NIS2"
-        | "CRA"
-        | "EU_SPACE_ACT"
-        | "ENISA_SPACE",
-      article_reference: r.articleReference,
-      title: r.title,
-      description: r.description,
-      evidence_guidance: r.evidenceGuidance,
-      category: r.category,
-      applicability_notes: r.applicabilityNotes ?? null,
-    }));
+    let inserted = 0;
+    let skipped = 0;
 
-    // postgres.js supports bulk insert with array of objects
-    const result = await sql`
-      INSERT INTO compliance_requirements
-        (regulation, article_reference, title, description,
-         evidence_guidance, category, applicability_notes)
-      SELECT
-        r.regulation::regulation,
-        r.article_reference,
-        r.title,
-        r.description,
-        r.evidence_guidance,
-        r.category,
-        r.applicability_notes
-      FROM jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) AS r(
-        regulation text,
-        article_reference text,
-        title text,
-        description text,
-        evidence_guidance text,
-        category text,
-        applicability_notes text
-      )
-      ON CONFLICT (title) DO NOTHING
-      RETURNING id
-    `;
+    // Insert row by row so postgres.js can bind each parameter individually
+    // and we can cast the regulation enum correctly. ON CONFLICT (title) DO
+    // NOTHING makes every run idempotent.
+    for (const r of requirements) {
+      const result = await sql`
+        INSERT INTO compliance_requirements
+          (regulation, article_reference, title, description,
+           evidence_guidance, category, applicability_notes)
+        VALUES (
+          ${r.regulation}::regulation,
+          ${r.articleReference},
+          ${r.title},
+          ${r.description},
+          ${r.evidenceGuidance},
+          ${r.category},
+          ${r.applicabilityNotes ?? null}
+        )
+        ON CONFLICT (title) DO NOTHING
+        RETURNING id
+      `;
 
-    const inserted = result.length;
-    const skipped = requirements.length - inserted;
+      if (result.length > 0) {
+        inserted++;
+      } else {
+        skipped++;
+      }
+    }
 
     console.log(
       `Inserted ${inserted} requirements, skipped ${skipped} duplicates.`
     );
 
-    // Final verification
     const [{ count }] = await sql<
       [{ count: string }]
     >`SELECT count(*)::text FROM compliance_requirements`;
+
     console.log(`Total requirements in database: ${count}`);
   } finally {
     await sql.end();
