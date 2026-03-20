@@ -6,6 +6,7 @@ import {
   timestamp,
   pgEnum,
   index,
+  unique,
 } from "drizzle-orm/pg-core";
 import { organizations } from "./organizations";
 import { spaceAssets } from "./assets";
@@ -43,6 +44,8 @@ export const complianceRequirements = pgTable(
   (table) => ({
     regulationIdx: index("compliance_req_regulation_idx").on(table.regulation),
     categoryIdx: index("compliance_req_category_idx").on(table.category),
+    // Unique constraint enables ON CONFLICT (title) DO NOTHING in seed script
+    titleUnique: unique("compliance_req_title_unique").on(table.title),
   })
 );
 
