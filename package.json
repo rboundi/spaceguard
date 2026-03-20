@@ -1,6 +1,7 @@
 {
   "name": "spaceguard",
   "private": true,
+  "packageManager": "npm@10.9.4",
   "workspaces": [
     "packages/*",
     "apps/*"
