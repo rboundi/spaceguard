@@ -1,0 +1,164 @@
+[
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(a)",
+    "title": "Risk analysis and information system security policies",
+    "category": "Risk Management",
+    "description": "Establish and maintain policies on risk analysis and information system security covering all space and ground segment assets.",
+    "evidenceGuidance": "Documented risk assessment methodology, asset inventory with classification, risk register with treatment plans, approved security policies, annual review records.",
+    "applicabilityNotes": "For space operators: must cover satellite bus systems, ground station networks, TT&C links, and mission control infrastructure. Consider RF-specific risks (jamming, spoofing) alongside traditional IT risks."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(a)",
+    "title": "Space asset classification and criticality assessment",
+    "category": "Risk Management",
+    "description": "Classify all space assets by criticality to service delivery and assess their exposure to cyber threats across the full mission lifecycle.",
+    "evidenceGuidance": "Asset register with criticality ratings, dependency mapping between space and ground segments, threat exposure assessment per asset class.",
+    "applicabilityNotes": "Map dependencies between orbital assets and ground infrastructure. A compromised ground station can affect all satellites it controls."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(b)",
+    "title": "Incident handling procedures",
+    "category": "Incident Handling",
+    "description": "Implement procedures for detecting, managing, and resolving cybersecurity incidents affecting space infrastructure.",
+    "evidenceGuidance": "Incident response plan, defined severity levels, escalation procedures, roles and responsibilities matrix, incident log with timestamps.",
+    "applicabilityNotes": "Space-specific incidents include telemetry anomalies, unauthorized telecommands, RF interference events, and ground segment intrusions."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(b)",
+    "title": "Incident notification to authorities",
+    "category": "Incident Handling",
+    "description": "Notify the competent authority or CSIRT of significant incidents: early warning within 24 hours, incident notification within 72 hours, final report within one month.",
+    "evidenceGuidance": "Notification templates, submission records with timestamps, evidence of meeting 24h/72h/1month deadlines, designated point of contact.",
+    "applicabilityNotes": "Under the proposed EU Space Act, operators may also need to report to EUSPA within 12 hours. Prepare for dual reporting obligations."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(b)",
+    "title": "Incident detection and monitoring capabilities",
+    "category": "Incident Handling",
+    "description": "Deploy technical capabilities to detect cybersecurity incidents in real-time across space and ground infrastructure.",
+    "evidenceGuidance": "Security monitoring architecture, log sources and retention policy, alerting rules documentation, evidence of monitoring coverage.",
+    "applicabilityNotes": "Must monitor both IT systems (mission control, data processing) and OT/space-specific systems (TT&C interfaces, telemetry streams, RF link quality)."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(c)",
+    "title": "Business continuity and disaster recovery",
+    "category": "Business Continuity",
+    "description": "Maintain business continuity plans including backup management, disaster recovery, and crisis management for space operations.",
+    "evidenceGuidance": "Business continuity plan, disaster recovery procedures, backup schedules and test results, crisis management team roster, annual BCP test records.",
+    "applicabilityNotes": "Consider satellite redundancy, backup ground station procedures, failover for mission-critical data links, and recovery procedures for compromised spacecraft."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(c)",
+    "title": "Mission continuity under cyber attack",
+    "category": "Business Continuity",
+    "description": "Ensure continued mission operations during and after a cybersecurity incident, including safe-mode procedures for affected spacecraft.",
+    "evidenceGuidance": "Mission degradation procedures, satellite safe-mode activation protocols, backup communication paths, service continuity agreements.",
+    "applicabilityNotes": "Define procedures for maintaining satellite health when ground control is compromised. Include autonomous satellite operations capability assessment."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(d)",
+    "title": "Supply chain security",
+    "category": "Supply Chain",
+    "description": "Assess and manage cybersecurity risks in the supply chain, including relationships with direct suppliers and service providers.",
+    "evidenceGuidance": "Supplier security assessment records, contractual security requirements, vendor risk register, third-party audit results or certifications.",
+    "applicabilityNotes": "Assess COTS component suppliers, ground station service providers, launch service cybersecurity, and cloud providers hosting mission data."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(d)",
+    "title": "Ground segment provider security assessment",
+    "category": "Supply Chain",
+    "description": "Evaluate the cybersecurity posture of all ground station operators, data relay providers, and ground-segment-as-a-service vendors.",
+    "evidenceGuidance": "Vendor security questionnaire results, SLAs with security clauses, evidence of periodic reassessment, access control reviews.",
+    "applicabilityNotes": "Many operators use shared ground station networks. Each provider must be assessed for their ability to protect command uplinks and telemetry downlinks."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(e)",
+    "title": "Security in system acquisition, development, and maintenance",
+    "category": "Secure Development",
+    "description": "Embed security throughout the lifecycle of network and information systems, including vulnerability handling and disclosure.",
+    "evidenceGuidance": "Secure development lifecycle documentation, code review records, vulnerability scanning reports, patch management policy, responsible disclosure policy.",
+    "applicabilityNotes": "Includes flight software development, ground segment software, firmware updates to spacecraft (where possible), and mission planning tools."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(e)",
+    "title": "Vulnerability management for space systems",
+    "category": "Secure Development",
+    "description": "Maintain a process for identifying, assessing, and remediating vulnerabilities in space and ground segment systems.",
+    "evidenceGuidance": "Vulnerability scanning schedule and results, patch deployment records, risk acceptance documentation for unpatched systems, CVE tracking.",
+    "applicabilityNotes": "Many satellite systems cannot be patched in orbit. Document risk acceptance for known vulnerabilities and compensating controls at the ground segment."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(f)",
+    "title": "Effectiveness assessment of cybersecurity measures",
+    "category": "Assessment",
+    "description": "Implement policies and procedures to assess whether cybersecurity risk-management measures are effective.",
+    "evidenceGuidance": "Penetration test reports, security audit results, compliance assessment records, KPI tracking, management review minutes.",
+    "applicabilityNotes": "Under the proposed EU Space Act, operators must conduct Threat-Led Penetration Testing (TLPT) prior to launch and every three years."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(g)",
+    "title": "Cyber hygiene and training",
+    "category": "Training",
+    "description": "Ensure basic cyber hygiene practices and provide cybersecurity training to all personnel.",
+    "evidenceGuidance": "Training program documentation, attendance records, phishing simulation results, security awareness materials, role-based training records.",
+    "applicabilityNotes": "Training should cover: recognizing anomalous telemetry, handling satellite command credentials, RF interference awareness, and social engineering defense."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(h)",
+    "title": "Cryptography and encryption policies",
+    "category": "Cryptography",
+    "description": "Establish policies on the use of cryptography and encryption for protecting data in transit and at rest.",
+    "evidenceGuidance": "Encryption policy, key management procedures, inventory of cryptographic implementations, crypto-agility assessment, certificate management.",
+    "applicabilityNotes": "Space-specific: TT&C link encryption (SDLS/OTAR), telemetry encryption, ground network encryption. Assess post-quantum cryptography readiness."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(h)",
+    "title": "Space link encryption and key management",
+    "category": "Cryptography",
+    "description": "Implement and maintain encryption for satellite command and telemetry links with appropriate key management procedures.",
+    "evidenceGuidance": "Link encryption specifications, key generation and distribution procedures, key rotation schedule, emergency key revocation procedures.",
+    "applicabilityNotes": "SDLS compliance where applicable. Consider key rotation challenges for satellites with limited on-board crypto capability."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(i)",
+    "title": "Human resources security and access control",
+    "category": "Access Control",
+    "description": "Implement human resources security measures, access control policies, and asset management procedures.",
+    "evidenceGuidance": "Access control policy, user access reviews, privileged access management records, background check procedures, offboarding checklists.",
+    "applicabilityNotes": "Privileged access to satellite command systems must be tightly controlled. Implement separation of duties for critical commands."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(j)",
+    "title": "Multi-factor authentication",
+    "category": "Access Control",
+    "description": "Deploy multi-factor authentication or continuous authentication for access to critical systems.",
+    "evidenceGuidance": "MFA implementation records, coverage assessment, exception documentation, continuous authentication evaluation.",
+    "applicabilityNotes": "MFA must cover: mission control access, ground station remote access, satellite command interfaces, and cloud-hosted mission data platforms."
+  },
+  {
+    "regulation": "NIS2",
+    "articleReference": "Article 21(2)(j)",
+    "title": "Secured emergency communication systems",
+    "category": "Access Control",
+    "description": "Maintain secured voice, video, text, and emergency communication systems within the entity.",
+    "evidenceGuidance": "Emergency communication plan, secure communication tools inventory, out-of-band communication procedures, annual test records.",
+    "applicabilityNotes": "Space operators need out-of-band communication capability in case primary ground networks are compromised."
+  }
+]
