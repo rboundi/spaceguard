@@ -1,15 +1,19 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Dashboard" };
+
 export default function DashboardPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-slate-950">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-blue-500 mb-2">SpaceGuard</h1>
-        <p className="text-slate-400 text-lg">
-          Cybersecurity Compliance Platform for European Space Operators
+    <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-50">Dashboard</h1>
+        <p className="text-slate-400 mt-1 text-sm">
+          NIS2 compliance overview for your space infrastructure
         </p>
-        <div className="mt-8 text-slate-500 text-sm">
-          Module 1: Asset Registry &amp; Compliance Mapper
-        </div>
       </div>
-    </main>
+      <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-center text-slate-500 text-sm">
+        Dashboard coming soon
+      </div>
+    </div>
   );
 }

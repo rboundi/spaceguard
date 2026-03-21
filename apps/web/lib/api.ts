@@ -146,4 +146,17 @@ export const getDashboard = (organizationId: string) =>
     `/api/v1/compliance/dashboard?organizationId=${organizationId}`
   );
 
+// PDF report - returns a Blob for direct download in the browser
+export const getCompliancePdf = async (organizationId: string): Promise<Blob> => {
+  const res = await fetch(
+    `${API_URL}/api/v1/reports/compliance/pdf?organizationId=${organizationId}`,
+    { method: "GET" }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw new ApiError(res.status, body.error ?? res.statusText);
+  }
+  return res.blob();
+};
+
 export { ApiError };
