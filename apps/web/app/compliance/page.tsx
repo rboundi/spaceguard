@@ -695,7 +695,7 @@ export default function CompliancePage() {
         const [reqResult, mappingResult, assetResult] = await Promise.all([
           getRequirements(),
           getMappings({ organizationId: id }),
-          getAssets({ organizationId: id, perPage: 200 }),
+          getAssets({ organizationId: id, perPage: 100 }),
         ]);
 
         setRequirements(reqResult.data);
