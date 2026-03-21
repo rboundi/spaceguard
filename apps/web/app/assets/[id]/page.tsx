@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { use, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Pencil } from "lucide-react";
 import {
@@ -67,8 +67,8 @@ function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-slate-800 ${className}`} />;
 }
 
-export default function AssetDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const [asset, setAsset] = useState<AssetResponse | null>(null);
   const [mappings, setMappings] = useState<MappingResponse[]>([]);
   const [requirements, setRequirements] = useState<ComplianceRequirement[]>([]);
