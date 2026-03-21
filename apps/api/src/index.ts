@@ -6,6 +6,7 @@ import { errorMiddleware } from "./middleware/error";
 import { organizationRoutes } from "./routes/organizations";
 import { assetRoutes } from "./routes/assets";
 import { complianceRoutes } from "./routes/compliance";
+import { reportRoutes } from "./routes/reports";
 
 const app = new Hono();
 
@@ -29,9 +30,7 @@ app.get("/health", (c) => {
 app.route("/api/v1", organizationRoutes);
 app.route("/api/v1", assetRoutes);
 app.route("/api/v1", complianceRoutes);
-
-// Future modules:
-// app.route("/api/v1", reportRoutes);
+app.route("/api/v1", reportRoutes);
 
 const port = Number(process.env.PORT) || 3001;
 

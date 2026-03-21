@@ -15,6 +15,7 @@
   "dependencies": {
     "@hono/node-server": "^1",
     "@hono/zod-validator": "^0.4",
+    "@react-pdf/renderer": "^4",
     "@spaceguard/shared": "*",
     "drizzle-orm": "^0.38",
     "hono": "^4",
@@ -22,10 +23,12 @@
     "jose": "^6",
     "next": "16.2.0",
     "postgres": "^3.4",
+    "react": "^18",
     "zod": "^3.24"
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@types/react": "^18",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4",
     "typescript": "^5.7"
