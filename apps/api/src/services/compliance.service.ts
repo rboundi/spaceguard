@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db/client";
 import {
@@ -12,6 +12,7 @@ import type {
   UpdateMapping,
   MappingResponse,
   ComplianceRequirement,
+  DashboardResponse,
 } from "@spaceguard/shared";
 import { ComplianceStatus } from "@spaceguard/shared";
 
@@ -256,4 +257,208 @@ export async function listMappings(filters: {
     .orderBy(complianceMappings.createdAt);
 
   return rows.map(mappingToResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard
+// ---------------------------------------------------------------------------
+
+// Status priority used to determine "effective" status for a requirement
+// when it has multiple mappings. Lower number = worse status.
+const STATUS_PRIORITY: Record<string, number> = {
+  NOT_ASSESSED: 1,
+  NON_COMPLIANT: 2,
+  PARTIALLY_COMPLIANT: 3,
+  COMPLIANT: 4,
+};
+
+export async function getDashboard(
+  organizationId: string
+): Promise<DashboardResponse> {
+  // 1. Verify org exists
+  const [org] = await db
+    .select({ id: organizations.id, name: organizations.name })
+    .from(organizations)
+    .where(eq(organizations.id, organizationId))
+    .limit(1);
+
+  if (!org) {
+    throw new HTTPException(404, {
+      message: `Organization ${organizationId} not found`,
+    });
+  }
+
+  // 2. Fetch all requirements and current org mappings in parallel
+  const [allRequirements, existingMappings, orgAssets] = await Promise.all([
+    db
+      .select()
+      .from(complianceRequirements)
+      .orderBy(complianceRequirements.category),
+
+    // Left join with space_assets so we get asset names in one query
+    db
+      .select({
+        id: complianceMappings.id,
+        requirementId: complianceMappings.requirementId,
+        status: complianceMappings.status,
+        assetId: complianceMappings.assetId,
+        assetName: spaceAssets.name,
+      })
+      .from(complianceMappings)
+      .leftJoin(spaceAssets, eq(complianceMappings.assetId, spaceAssets.id))
+      .where(eq(complianceMappings.organizationId, organizationId)),
+
+    db
+      .select({
+        assetType: spaceAssets.assetType,
+        criticality: spaceAssets.criticality,
+      })
+      .from(spaceAssets)
+      .where(eq(spaceAssets.organizationId, organizationId)),
+  ]);
+
+  // 3. Auto-seed NOT_ASSESSED mappings on first dashboard view
+  let mappings = existingMappings;
+  if (mappings.length === 0 && allRequirements.length > 0) {
+    await db.insert(complianceMappings).values(
+      allRequirements.map((req) => ({
+        organizationId,
+        requirementId: req.id,
+        status: ComplianceStatus.NOT_ASSESSED,
+      }))
+    );
+
+    // Re-fetch after seeding
+    mappings = await db
+      .select({
+        id: complianceMappings.id,
+        requirementId: complianceMappings.requirementId,
+        status: complianceMappings.status,
+        assetId: complianceMappings.assetId,
+        assetName: spaceAssets.name,
+      })
+      .from(complianceMappings)
+      .leftJoin(spaceAssets, eq(complianceMappings.assetId, spaceAssets.id))
+      .where(eq(complianceMappings.organizationId, organizationId));
+  }
+
+  // 4. Group mappings by requirementId
+  const mappingsByReq = new Map<
+    string,
+    Array<{ status: string; assetName: string | null }>
+  >();
+  for (const m of mappings) {
+    if (!mappingsByReq.has(m.requirementId)) {
+      mappingsByReq.set(m.requirementId, []);
+    }
+    mappingsByReq.get(m.requirementId)!.push({
+      status: m.status,
+      assetName: m.assetName ?? null,
+    });
+  }
+
+  // 5. Compute effective status per requirement (worst across all its mappings)
+  type ReqSummary = {
+    effectiveStatus: string;
+    requirement: (typeof allRequirements)[0];
+    assetNames: string[];
+  };
+
+  const reqSummaries: ReqSummary[] = allRequirements.map((req) => {
+    const reqMappings = mappingsByReq.get(req.id) ?? [];
+
+    if (reqMappings.length === 0) {
+      return { effectiveStatus: ComplianceStatus.NOT_ASSESSED, requirement: req, assetNames: [] };
+    }
+
+    let worstStatus = ComplianceStatus.COMPLIANT as string;
+    const assetNames: string[] = [];
+
+    for (const m of reqMappings) {
+      if (STATUS_PRIORITY[m.status] < STATUS_PRIORITY[worstStatus]) {
+        worstStatus = m.status;
+      }
+      if (m.assetName) assetNames.push(m.assetName);
+    }
+
+    return { effectiveStatus: worstStatus, requirement: req, assetNames };
+  });
+
+  // 6. Overall score: % of requirements that are COMPLIANT
+  const totalRequirements = allRequirements.length;
+  const compliantCount = reqSummaries.filter(
+    (r) => r.effectiveStatus === ComplianceStatus.COMPLIANT
+  ).length;
+  const overallScore =
+    totalRequirements > 0
+      ? Math.round((compliantCount / totalRequirements) * 100)
+      : 0;
+
+  // 7. Count by status
+  const byStatus: Record<string, number> = {
+    [ComplianceStatus.NOT_ASSESSED]: 0,
+    [ComplianceStatus.NON_COMPLIANT]: 0,
+    [ComplianceStatus.PARTIALLY_COMPLIANT]: 0,
+    [ComplianceStatus.COMPLIANT]: 0,
+  };
+  for (const { effectiveStatus } of reqSummaries) {
+    byStatus[effectiveStatus] = (byStatus[effectiveStatus] ?? 0) + 1;
+  }
+
+  // 8. Score by category
+  const categoryMap = new Map<string, { total: number; compliant: number }>();
+  for (const { effectiveStatus, requirement } of reqSummaries) {
+    const cat = requirement.category;
+    if (!categoryMap.has(cat)) categoryMap.set(cat, { total: 0, compliant: 0 });
+    const entry = categoryMap.get(cat)!;
+    entry.total++;
+    if (effectiveStatus === ComplianceStatus.COMPLIANT) entry.compliant++;
+  }
+  const byCategory = Array.from(categoryMap.entries())
+    .map(([category, { total, compliant }]) => ({
+      category,
+      total,
+      compliant,
+      score: total > 0 ? Math.round((compliant / total) * 100) : 0,
+    }))
+    .sort((a, b) => a.category.localeCompare(b.category));
+
+  // 9. Gaps: NOT_ASSESSED or NON_COMPLIANT requirements
+  const gaps = reqSummaries
+    .filter(
+      ({ effectiveStatus }) =>
+        effectiveStatus === ComplianceStatus.NOT_ASSESSED ||
+        effectiveStatus === ComplianceStatus.NON_COMPLIANT
+    )
+    .map(({ effectiveStatus, requirement, assetNames }) => ({
+      requirementId: requirement.id,
+      title: requirement.title,
+      category: requirement.category,
+      status: effectiveStatus as
+        | typeof ComplianceStatus.NOT_ASSESSED
+        | typeof ComplianceStatus.NON_COMPLIANT,
+      affectedAssets: assetNames,
+    }));
+
+  // 10. Asset summary
+  const byType: Record<string, number> = {};
+  const byCriticality: Record<string, number> = {};
+  for (const asset of orgAssets) {
+    byType[asset.assetType] = (byType[asset.assetType] ?? 0) + 1;
+    byCriticality[asset.criticality] = (byCriticality[asset.criticality] ?? 0) + 1;
+  }
+
+  return {
+    organization: { id: org.id, name: org.name },
+    overallScore,
+    totalRequirements,
+    byStatus: byStatus as DashboardResponse["byStatus"],
+    byCategory,
+    gaps,
+    assetsSummary: {
+      total: orgAssets.length,
+      byType,
+      byCriticality,
+    },
+  };
 }

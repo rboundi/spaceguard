@@ -13,6 +13,7 @@ import {
   updateMapping,
   deleteMapping,
   listMappings,
+  getDashboard,
 } from "../services/compliance.service";
 
 export const complianceRoutes = new Hono();
@@ -79,4 +80,18 @@ complianceRoutes.put(
 complianceRoutes.delete("/compliance/mappings/:id", async (c) => {
   await deleteMapping(c.req.param("id"));
   return c.json({ success: true });
+});
+
+// -------------------------------------------------------------------------
+// Dashboard
+// -------------------------------------------------------------------------
+
+// GET /api/v1/compliance/dashboard?organizationId=
+complianceRoutes.get("/compliance/dashboard", async (c) => {
+  const organizationId = c.req.query("organizationId");
+  if (!organizationId) {
+    return c.json({ error: "organizationId query parameter is required" }, 400);
+  }
+  const dashboard = await getDashboard(organizationId);
+  return c.json(dashboard);
 });
