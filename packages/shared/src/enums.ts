@@ -70,3 +70,36 @@ export const complianceStatusColors: Record<ComplianceStatus, string> = {
   [ComplianceStatus.PARTIALLY_COMPLIANT]: "amber",
   [ComplianceStatus.COMPLIANT]: "emerald",
 };
+
+// Module 2: Telemetry enums
+
+export enum StreamProtocol {
+  CCSDS_TM = "CCSDS_TM",
+  CCSDS_TC = "CCSDS_TC",
+  SYSLOG = "SYSLOG",
+  SNMP = "SNMP",
+  CUSTOM = "CUSTOM",
+}
+
+export enum StreamStatus {
+  ACTIVE = "ACTIVE",
+  PAUSED = "PAUSED",
+  ERROR = "ERROR",
+}
+
+export enum TelemetryQuality {
+  GOOD = "GOOD",
+  SUSPECT = "SUSPECT",
+  BAD = "BAD",
+}
+
+export enum LogSeverity {
+  DEBUG = "DEBUG",
+  INFO = "INFO",
+  NOTICE = "NOTICE",
+  WARNING = "WARNING",
+  ERROR = "ERROR",
+  CRITICAL = "CRITICAL",
+  ALERT = "ALERT",
+  EMERGENCY = "EMERGENCY",
+}

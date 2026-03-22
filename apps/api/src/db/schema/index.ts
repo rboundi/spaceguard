@@ -8,3 +8,6 @@
 export * from "./organizations";
 export * from "./assets";
 export * from "./compliance";
+
+// Module 2: Telemetry
+export * from "./telemetry";
