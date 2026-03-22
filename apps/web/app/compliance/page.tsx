@@ -97,16 +97,12 @@ interface MappingRowProps {
 function MappingRow({ mapping, asset, onUpdated }: MappingRowProps) {
   const [status, setStatus] = useState(mapping.status);
   const [evidence, setEvidence] = useState(mapping.evidenceDescription ?? "");
-  const [responsible, setResponsible] = useState(
-    mapping.responsiblePerson ?? ""
-  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const isDirty =
     status !== mapping.status ||
-    evidence !== (mapping.evidenceDescription ?? "") ||
-    responsible !== (mapping.responsiblePerson ?? "");
+    evidence !== (mapping.evidenceDescription ?? "");
 
   async function handleSave() {
     setSaving(true);
