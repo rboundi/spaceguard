@@ -1,4 +1,4 @@
-import { eq, and, count } from "drizzle-orm";
+import { eq, and, count, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db/client";
 import {
@@ -135,17 +135,43 @@ export async function createMapping(data: CreateMapping): Promise<MappingRespons
     });
   }
 
-  // Validate asset exists (if provided)
+  // Validate asset exists and belongs to the same organization (if provided)
   if (data.assetId) {
     const [asset] = await db
       .select({ id: spaceAssets.id })
       .from(spaceAssets)
-      .where(eq(spaceAssets.id, data.assetId))
+      .where(
+        and(
+          eq(spaceAssets.id, data.assetId),
+          eq(spaceAssets.organizationId, data.organizationId)
+        )
+      )
       .limit(1);
 
     if (!asset) {
       throw new HTTPException(404, {
-        message: `Asset ${data.assetId} not found`,
+        message: `Asset ${data.assetId} not found in this organization`,
+      });
+    }
+  }
+
+  // Prevent duplicate org-level mappings (assetId = null, same org + requirement)
+  if (!data.assetId) {
+    const [duplicate] = await db
+      .select({ id: complianceMappings.id })
+      .from(complianceMappings)
+      .where(
+        and(
+          eq(complianceMappings.organizationId, data.organizationId),
+          eq(complianceMappings.requirementId, data.requirementId),
+          isNull(complianceMappings.assetId)
+        )
+      )
+      .limit(1);
+
+    if (duplicate) {
+      throw new HTTPException(409, {
+        message: `An organization-level mapping already exists for this requirement`,
       });
     }
   }
@@ -317,11 +343,19 @@ export async function getDashboard(
       .where(eq(spaceAssets.organizationId, organizationId)),
   ]);
 
-  // 3. Auto-seed NOT_ASSESSED mappings on first dashboard view
+  // 3. Auto-seed NOT_ASSESSED mappings for any requirements that have no mapping yet.
+  // Using a Set of already-mapped requirementIds makes this idempotent: new requirements
+  // added after the initial seed are picked up on the next dashboard load, and concurrent
+  // requests inserting the same row are harmless because each org-level mapping is
+  // uniquely identified by (organizationId, requirementId, assetId=null).
   let mappings = existingMappings;
-  if (mappings.length === 0 && allRequirements.length > 0) {
+  const mappedReqIds = new Set(existingMappings.map((m) => m.requirementId));
+  const unseededRequirements = allRequirements.filter(
+    (r) => !mappedReqIds.has(r.id)
+  );
+  if (unseededRequirements.length > 0) {
     await db.insert(complianceMappings).values(
-      allRequirements.map((req) => ({
+      unseededRequirements.map((req) => ({
         organizationId,
         requirementId: req.id,
         status: ComplianceStatus.NOT_ASSESSED,

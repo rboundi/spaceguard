@@ -77,7 +77,7 @@ function getEffectiveStatus(
 ): ComplianceStatus {
   const relevant = mappings.filter((m) => m.requirementId === reqId);
   if (relevant.length === 0) return ComplianceStatus.NOT_ASSESSED;
-  return relevant.reduce((worst, m) => {
+  return relevant.reduce<ComplianceStatus>((worst, m) => {
     const a = STATUS_ORDER[worst] ?? 2;
     const b = STATUS_ORDER[m.status] ?? 2;
     return b < a ? (m.status as ComplianceStatus) : worst;
@@ -98,7 +98,7 @@ function MappingRow({ mapping, asset, onUpdated }: MappingRowProps) {
   const [status, setStatus] = useState(mapping.status);
   const [evidence, setEvidence] = useState(mapping.evidenceDescription ?? "");
   const [responsible, setResponsible] = useState(
-    (mapping as Record<string, unknown>).responsibleParty as string ?? ""
+    mapping.responsiblePerson ?? ""
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -106,7 +106,7 @@ function MappingRow({ mapping, asset, onUpdated }: MappingRowProps) {
   const isDirty =
     status !== mapping.status ||
     evidence !== (mapping.evidenceDescription ?? "") ||
-    responsible !== ((mapping as Record<string, unknown>).responsibleParty as string ?? "");
+    responsible !== (mapping.responsiblePerson ?? "");
 
   async function handleSave() {
     setSaving(true);
@@ -140,7 +140,7 @@ function MappingRow({ mapping, asset, onUpdated }: MappingRowProps) {
         )}
       </div>
 
-      <Select value={status} onValueChange={(v) => setStatus(v)}>
+      <Select value={status} onValueChange={(v) => setStatus(v as ComplianceStatus)}>
         <SelectTrigger className="h-7 text-xs bg-slate-800 border-slate-700 text-slate-200">
           <SelectValue />
         </SelectTrigger>
@@ -436,7 +436,7 @@ function RequirementDetail({
       </div>
 
       {/* Evidence guidance */}
-      {(requirement as Record<string, unknown>).evidenceGuidance && (
+      {requirement.evidenceGuidance && (
         <Card className="bg-blue-950/30 border-blue-500/20">
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-[10px] font-semibold uppercase tracking-widest text-blue-400">
@@ -445,14 +445,14 @@ function RequirementDetail({
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <p className="text-xs text-slate-300 leading-relaxed">
-              {(requirement as Record<string, unknown>).evidenceGuidance as string}
+              {requirement.evidenceGuidance}
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Space sector notes */}
-      {(requirement as Record<string, unknown>).spaceSectorNotes && (
+      {/* Space sector applicability notes */}
+      {requirement.applicabilityNotes && (
         <Card className="bg-amber-950/20 border-amber-500/20">
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-[10px] font-semibold uppercase tracking-widest text-amber-400">
@@ -461,7 +461,7 @@ function RequirementDetail({
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <p className="text-xs text-slate-300 leading-relaxed">
-              {(requirement as Record<string, unknown>).spaceSectorNotes as string}
+              {requirement.applicabilityNotes}
             </p>
           </CardContent>
         </Card>

@@ -30,7 +30,9 @@ reportRoutes.get("/reports/compliance/pdf", async (c) => {
   const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   const filename = `spaceguard-compliance-${dateStr}.pdf`;
 
-  return new Response(buffer, {
+  // Node.js Buffer extends Uint8Array but TypeScript's Response typings expect
+  // a Web API BodyInit; casting via unknown ensures a clean compile.
+  return new Response(buffer as unknown as BodyInit, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

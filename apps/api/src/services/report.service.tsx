@@ -552,7 +552,8 @@ function ScoreColor(score: number): string {
 function TitlePage({ data }: { data: ReportData }) {
   const { org, dashboard, generatedAt } = data;
   const gapsCount =
-    dashboard.byStatus.NOT_ASSESSED + dashboard.byStatus.NON_COMPLIANT;
+    (dashboard.byStatus.NOT_ASSESSED ?? 0) +
+    (dashboard.byStatus.NON_COMPLIANT ?? 0);
 
   return (
     <Page size="A4" style={s.titlePage}>
@@ -657,25 +658,25 @@ function ExecutiveSummaryPage({ data }: { data: ReportData }) {
       key: "COMPLIANT",
       label: "Compliant",
       color: C.compliant,
-      count: dashboard.byStatus.COMPLIANT,
+      count: dashboard.byStatus.COMPLIANT ?? 0,
     },
     {
       key: "PARTIALLY_COMPLIANT",
       label: "Partially Compliant",
       color: C.partial,
-      count: dashboard.byStatus.PARTIALLY_COMPLIANT,
+      count: dashboard.byStatus.PARTIALLY_COMPLIANT ?? 0,
     },
     {
       key: "NON_COMPLIANT",
       label: "Non-Compliant",
       color: C.nonCompliant,
-      count: dashboard.byStatus.NON_COMPLIANT,
+      count: dashboard.byStatus.NON_COMPLIANT ?? 0,
     },
     {
       key: "NOT_ASSESSED",
       label: "Not Assessed",
       color: C.notAssessed,
-      count: dashboard.byStatus.NOT_ASSESSED,
+      count: dashboard.byStatus.NOT_ASSESSED ?? 0,
     },
   ];
 
@@ -714,7 +715,7 @@ function ExecutiveSummaryPage({ data }: { data: ReportData }) {
               s.summaryValue,
               {
                 color:
-                  dashboard.byStatus.NON_COMPLIANT > 0
+                  (dashboard.byStatus.NON_COMPLIANT ?? 0) > 0
                     ? C.nonCompliant
                     : C.compliant,
               },
@@ -731,7 +732,7 @@ function ExecutiveSummaryPage({ data }: { data: ReportData }) {
               s.summaryValue,
               {
                 color:
-                  dashboard.byStatus.NOT_ASSESSED > 0
+                  (dashboard.byStatus.NOT_ASSESSED ?? 0) > 0
                     ? C.partial
                     : C.compliant,
               },
@@ -887,7 +888,7 @@ function ComplianceMatrixPage({ data }: { data: ReportData }) {
           wrap={false}
         >
           <View style={s.matCol1}>
-            <Text style={[s.tdCellBold, { marginBottom: 2 }]} numberOfLines={2}>
+            <Text style={[s.tdCellBold, { marginBottom: 2 }]}>
               {row.title}
             </Text>
             <Text style={[s.tdCell, { fontSize: 7, color: C.slate }]}>
@@ -898,7 +899,7 @@ function ComplianceMatrixPage({ data }: { data: ReportData }) {
           <View style={s.matCol3}>
             <StatusBadge status={row.status} />
           </View>
-          <Text style={[s.tdCell, s.matCol4]} numberOfLines={3}>
+          <Text style={[s.tdCell, s.matCol4]}>
             {row.evidence ?? "No evidence recorded"}
           </Text>
         </View>
@@ -1125,7 +1126,7 @@ function AssetInventoryPage({ data }: { data: ReportData }) {
                   </Text>
                 </View>
               </View>
-              <Text style={[s.tdCell, s.asCol5]} numberOfLines={2}>
+              <Text style={[s.tdCell, s.asCol5]}>
                 {asset.description ?? "-"}
               </Text>
             </View>

@@ -320,9 +320,11 @@ function CategoryChart({ byCategory }: { byCategory: DashboardResponse["byCatego
     score: c.score,
   }));
 
-  // Custom label rendered inside the compliant bar
+  // Custom label rendered inside the compliant bar.
+  // Recharts requires the label renderer to always return a ReactElement (not null),
+  // so we return an empty <g> when the bar is too narrow to fit the text.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const renderLabel = (props: any): React.ReactElement | null => {
+  const renderLabel = (props: any): React.ReactElement => {
     const { x, y, width, height, value } = props as {
       x: number;
       y: number;
@@ -330,7 +332,7 @@ function CategoryChart({ byCategory }: { byCategory: DashboardResponse["byCatego
       height: number;
       value: number;
     };
-    if (width < 30) return null;
+    if (width < 30) return <g />;
     return (
       <text
         x={x + width / 2}

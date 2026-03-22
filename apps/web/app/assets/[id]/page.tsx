@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState, useCallback } from "react";
+import { use, useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Pencil } from "lucide-react";
 import {
@@ -76,7 +76,10 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
-  const reqById = new Map(requirements.map((r) => [r.id, r]));
+  const reqById = useMemo(
+    () => new Map(requirements.map((r) => [r.id, r])),
+    [requirements]
+  );
 
   const loadData = useCallback(async () => {
     try {
