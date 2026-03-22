@@ -284,6 +284,7 @@ export default function ReportsPage() {
             <Button
               onClick={handleDownload}
               disabled={!orgId || downloading || loading}
+              suppressHydrationWarning
               className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium disabled:opacity-50"
             >
               {downloading ? (
