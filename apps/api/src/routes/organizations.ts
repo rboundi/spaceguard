@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { zValidator } from "@hono/zod-validator";
 import { createOrganizationSchema, updateOrganizationSchema } from "@spaceguard/shared";
 import {
@@ -9,6 +10,15 @@ import {
 } from "../services/organization.service";
 
 export const organizationRoutes = new Hono();
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function assertUUID(value: string, label: string): void {
+  if (!UUID_RE.test(value)) {
+    throw new HTTPException(400, { message: `${label} must be a valid UUID` });
+  }
+}
 
 // POST /api/v1/organizations
 organizationRoutes.post(
@@ -29,7 +39,9 @@ organizationRoutes.get("/organizations", async (c) => {
 
 // GET /api/v1/organizations/:id
 organizationRoutes.get("/organizations/:id", async (c) => {
-  const org = await getOrganization(c.req.param("id"));
+  const id = c.req.param("id");
+  assertUUID(id, "id");
+  const org = await getOrganization(id);
   return c.json(org);
 });
 
@@ -38,8 +50,10 @@ organizationRoutes.put(
   "/organizations/:id",
   zValidator("json", updateOrganizationSchema),
   async (c) => {
+    const id = c.req.param("id");
+    assertUUID(id, "id");
     const data = c.req.valid("json");
-    const org = await updateOrganization(c.req.param("id"), data);
+    const org = await updateOrganization(id, data);
     return c.json(org);
   }
 );

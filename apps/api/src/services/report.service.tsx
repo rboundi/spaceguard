@@ -5,7 +5,7 @@ import {
   Text,
   View,
   StyleSheet,
-  pdf,
+  renderToBuffer,
 } from "@react-pdf/renderer";
 import { eq, and, ne } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
@@ -1285,7 +1285,6 @@ export async function generateCompliancePdf(
   };
 
   // 5. Render PDF to buffer
-  const instance = pdf(<ComplianceReport data={reportData} />);
-  const buffer = await instance.toBuffer();
+  const buffer = await renderToBuffer(<ComplianceReport data={reportData} />);
   return buffer;
 }

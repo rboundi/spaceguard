@@ -3,6 +3,9 @@ import { generateCompliancePdf } from "../services/report.service";
 
 export const reportRoutes = new Hono();
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // GET /api/v1/reports/compliance/pdf?organizationId=xxx
 //
 // Returns a downloadable PDF compliance report for the given organization.
@@ -16,6 +19,10 @@ reportRoutes.get("/reports/compliance/pdf", async (c) => {
       { error: "organizationId query parameter is required" },
       400
     );
+  }
+
+  if (!UUID_RE.test(organizationId)) {
+    return c.json({ error: "organizationId must be a valid UUID" }, 400);
   }
 
   const buffer = await generateCompliancePdf(organizationId);

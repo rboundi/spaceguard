@@ -121,21 +121,23 @@ export default function ReportsPage() {
     if (!orgId) return;
     setDownloading(true);
     setDownloadError(null);
+    let url: string | null = null;
+    const a = document.createElement("a");
     try {
       const blob = await getCompliancePdf(orgId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      url = URL.createObjectURL(blob);
       a.href = url;
       a.download = `spaceguard-compliance-${today()}.pdf`;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     } catch (err) {
       setDownloadError(
         err instanceof Error ? err.message : "Failed to generate report"
       );
     } finally {
+      // Always clean up the anchor and object URL, even if an error occurred
+      if (document.body.contains(a)) document.body.removeChild(a);
+      if (url) setTimeout(() => URL.revokeObjectURL(url!), 100);
       setDownloading(false);
     }
   }

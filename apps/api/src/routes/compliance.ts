@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { zValidator } from "@hono/zod-validator";
 import {
   requirementQuerySchema,
@@ -18,6 +19,15 @@ import {
 
 export const complianceRoutes = new Hono();
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function assertUUID(value: string, label: string): void {
+  if (!UUID_RE.test(value)) {
+    throw new HTTPException(400, { message: `${label} must be a valid UUID` });
+  }
+}
+
 // -------------------------------------------------------------------------
 // Requirements (read-only)
 // -------------------------------------------------------------------------
@@ -35,7 +45,9 @@ complianceRoutes.get(
 
 // GET /api/v1/compliance/requirements/:id
 complianceRoutes.get("/compliance/requirements/:id", async (c) => {
-  const requirement = await getRequirement(c.req.param("id"));
+  const id = c.req.param("id");
+  assertUUID(id, "id");
+  const requirement = await getRequirement(id);
   return c.json(requirement);
 });
 
@@ -70,15 +82,19 @@ complianceRoutes.put(
   "/compliance/mappings/:id",
   zValidator("json", updateMappingSchema),
   async (c) => {
+    const id = c.req.param("id");
+    assertUUID(id, "id");
     const data = c.req.valid("json");
-    const mapping = await updateMapping(c.req.param("id"), data);
+    const mapping = await updateMapping(id, data);
     return c.json(mapping);
   }
 );
 
 // DELETE /api/v1/compliance/mappings/:id
 complianceRoutes.delete("/compliance/mappings/:id", async (c) => {
-  await deleteMapping(c.req.param("id"));
+  const id = c.req.param("id");
+  assertUUID(id, "id");
+  await deleteMapping(id);
   return c.json({ success: true });
 });
 
@@ -92,6 +108,7 @@ complianceRoutes.get("/compliance/dashboard", async (c) => {
   if (!organizationId) {
     return c.json({ error: "organizationId query parameter is required" }, 400);
   }
+  assertUUID(organizationId, "organizationId");
   const dashboard = await getDashboard(organizationId);
   return c.json(dashboard);
 });

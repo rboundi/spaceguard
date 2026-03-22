@@ -155,7 +155,8 @@ export const getCompliancePdf = async (organizationId: string): Promise<Blob> =>
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw new ApiError(res.status, body.error ?? res.statusText);
+    const msg = typeof body.error === "string" ? body.error : (body.message ?? res.statusText);
+    throw new ApiError(res.status, msg);
   }
   return res.blob();
 };
