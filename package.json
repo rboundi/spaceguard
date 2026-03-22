@@ -13,6 +13,7 @@
     "db:generate": "npm run db:generate --workspace=apps/api",
     "db:migrate": "npm run db:migrate --workspace=apps/api",
     "db:seed": "npx tsx seed-data/seed.ts",
+    "db:realistic-data": "npx tsx scripts/realistic-data.ts",
     "setup": "bash scripts/setup.sh"
   },
   "devDependencies": {
