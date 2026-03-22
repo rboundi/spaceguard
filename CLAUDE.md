@@ -178,16 +178,63 @@ export type CreateAsset = z.infer<typeof createAssetSchema>;
 // Both import from: @spaceguard/shared
 ```
 
-## Current Phase: Module 1 - Asset Registry & Compliance Mapper
+## Completed Modules
 
-### What We're Building Now
+### Module 1 - Asset Registry & Compliance Mapper (COMPLETE)
 
-A web application where satellite operators can:
+Delivered a fully working web application where satellite operators can:
 1. Register their organization and space assets
 2. See which NIS2 requirements apply to them
 3. Map each requirement to their assets and track compliance status
 4. View a compliance dashboard with scores and gaps
 5. Export a compliance status report as PDF
+
+All Module 1 endpoints are live and tested. The frontend covers Dashboard, Assets, Asset Detail, Compliance Mapper, and Reports pages.
+
+---
+
+## Current Phase: Phase 2 - Realistic Data, Telemetry Ingestion, Detection Engine, Incident Management, Threat Intel
+
+### Overview
+
+Phase 2 extends SpaceGuard beyond the MVP compliance baseline into a full operational cybersecurity platform. The phases are:
+
+- **Phase 2A (Now)**: Realistic multi-org test data + organization switcher UI
+- **Module 2**: Telemetry ingestion (CCSDS frames, TimescaleDB hypertables, anomaly detection)
+- **Module 3**: Detection engine (YAML rules, alert generation, Redis pub/sub, WebSocket push)
+- **Module 4**: Incident management (CRUD, timeline, regulatory notification tracking)
+- **Module 5**: Threat intelligence (SPARTA/ATT&CK mapping, IOCs, intel feeds)
+
+### Module 2 Data Model (Telemetry)
+
+TimescaleDB hypertable for raw telemetry frames:
+
+```typescript
+// apps/api/src/db/schema/telemetry.ts
+export const telemetryFrames = pgTable("telemetry_frames", {
+  time: timestamp("time", { withTimezone: true }).notNull(),        // partition key
+  assetId: uuid("asset_id").notNull().references(() => spaceAssets.id),
+  frameType: varchar("frame_type", { length: 50 }).notNull(),       // "TM" | "TC" | "HK"
+  apid: integer("apid"),                                            // CCSDS APID
+  sequenceCount: integer("sequence_count"),
+  dataLength: integer("data_length"),
+  rawData: text("raw_data"),                                        // base64 CCSDS frame
+  parameters: jsonb("parameters"),                                  // decoded telemetry KVPs
+  qualityFlag: varchar("quality_flag", { length: 20 }).default("NOMINAL"), // "NOMINAL" | "DEGRADED" | "INVALID"
+  groundStationId: uuid("ground_station_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+// Hypertable: SELECT create_hypertable('telemetry_frames', 'time');
+// Index: CREATE INDEX ON telemetry_frames (asset_id, time DESC);
+```
+
+Housekeeping (HK) telemetry parameters schema (stored in `parameters` jsonb):
+- `battery_voltage_v`, `solar_power_w`, `bus_current_ma`
+- `attitude_quaternion` (array of 4 floats)
+- `angular_velocity_deg_s` (array of 3 floats)
+- `on_board_time`, `cpu_load_pct`, `memory_free_kb`
+- `temperature_obc_c`, `temperature_battery_c`, `temperature_panel_c`
+- `link_snr_db`, `bit_error_rate`, `doppler_offset_hz`
 
 ### Enums (defined in packages/shared/src/enums.ts)
 
@@ -335,7 +382,7 @@ Never leave uncommitted work at the end of a task.
 
 ## What NOT to Build Yet
 
-- No telemetry ingestion (Module 2)
+- No telemetry ingestion (Module 2 - coming next)
 - No detection/alerting (Module 3)
 - No incident management (Module 4)
 - No threat intelligence (Module 5)
