@@ -28,7 +28,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getOrganizations, getDashboard } from "@/lib/api";
+import { getDashboard } from "@/lib/api";
+import { useOrg } from "@/lib/context";
 import type { DashboardResponse } from "@spaceguard/shared";
 import { assetTypeLabels } from "@spaceguard/shared";
 
@@ -606,31 +607,24 @@ function AssetSummary({
 // ---------------------------------------------------------------------------
 
 export default function DashboardPage() {
-  const [orgId, setOrgId] = useState<string | null>(null);
-  const [orgName, setOrgName] = useState<string>("");
+  const { orgId, orgName, loading: orgLoading } = useOrg();
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [noOrg, setNoOrg] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (orgLoading) return;
+    if (!orgId) {
+      setLoading(false);
+      setDashboard(null);
+      return;
+    }
+
     async function load() {
       try {
         setLoading(true);
         setError(null);
-
-        // 1. Fetch first organization
-        const { data: orgs } = await getOrganizations();
-        if (orgs.length === 0) {
-          setNoOrg(true);
-          return;
-        }
-        const org = orgs[0];
-        setOrgId(org.id);
-        setOrgName(org.name);
-
-        // 2. Fetch dashboard for that org
-        const dash = await getDashboard(org.id);
+        const dash = await getDashboard(orgId!);
         setDashboard(dash);
       } catch (err) {
         setError(
@@ -641,7 +635,7 @@ export default function DashboardPage() {
       }
     }
     load();
-  }, []);
+  }, [orgId, orgLoading]);
 
   // ---- Loading state ----
   if (loading) {
@@ -671,7 +665,7 @@ export default function DashboardPage() {
   }
 
   // ---- No org ----
-  if (noOrg) return <SetupPrompt />;
+  if (!orgLoading && !orgId) return <SetupPrompt />;
 
   // ---- Error ----
   if (error) {

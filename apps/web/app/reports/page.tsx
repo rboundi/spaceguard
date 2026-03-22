@@ -10,7 +10,8 @@ import {
   ShieldCheck,
   Layers,
 } from "lucide-react";
-import { getOrganizations, getDashboard, getCompliancePdf } from "@/lib/api";
+import { getDashboard, getCompliancePdf } from "@/lib/api";
+import { useOrg } from "@/lib/context";
 import type { DashboardResponse } from "@spaceguard/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,34 +89,27 @@ function PlaceholderCard({ icon, title, description }: PlaceholderCardProps) {
 // ---------------------------------------------------------------------------
 
 export default function ReportsPage() {
-  const [orgId, setOrgId] = useState<string | null>(null);
-  const [orgName, setOrgName] = useState<string>("");
+  const { orgId, orgName, loading: orgLoading } = useOrg();
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function init() {
-      try {
-        const { data: orgs } = await getOrganizations();
-        if (orgs.length === 0) {
-          setLoading(false);
-          return;
-        }
-        const org = orgs[0];
-        setOrgId(org.id);
-        setOrgName(org.name);
-        const dash = await getDashboard(org.id);
-        setDashboard(dash);
-      } catch {
-        // silently fall through — page still renders without stats
-      } finally {
-        setLoading(false);
-      }
+    if (orgLoading) return;
+    if (!orgId) {
+      setLoading(false);
+      setDashboard(null);
+      return;
     }
-    init();
-  }, []);
+    setLoading(true);
+    getDashboard(orgId)
+      .then(setDashboard)
+      .catch(() => {
+        /* silently fall through — page still renders without stats */
+      })
+      .finally(() => setLoading(false));
+  }, [orgId, orgLoading]);
 
   async function handleDownload() {
     if (!orgId) return;

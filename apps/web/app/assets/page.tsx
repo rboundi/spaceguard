@@ -9,7 +9,8 @@ import {
   assetTypeLabels,
 } from "@spaceguard/shared";
 import type { AssetResponse } from "@spaceguard/shared";
-import { getOrganizations, getAssets } from "@/lib/api";
+import { getAssets } from "@/lib/api";
+import { useOrg } from "@/lib/context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -121,8 +122,8 @@ function SkeletonRow() {
 
 export default function AssetsPage() {
   const router = useRouter();
+  const { orgId, loading: orgLoading } = useOrg();
 
-  const [orgId, setOrgId] = useState<string | null>(null);
   const [assets, setAssets] = useState<AssetResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -138,58 +139,35 @@ export default function AssetsPage() {
   // Data loading
   // ---------------------------------------------------------------------------
 
-  const loadAssets = useCallback(
-    async (orgIdOverride?: string) => {
-      const id = orgIdOverride ?? orgId;
-      if (!id) return;
-      try {
-        const result = await getAssets({
-          organizationId: id,
-          ...(typeFilter !== "all" ? { type: typeFilter as AssetType } : {}),
-          ...(statusFilter !== "all"
-            ? { status: statusFilter as AssetStatus }
-            : {}),
-          perPage: 100,
-        });
-        setAssets(result.data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load assets");
-      }
-    },
-    [orgId, typeFilter, statusFilter]
-  );
-
-  // Initial load: get org then assets
-  useEffect(() => {
-    async function init() {
-      try {
-        setLoading(true);
-        setError(null);
-        const { data: orgs } = await getOrganizations();
-        if (orgs.length === 0) {
-          setLoading(false);
-          return;
-        }
-        const id = orgs[0].id;
-        setOrgId(id);
-        await loadAssets(id);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to initialize");
-      } finally {
-        setLoading(false);
-      }
+  const loadAssets = useCallback(async () => {
+    if (!orgId) return;
+    try {
+      const result = await getAssets({
+        organizationId: orgId,
+        ...(typeFilter !== "all" ? { type: typeFilter as AssetType } : {}),
+        ...(statusFilter !== "all"
+          ? { status: statusFilter as AssetStatus }
+          : {}),
+        perPage: 100,
+      });
+      setAssets(result.data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load assets");
     }
-    init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [orgId, typeFilter, statusFilter]);
 
-  // Re-fetch when filters change (only after initial org load)
+  // Reload whenever org or filters change
   useEffect(() => {
-    if (orgId) {
-      loadAssets();
+    if (orgLoading) return;
+    if (!orgId) {
+      setLoading(false);
+      setAssets([]);
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeFilter, statusFilter]);
+    setLoading(true);
+    loadAssets().finally(() => setLoading(false));
+  }, [orgId, orgLoading, typeFilter, statusFilter, loadAssets]);
 
   // ---------------------------------------------------------------------------
   // Handlers

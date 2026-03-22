@@ -9,13 +9,13 @@ import type {
   AssetResponse,
 } from "@spaceguard/shared";
 import {
-  getOrganizations,
   getRequirements,
   getMappings,
   getAssets,
   createMapping,
   updateMapping,
 } from "@/lib/api";
+import { useOrg } from "@/lib/context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -653,7 +653,7 @@ function CategorySection({
 // ---------------------------------------------------------------------------
 
 export default function CompliancePage() {
-  const [orgId, setOrgId] = useState<string | null>(null);
+  const { orgId, loading: orgLoading } = useOrg();
   const [requirements, setRequirements] = useState<ComplianceRequirement[]>([]);
   const [mappings, setMappings] = useState<MappingResponse[]>([]);
   const [assets, setAssets] = useState<AssetResponse[]>([]);
@@ -674,24 +674,27 @@ export default function CompliancePage() {
     return groups;
   }, [requirements]);
 
-  // Load all data
+  // Reload whenever org changes
   useEffect(() => {
+    if (orgLoading) return;
+    if (!orgId) {
+      setLoading(false);
+      setMappings([]);
+      setAssets([]);
+      setSelectedReq(null);
+      return;
+    }
+
     async function init() {
       try {
         setLoading(true);
         setError(null);
-        const { data: orgs } = await getOrganizations();
-        if (orgs.length === 0) {
-          setLoading(false);
-          return;
-        }
-        const id = orgs[0].id;
-        setOrgId(id);
+        setSelectedReq(null);
 
         const [reqResult, mappingResult, assetResult] = await Promise.all([
           getRequirements(),
-          getMappings({ organizationId: id }),
-          getAssets({ organizationId: id, perPage: 100 }),
+          getMappings({ organizationId: orgId! }),
+          getAssets({ organizationId: orgId!, perPage: 100 }),
         ]);
 
         setRequirements(reqResult.data);
@@ -703,8 +706,8 @@ export default function CompliancePage() {
         setLoading(false);
       }
     }
-    init();
-  }, []);
+    void init();
+  }, [orgId, orgLoading]);
 
   const handleMappingUpdated = useCallback((updated: MappingResponse) => {
     setMappings((prev) =>
@@ -749,7 +752,7 @@ export default function CompliancePage() {
     );
   }
 
-  if (!orgId) {
+  if (!orgLoading && !orgId) {
     return (
       <div className="p-6">
         <h1 className="text-2xl font-bold text-slate-50 mb-2">
@@ -837,7 +840,7 @@ export default function CompliancePage() {
               requirement={selectedReq}
               mappings={mappings}
               assets={assets}
-              organizationId={orgId}
+              organizationId={orgId!}
               onMappingUpdated={handleMappingUpdated}
               onMappingCreated={handleMappingCreated}
             />
