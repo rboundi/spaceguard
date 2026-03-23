@@ -68,7 +68,8 @@ export const telemetryQuerySchema = z.object({
   to: z.string().datetime({ offset: true }),
   parameterName: z.string().optional(),
   page: z.coerce.number().int().positive().default(1),
-  perPage: z.coerce.number().int().positive().max(1000).default(100),
+  // 5000 per param is enough for 1Hz over 1h (3600 pts) or 10Hz over 8 min
+  perPage: z.coerce.number().int().positive().max(5000).default(100),
 });
 
 export const telemetryPointResponseSchema = ingestPointSchema.extend({

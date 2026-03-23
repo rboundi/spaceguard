@@ -254,21 +254,46 @@ export default function TelemetryStreamPage() {
     setLoadingData(true);
     setDataError(null);
     try {
-      // Fetch all parameters (no parameterName filter, large perPage)
-      const result = await getTelemetryPoints({
+      // Step 1: discovery fetch — small result, no param filter — to learn what params exist
+      const discovery = await getTelemetryPoints({
         streamId: id,
         from: from.toISOString(),
         to:   to.toISOString(),
-        perPage: 1000,
+        perPage: 50,
       });
-      setRawPoints(result.data);
-      // Discover available parameters
-      const discovered = Array.from(new Set(result.data.map((p) => p.parameterName))).sort();
+      const discovered = Array.from(new Set(discovery.data.map((p) => p.parameterName))).sort();
       setAllParams(discovered);
-      // Select defaults: pick first 2 discovered params if nothing selected yet
+
+      // Decide which params to fetch fully
+      let toFetch: string[];
       if (selected.length === 0 && discovered.length > 0) {
-        setSelected(discovered.slice(0, 2));
+        // First load: default to first 2 params
+        const defaults = discovered.slice(0, 2);
+        setSelected(defaults);
+        toFetch = defaults;
+      } else {
+        toFetch = selected;
       }
+
+      if (toFetch.length === 0) {
+        setRawPoints([]);
+        return;
+      }
+
+      // Step 2: fetch each selected param separately with full perPage (5000 max)
+      // 5000 covers: 1Hz × 1h = 3600 pts, 0.1Hz × 7d = 604 pts; AOCS (10Hz) is downsampled server-side for 7d
+      const perParamResults = await Promise.all(
+        toFetch.map((parameterName) =>
+          getTelemetryPoints({
+            streamId: id,
+            from: from.toISOString(),
+            to:   to.toISOString(),
+            parameterName,
+            perPage: 5000,
+          })
+        )
+      );
+      setRawPoints(perParamResults.flatMap((r) => r.data));
     } catch (e: unknown) {
       setDataError(e instanceof Error ? e.message : "Failed to load telemetry data");
     } finally {
@@ -295,10 +320,37 @@ export default function TelemetryStreamPage() {
   const chartData  = pivotData(rawPoints, selected);
   const stats      = computeStats(rawPoints, selected);
 
+  // Fetch full data for a specific set of params (used when user toggles a param on)
+  const fetchParamData = useCallback(async (params: string[]) => {
+    if (!id || params.length === 0) return;
+    const hours = TIME_RANGES.find((r) => r.label === timeRange)?.hours ?? 1;
+    const { from, to } = rangeToWindow(hours);
+    try {
+      const results = await Promise.all(
+        params.map((parameterName) =>
+          getTelemetryPoints({ streamId: id, from: from.toISOString(), to: to.toISOString(), parameterName, perPage: 5000 })
+        )
+      );
+      setRawPoints((prev) => {
+        // Remove old data for these params, then append fresh data
+        const otherPoints = prev.filter((pt) => !params.includes(pt.parameterName));
+        return [...otherPoints, ...results.flatMap((r) => r.data)];
+      });
+    } catch {
+      // non-critical; chart just won't show this param
+    }
+  }, [id, timeRange]);
+
   function toggleParam(p: string) {
-    setSelected((prev) =>
-      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
-    );
+    setSelected((prev) => {
+      const next = prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p];
+      // If adding a param that has no data yet, fetch it
+      if (!prev.includes(p)) {
+        const alreadyLoaded = rawPoints.some((pt) => pt.parameterName === p);
+        if (!alreadyLoaded) void fetchParamData([p]);
+      }
+      return next;
+    });
   }
 
   // ---- Render ----

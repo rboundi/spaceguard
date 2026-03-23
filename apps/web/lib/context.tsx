@@ -77,6 +77,16 @@ const OrgContext = createContext<OrgContextValue>({
 // Provider
 // ---------------------------------------------------------------------------
 
+const ORG_STORAGE_KEY = "spaceguard_selected_org";
+
+function readStoredOrgId(): string | null {
+  try { return localStorage.getItem(ORG_STORAGE_KEY); } catch { return null; }
+}
+
+function writeStoredOrgId(id: string): void {
+  try { localStorage.setItem(ORG_STORAGE_KEY, id); } catch { /* ignore */ }
+}
+
 export function OrgProvider({ children }: { children: ReactNode }) {
   const [orgs, setOrgs] = useState<OrganizationResponse[]>([]);
   const [orgId, setOrgIdState] = useState<string | null>(null);
@@ -88,7 +98,13 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       const { data } = await getOrganizations();
       setOrgs(data);
       if (data.length > 0) {
-        setOrgIdState((prev) => prev ?? data[0].id);
+        setOrgIdState((prev) => {
+          if (prev) return prev; // already set (e.g. user switched during this session)
+          // Restore from storage, but only if the stored id is still a valid org
+          const stored = readStoredOrgId();
+          const valid = stored && data.some((o) => o.id === stored);
+          return valid ? stored : data[0].id;
+        });
       }
     } catch {
       // silently fail - pages handle their own error states
@@ -103,6 +119,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
   const setOrgId = useCallback((id: string) => {
     setOrgIdState(id);
+    writeStoredOrgId(id);
   }, []);
 
   const selectedOrg = orgs.find((o) => o.id === orgId);
