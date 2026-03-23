@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
+  Waves,
 } from "lucide-react";
 
 const navItems = [
@@ -24,6 +25,12 @@ const navItems = [
     label: "Assets",
     href: "/assets",
     icon: Satellite,
+    exact: false,
+  },
+  {
+    label: "Telemetry",
+    href: "/telemetry",
+    icon: Waves,
     exact: false,
   },
   {

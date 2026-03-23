@@ -10,6 +10,8 @@ import type {
   UpdateAsset,
   CreateMapping,
   UpdateMapping,
+  StreamResponse,
+  CreateStream,
 } from "@spaceguard/shared";
 
 const API_URL =
@@ -159,6 +161,55 @@ export const getCompliancePdf = async (organizationId: string): Promise<Blob> =>
     throw new ApiError(res.status, msg);
   }
   return res.blob();
+};
+
+// ---------------------------------------------------------------------------
+// Telemetry
+// ---------------------------------------------------------------------------
+
+export interface TelemetryDataPoint {
+  time: string;
+  parameterName: string;
+  valueNumeric: number | null;
+  valueText: string | null;
+  quality: string;
+}
+
+export interface TelemetryQueryResult {
+  streamId: string;
+  parameterName: string | undefined;
+  from: string;
+  to: string;
+  downsampled: boolean;
+  bucketInterval: string | null;
+  data: TelemetryDataPoint[];
+  total: number;
+}
+
+export const getTelemetryStreams = (organizationId: string) =>
+  api.get<{ data: StreamResponse[]; total: number }>(
+    `/api/v1/telemetry/streams?organizationId=${organizationId}`
+  );
+
+export const getTelemetryStream = (id: string) =>
+  api.get<StreamResponse>(`/api/v1/telemetry/streams/${id}`);
+
+export const createTelemetryStream = (data: CreateStream) =>
+  api.post<StreamResponse>("/api/v1/telemetry/streams", data);
+
+export const getTelemetryPoints = (query: {
+  streamId: string;
+  from: string;
+  to: string;
+  parameterName?: string;
+  perPage?: number;
+  page?: number;
+}) => {
+  const params = new URLSearchParams({ streamId: query.streamId, from: query.from, to: query.to });
+  if (query.parameterName) params.set("parameterName", query.parameterName);
+  if (query.perPage)       params.set("perPage", String(query.perPage));
+  if (query.page)          params.set("page", String(query.page));
+  return api.get<TelemetryQueryResult>(`/api/v1/telemetry/points?${params.toString()}`);
 };
 
 export { ApiError };
