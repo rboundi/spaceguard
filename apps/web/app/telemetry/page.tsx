@@ -71,21 +71,26 @@ function fmtDate(iso: string) {
 // Empty / setup prompt
 // ---------------------------------------------------------------------------
 
-function EmptyState() {
+function EmptyState({ orgName }: { orgName: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
       <div className="rounded-full bg-slate-800 p-4 mb-4">
         <Radio size={28} className="text-slate-500" />
       </div>
       <h3 className="text-slate-200 font-semibold text-base mb-1">
-        No telemetry streams yet
+        No telemetry streams for {orgName || "this organization"}
       </h3>
-      <p className="text-slate-500 text-sm max-w-xs">
-        Run the simulator to generate data, or create streams via the API.
+      <p className="text-slate-500 text-sm max-w-sm">
+        The simulator creates streams for the org it finds. If you just ran it,
+        check that the org selected in the header matches the org printed in the
+        simulator output.
       </p>
       <code className="mt-4 px-3 py-2 rounded bg-slate-800 text-slate-400 text-xs font-mono">
         npm run simulate
       </code>
+      <p className="mt-3 text-slate-600 text-xs max-w-xs">
+        After running, the simulator prints which org to select in the dropdown above.
+      </p>
     </div>
   );
 }
@@ -96,7 +101,7 @@ function EmptyState() {
 
 export default function TelemetryPage() {
   const router = useRouter();
-  const { orgId, loading: orgLoading } = useOrg();
+  const { orgId, orgName, loading: orgLoading } = useOrg();
   const [streams, setStreams] = useState<StreamResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -167,7 +172,7 @@ export default function TelemetryPage() {
               {error}
             </div>
           ) : streams.length === 0 ? (
-            <EmptyState />
+            <EmptyState orgName={orgName} />
           ) : (
             <Table>
               <TableHeader>

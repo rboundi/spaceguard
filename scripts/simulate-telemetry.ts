@@ -409,29 +409,56 @@ async function main(): Promise<void> {
   console.log(`  Anomalies : ${INJECT_ANOMALY ? "ENABLED" : "disabled"}`);
   console.log(`  API       : ${API}\n`);
 
-  // ---- Step 1: Find Proba Space Systems ----
+  // ---- Step 1: Find target organization ----
 
-  console.log("▶ Finding Proba Space Systems...");
+  console.log("▶ Finding target organization...");
   const orgsRes = await apiFetch<{ data: Array<{ id: string; name: string }> }>("/organizations");
-  const probaOrg = orgsRes.data.find((o) => o.name.includes("Proba"));
-  if (!probaOrg) {
-    console.error("✗ Proba Space Systems not found. Run: npm run db:realistic-data");
+  if (orgsRes.data.length === 0) {
+    console.error("✗ No organizations found. Create one in the UI first.");
     process.exit(1);
   }
-  console.log(`  ✓ ${probaOrg.name} (${probaOrg.id})`);
 
-  // ---- Step 2: Find Proba-EO-1 satellite ----
+  // Prefer "Proba Space Systems" if realistic data was seeded; otherwise use any org
+  let targetOrg = orgsRes.data.find((o) => o.name.includes("Proba")) ?? null;
 
-  console.log("▶ Finding Proba-EO-1 satellite...");
-  const assetsRes = await apiFetch<{ data: Array<{ id: string; name: string }> }>(
-    `/assets?organizationId=${probaOrg.id}&type=LEO_SATELLITE`
-  );
-  if (assetsRes.data.length === 0) {
-    console.error("✗ No LEO_SATELLITE found for Proba Space Systems.");
+  // ---- Step 2: Find a LEO satellite ----
+
+  console.log("▶ Finding a LEO satellite...");
+  let satellite: { id: string; name: string } | null = null;
+
+  // If we have a preferred org, try it first
+  if (targetOrg) {
+    const res = await apiFetch<{ data: Array<{ id: string; name: string }> }>(
+      `/assets?organizationId=${targetOrg.id}&type=LEO_SATELLITE`
+    );
+    satellite = res.data[0] ?? null;
+  }
+
+  // Fall back: scan all orgs for any LEO_SATELLITE
+  if (!satellite) {
+    for (const org of orgsRes.data) {
+      const res = await apiFetch<{ data: Array<{ id: string; name: string }> }>(
+        `/assets?organizationId=${org.id}&type=LEO_SATELLITE`
+      );
+      if (res.data.length > 0) {
+        targetOrg = org;
+        satellite = res.data[0];
+        break;
+      }
+    }
+  }
+
+  if (!targetOrg || !satellite) {
+    console.error("✗ No LEO_SATELLITE asset found in any organization.");
+    console.error("  Add a LEO satellite asset in the Assets page, then re-run.");
     process.exit(1);
   }
-  const satellite = assetsRes.data[0];
-  console.log(`  ✓ ${satellite.name} (${satellite.id})`);
+
+  console.log(`  ✓ Org       : ${targetOrg.name} (${targetOrg.id})`);
+  console.log(`  ✓ Satellite : ${satellite.name} (${satellite.id})`);
+
+  // Keep a single variable name for the rest of the script
+  const probaOrg = targetOrg;
 
   // ---- Step 3: Create telemetry streams ----
 
@@ -491,6 +518,10 @@ async function main(): Promise<void> {
   console.log(`  Duration     : ${HOURS}h of simulated time`);
   console.log(`  Elapsed      : ${elapsed}s`);
   console.log(`  Throughput   : ${Math.round(totalPts / parseFloat(elapsed)).toLocaleString()} pts/s`);
+  console.log("");
+  console.log("  View in the UI:");
+  console.log(`  → Select org  : "${probaOrg.name}" in the top header dropdown`);
+  console.log(`  → Navigate to : http://localhost:3000/telemetry`);
   console.log("");
   console.log("  Query the data:");
   console.log(`  GET ${API}/telemetry/points?streamId=${hkStream.id}&from=<ISO>&to=<ISO>&parameterName=battery_voltage_v`);
