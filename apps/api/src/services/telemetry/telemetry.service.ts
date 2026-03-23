@@ -320,22 +320,23 @@ export async function queryPoints(
       ? sql` AND parameter_name = ${parameterName}`
       : sql``;
 
-    // Raw SQL for TimescaleDB time_bucket aggregation
+    // Raw SQL for TimescaleDB time_bucket aggregation.
+    // Downsampled results are bounded (e.g. 7d @ 1h = 168 buckets × N params),
+    // so we skip pagination and return all rows in one shot.
+    const DOWNSAMPLE_LIMIT = 10_000; // safety cap; never hit in practice
     const rows = await db.execute<{
       bucket: Date;
       parameter_name: string;
       avg_numeric: string | null;
       last_text: string | null;
       quality: string;
-      point_count: string;
     }>(sql`
       SELECT
         time_bucket(${bucketInterval}::interval, time) AS bucket,
         parameter_name,
         AVG(value_numeric)::float8 AS avg_numeric,
         (ARRAY_AGG(value_text ORDER BY time DESC))[1] AS last_text,
-        (ARRAY_AGG(quality ORDER BY time DESC))[1] AS quality,
-        COUNT(*)::int AS point_count
+        (ARRAY_AGG(quality ORDER BY time DESC))[1] AS quality
       FROM telemetry_points
       WHERE stream_id = ${streamId}
         AND time >= ${from.toISOString()}::timestamptz
@@ -343,20 +344,9 @@ export async function queryPoints(
         ${paramFilter}
       GROUP BY bucket, parameter_name
       ORDER BY bucket ASC, parameter_name ASC
-      LIMIT ${perPage}
-      OFFSET ${offset}
+      LIMIT ${DOWNSAMPLE_LIMIT}
     `);
 
-    const countRows = await db.execute<{ total: string }>(sql`
-      SELECT COUNT(DISTINCT (time_bucket(${bucketInterval}::interval, time), parameter_name))::int AS total
-      FROM telemetry_points
-      WHERE stream_id = ${streamId}
-        AND time >= ${from.toISOString()}::timestamptz
-        AND time <= ${to.toISOString()}::timestamptz
-        ${paramFilter}
-    `);
-
-    total = Number(countRows[0]?.total ?? 0);
     data = rows.map((r) => ({
       time: (r.bucket as Date).toISOString(),
       parameterName: r.parameter_name,
@@ -364,6 +354,7 @@ export async function queryPoints(
       valueText: r.last_text ?? null,
       quality: r.quality ?? "GOOD",
     }));
+    total = data.length;
 
     return {
       streamId,
