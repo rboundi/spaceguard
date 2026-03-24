@@ -42,8 +42,6 @@ import {
   AlertTriangle,
   Waves,
   Satellite,
-  Zap,
-  AlertCircle,
   Clock,
   ArrowRight,
   Activity,
@@ -54,12 +52,6 @@ import {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function scoreColor(score: number): string {
-  if (score >= 70) return "#10b981";
-  if (score >= 40) return "#f59e0b";
-  return "#ef4444";
-}
 
 function scoreTextClass(score: number): string {
   if (score >= 70) return "text-emerald-400";
@@ -75,6 +67,22 @@ function relTime(iso: string): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
   return `${Math.floor(h / 24)}d ago`;
+}
+
+/** Format a future deadline as "Xh Ym" or "Xd" remaining. */
+function timeUntil(date: Date): string {
+  const diff = date.getTime() - Date.now();
+  if (diff <= 0) return "now";
+  const m = Math.floor(diff / 60_000);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) {
+    const rm = m % 60;
+    return rm > 0 ? `${h}h ${rm}m` : `${h}h`;
+  }
+  const d = Math.floor(h / 24);
+  const rh = h % 24;
+  return rh > 0 ? `${d}d ${rh}h` : `${d}d`;
 }
 
 const STATUS_BADGE: Record<string, "success" | "warning" | "danger" | "muted"> = {
@@ -399,7 +407,7 @@ function IncidentOverviewCard({ incidents }: { incidents: IncidentResponse[] }) 
                     </div>
                   </div>
                   <span className={`text-[10px] font-medium shrink-0 ml-2 ${d.overdue ? "text-red-400" : "text-slate-400"}`}>
-                    {d.overdue ? "OVERDUE" : relTime(new Date(Date.now() + (d.deadlineTime.getTime() - Date.now())).toISOString()).replace(" ago", "")}
+                    {d.overdue ? "OVERDUE" : timeUntil(d.deadlineTime)}
                   </span>
                 </div>
               ))}

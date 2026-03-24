@@ -383,11 +383,15 @@ export default function IncidentsPage() {
   const [createOpen, setCreateOpen]   = useState(false);
   const [newIds, setNewIds]           = useState<Set<string>>(new Set());
   const seenIds = useRef<Set<string>>(new Set());
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
   }, []);
 
   const load = useCallback(async () => {
@@ -415,8 +419,10 @@ export default function IncidentsPage() {
       }
       setNewIds(fresh);
       if (fresh.size > 0) {
-        setTimeout(() => {
+        if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+        highlightTimerRef.current = setTimeout(() => {
           if (mountedRef.current) setNewIds(new Set());
+          highlightTimerRef.current = null;
         }, 3000);
       }
 
@@ -455,7 +461,11 @@ export default function IncidentsPage() {
     setIncidents((prev) => [inc, ...prev]);
     setTotal((t) => t + 1);
     setNewIds(new Set([inc.id]));
-    setTimeout(() => { if (mountedRef.current) setNewIds(new Set()); }, 3000);
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => {
+      if (mountedRef.current) setNewIds(new Set());
+      highlightTimerRef.current = null;
+    }, 3000);
   }
 
   const activeCount = incidents.filter((i) =>

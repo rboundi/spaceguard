@@ -456,6 +456,8 @@ export default function AlertsPage() {
       if (!mountedRef.current) return;
       setAlerts(result.data);
       setTotal(result.total);
+      // Clear stale selections that may reference alerts no longer in the list
+      setSelectedIds(new Set());
     } catch (err) {
       if (!mountedRef.current) return;
       setError(err instanceof Error ? err.message : "Failed to load alerts");
