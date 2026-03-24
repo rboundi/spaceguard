@@ -193,37 +193,34 @@ export async function enrichAlert(alertId: string): Promise<AlertEnrichment> {
   // Find all matching attack-pattern intel objects.
   // Match on tactic name (stored in data->>'x_sparta_tactic') OR
   // technique name (stored in data->>'x_sparta_technique' or the STIX name field).
-  const matchConditions: ReturnType<typeof eq>[] = [
-    eq(threatIntel.stixType, "attack-pattern"),
-  ];
+  const baseCondition = eq(threatIntel.stixType, "attack-pattern");
 
-  if (spartaTactic || spartaTechnique) {
-    const tacticCondition = spartaTactic
-      ? sql`(${threatIntel.data}->>'x_sparta_tactic') ILIKE ${`%${spartaTactic}%`}`
-      : null;
+  // Build optional tactic/technique match conditions
+  const matchParts = [];
 
-    const techniqueCondition = spartaTechnique
-      ? or(
-          ilike(threatIntel.name, `%${spartaTechnique}%`),
-          sql`(${threatIntel.data}->>'x_sparta_technique') ILIKE ${`%${spartaTechnique}%`}`
-        )
-      : null;
-
-    if (tacticCondition && techniqueCondition) {
-      matchConditions.push(
-        or(tacticCondition, techniqueCondition) as ReturnType<typeof eq>
-      );
-    } else if (tacticCondition) {
-      matchConditions.push(tacticCondition as unknown as ReturnType<typeof eq>);
-    } else if (techniqueCondition) {
-      matchConditions.push(techniqueCondition as ReturnType<typeof eq>);
-    }
+  if (spartaTactic) {
+    matchParts.push(
+      sql`(${threatIntel.data}->>'x_sparta_tactic') ILIKE ${`%${spartaTactic}%`}`
+    );
   }
+
+  if (spartaTechnique) {
+    matchParts.push(
+      ilike(threatIntel.name, `%${spartaTechnique}%`),
+      sql`(${threatIntel.data}->>'x_sparta_technique') ILIKE ${`%${spartaTechnique}%`}`
+    );
+  }
+
+  // Combine: always require attack-pattern type; optionally match on tactic/technique
+  const whereClause =
+    matchParts.length > 0
+      ? and(baseCondition, or(...matchParts))
+      : baseCondition;
 
   const matchedRows = await db
     .select()
     .from(threatIntel)
-    .where(and(...matchConditions))
+    .where(whereClause)
     .orderBy(desc(threatIntel.confidence))
     .limit(10);
 
@@ -271,9 +268,10 @@ export async function searchIntel(
   query: string,
   limit = 20
 ): Promise<IntelResponse[]> {
-  if (!query.trim()) return [];
+  const trimmed = query.trim().slice(0, 500);
+  if (!trimmed) return [];
 
-  const pattern = `%${query.trim()}%`;
+  const pattern = `%${trimmed}%`;
 
   const rows = await db
     .select()

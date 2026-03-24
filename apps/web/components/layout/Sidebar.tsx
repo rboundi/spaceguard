@@ -86,8 +86,8 @@ function isActive(pathname: string, href: string, exact: boolean): boolean {
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-  const { newCount } = useAlerts();
-  const { activeCount: incidentActiveCount } = useIncidents();
+  const { newCount = 0 } = useAlerts();
+  const { activeCount: incidentActiveCount = 0 } = useIncidents();
 
   function getBadgeCount(badge: string | false): number {
     if (badge === "alerts")    return newCount;

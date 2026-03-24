@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -14,13 +14,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { getIntelList, getAlerts, type IntelResponse, type AlertResponse } from "@/lib/api";
 import { useOrg } from "@/lib/context";
 
@@ -105,7 +98,8 @@ interface TacticGroupProps {
   techniques: IntelResponse[];
   selectedId: string | null;
   onSelect: (intel: IntelResponse) => void;
-  defaultOpen: boolean;
+  open: boolean;
+  onToggle: () => void;
 }
 
 function TacticGroup({
@@ -113,15 +107,15 @@ function TacticGroup({
   techniques,
   selectedId,
   onSelect,
-  defaultOpen,
+  open,
+  onToggle,
 }: TacticGroupProps) {
-  const [open, setOpen] = useState(defaultOpen);
 
   return (
     <div className="border-b border-slate-800 last:border-b-0">
       {/* Tactic header */}
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={onToggle}
         className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-800/40 transition-colors"
         aria-expanded={open}
       >
@@ -192,14 +186,6 @@ function TechniqueDetail({ intel, orgId }: TechniqueDetailProps) {
   const stix = getStix(intel);
   const [relatedAlerts, setRelatedAlerts] = useState<AlertResponse[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(false);
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
 
   // Fetch related alerts whenever the selected technique or org changes
   useEffect(() => {
@@ -378,7 +364,7 @@ function TechniqueDetail({ intel, orgId }: TechniqueDetailProps) {
                               : "text-slate-600"
                         }
                       >
-                        {alert.status.replace("_", " ")}
+                        {alert.status.replaceAll("_", " ")}
                       </span>
                     </p>
                   </div>
@@ -541,6 +527,18 @@ export default function IntelPage() {
     setSelectedId(intel.id);
   }, []);
 
+  const toggleTactic = useCallback((tactic: string) => {
+    setOpenTactics((prev) => {
+      const next = new Set(prev);
+      if (next.has(tactic)) {
+        next.delete(tactic);
+      } else {
+        next.add(tactic);
+      }
+      return next;
+    });
+  }, []);
+
   // Expand all tactic groups when search is active so results are visible
   useEffect(() => {
     if (search.trim()) {
@@ -632,7 +630,8 @@ export default function IntelPage() {
                   techniques={items}
                   selectedId={selectedId}
                   onSelect={handleSelect}
-                  defaultOpen={openTactics.has(tactic)}
+                  open={openTactics.has(tactic)}
+                  onToggle={() => toggleTactic(tactic)}
                 />
               ))
             )}

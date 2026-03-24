@@ -36,8 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getAlerts, updateAlert, getAsset, enrichAlert } from "@/lib/api";
-import type { AlertEnrichment } from "@/lib/api";
-import type { AlertResponse } from "@/lib/api";
+import type { AlertEnrichment, AlertResponse } from "@/lib/api";
 import { useOrg } from "@/lib/context";
 
 // ---------------------------------------------------------------------------
@@ -355,6 +354,7 @@ export default function AlertsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [assetNames, setAssetNames] = useState<Record<string, string>>({});
 
   const mountedRef = useRef(true);
@@ -433,11 +433,13 @@ export default function AlertsPage() {
 
   const handleAction = async (id: string, status: AlertResponse["status"]) => {
     setActionLoading(true);
+    setActionError(null);
     try {
       const updated = await updateAlert(id, { status });
       setAlerts((prev) => prev.map((a) => (a.id === id ? updated : a)));
     } catch (err) {
-      console.error("Failed to update alert:", err);
+      const msg = err instanceof Error ? err.message : "Failed to update alert";
+      setActionError(msg);
     } finally {
       setActionLoading(false);
     }
@@ -551,10 +553,22 @@ export default function AlertsPage() {
         </CardContent>
       </Card>
 
-      {/* Error */}
+      {/* Errors */}
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400 text-sm">
           <strong>Error:</strong> {error}
+        </div>
+      )}
+      {actionError && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-400 text-xs flex items-center justify-between">
+          <span><strong>Action failed:</strong> {actionError}</span>
+          <button
+            onClick={() => setActionError(null)}
+            className="text-amber-500 hover:text-amber-300 text-xs ml-4 shrink-0"
+            aria-label="Dismiss"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
