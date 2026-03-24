@@ -142,11 +142,6 @@ export default function ReportsPage() {
     ((dashboard?.byStatus?.NOT_ASSESSED ?? 0) +
       (dashboard?.byStatus?.NON_COMPLIANT ?? 0));
 
-  const lastAssessedDates = dashboard?.gaps
-    ? null
-    : null; // placeholder — no per-mapping date on dashboard
-  void lastAssessedDates;
-
   return (
     <div className="p-6">
       {/* Header */}

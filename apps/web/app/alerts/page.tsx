@@ -280,7 +280,9 @@ function ExpandedRow({ alert, onAction, actionLoading, assetName }: ExpandedRowP
               <div key={key} className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-600 font-mono">{key}:</span>
                 <span className="text-[10px] text-slate-300 font-mono">
-                  {typeof val === "object" ? JSON.stringify(val) : String(val)}
+                  {typeof val === "object"
+                    ? (() => { try { return JSON.stringify(val); } catch { return "[object]"; } })()
+                    : String(val)}
                 </span>
               </div>
             ))}

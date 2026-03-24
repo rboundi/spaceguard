@@ -70,6 +70,8 @@ export function AlertProvider({ children }: { children: ReactNode }) {
   const seenIds = useRef<Set<string>>(new Set());
   // True after the very first poll - prevents flooding toasts on initial load
   const initialized = useRef(false);
+  // Track auto-dismiss timeout IDs so we can clear them on unmount / org change
+  const toastTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   const dismissToast = useCallback((toastId: string) => {
     setToasts((prev) => prev.filter((t) => t.toastId !== toastId));
@@ -107,10 +109,12 @@ export function AlertProvider({ children }: { children: ReactNode }) {
             ruleId: a.ruleId,
             triggeredAt: a.triggeredAt,
           });
-          // Auto-dismiss after TTL
-          setTimeout(() => {
+          // Auto-dismiss after TTL (tracked for cleanup)
+          const timerId = setTimeout(() => {
+            toastTimers.current.delete(timerId);
             setToasts((prev) => prev.filter((t) => t.toastId !== toastId));
           }, TOAST_TTL_MS);
+          toastTimers.current.add(timerId);
         }
       }
 
@@ -122,13 +126,22 @@ export function AlertProvider({ children }: { children: ReactNode }) {
     }
   }, [orgId]);
 
-  // Reset when org changes
+  // Reset when org changes - clear pending toast timers to prevent stale updates
   useEffect(() => {
     seenIds.current = new Set();
     initialized.current = false;
     setNewCount(0);
     setToasts([]);
+    for (const t of toastTimers.current) clearTimeout(t);
+    toastTimers.current = new Set();
   }, [orgId]);
+
+  // Clear timers on unmount
+  useEffect(() => {
+    return () => {
+      for (const t of toastTimers.current) clearTimeout(t);
+    };
+  }, []);
 
   // Start polling once org is known
   useEffect(() => {

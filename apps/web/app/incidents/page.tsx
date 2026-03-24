@@ -286,6 +286,7 @@ export default function IncidentsPage() {
   const [total, setTotal]             = useState(0);
   const [assets, setAssets]           = useState<AssetResponse[]>([]);
   const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState<string | null>(null);
   const [filterSeverity, setFilterSeverity] = useState<string>("all");
   const [filterStatus, setFilterStatus]     = useState<string>("all");
   const [createOpen, setCreateOpen]   = useState(false);
@@ -301,6 +302,7 @@ export default function IncidentsPage() {
   const load = useCallback(async () => {
     if (!orgId) return;
     setLoading(true);
+    setError(null);
     try {
       const query: Parameters<typeof getIncidents>[0] = {
         organizationId: orgId,
@@ -329,8 +331,10 @@ export default function IncidentsPage() {
 
       setIncidents(result.data);
       setTotal(result.total);
-    } catch {
-      // silent
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : "Failed to load incidents");
+      }
     } finally {
       if (mountedRef.current) setLoading(false);
     }
@@ -432,6 +436,13 @@ export default function IncidentsPage() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400 text-sm">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
 
       {/* Table */}
       <Card className="bg-slate-900 border-slate-800">
