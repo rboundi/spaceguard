@@ -14,3 +14,6 @@ export * from "./telemetry";
 
 // Module 3: Detection Engine
 export * from "./alerts";
+
+// Module 4: Incident Management
+export * from "./incidents";
