@@ -354,13 +354,20 @@ export async function getDashboard(
     (r) => !mappedReqIds.has(r.id)
   );
   if (unseededRequirements.length > 0) {
-    await db.insert(complianceMappings).values(
-      unseededRequirements.map((req) => ({
-        organizationId,
-        requirementId: req.id,
-        status: ComplianceStatus.NOT_ASSESSED,
-      }))
-    );
+    // onConflictDoNothing relies on the partial unique index
+    // compliance_mappings_org_req_org_level_uniq (org + req WHERE asset_id IS NULL).
+    // This makes concurrent dashboard requests safe: whichever request wins the
+    // insert, the others silently skip rather than returning 500 or creating duplicates.
+    await db
+      .insert(complianceMappings)
+      .values(
+        unseededRequirements.map((req) => ({
+          organizationId,
+          requirementId: req.id,
+          status: ComplianceStatus.NOT_ASSESSED,
+        }))
+      )
+      .onConflictDoNothing();
 
     // Re-fetch after seeding
     mappings = await db

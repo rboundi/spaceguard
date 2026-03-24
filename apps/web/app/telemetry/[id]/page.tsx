@@ -237,6 +237,9 @@ export default function TelemetryStreamPage() {
   const [timeRange,  setTimeRange]    = useState<TimeRange>("1h");
   const [autoRefresh, setAutoRefresh] = useState(false);
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Tracks the AbortController for the in-flight fetchData so we can cancel it
+  // when the user switches time ranges before the previous request completes.
+  const fetchAbortRef = useRef<AbortController | null>(null);
 
   // ---- Load stream metadata once ----
   useEffect(() => {
@@ -249,6 +252,12 @@ export default function TelemetryStreamPage() {
   // ---- Fetch data when timeRange or id changes ----
   const fetchData = useCallback(async () => {
     if (!id) return;
+
+    // Cancel any in-flight fetch from a previous call (e.g. rapid range switching)
+    fetchAbortRef.current?.abort();
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
+
     const hours = TIME_RANGES.find((r) => r.label === timeRange)?.hours ?? 1;
     const { from, to } = rangeToWindow(hours);
     setLoadingData(true);
@@ -261,6 +270,10 @@ export default function TelemetryStreamPage() {
         to:   to.toISOString(),
         perPage: 50,
       });
+
+      // If this fetch was cancelled by a newer one, discard results
+      if (controller.signal.aborted) return;
+
       const discovered = Array.from(new Set(discovery.data.map((p) => p.parameterName))).sort();
       setAllParams(discovered);
 
@@ -293,8 +306,13 @@ export default function TelemetryStreamPage() {
           })
         )
       );
+
+      // Discard if superseded
+      if (controller.signal.aborted) return;
+
       setRawPoints(perParamResults.flatMap((r) => r.data));
     } catch (e: unknown) {
+      if (controller.signal.aborted) return; // ignore errors from cancelled fetches
       setDataError(e instanceof Error ? e.message : "Failed to load telemetry data");
     } finally {
       setLoadingData(false);
@@ -303,6 +321,11 @@ export default function TelemetryStreamPage() {
   }, [id, timeRange]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
+
+  // Cancel any in-flight fetch when the component unmounts
+  useEffect(() => {
+    return () => { fetchAbortRef.current?.abort(); };
+  }, []);
 
   // ---- Auto-refresh ----
   useEffect(() => {

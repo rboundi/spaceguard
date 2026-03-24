@@ -7,7 +7,9 @@ import {
   pgEnum,
   index,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { organizations } from "./organizations";
 import { spaceAssets } from "./assets";
 
@@ -84,6 +86,12 @@ export const complianceMappings = pgTable(
     ),
     statusIdx: index("compliance_mappings_status_idx").on(table.status),
     assetIdIdx: index("compliance_mappings_asset_id_idx").on(table.assetId),
+    // Prevents duplicate org-level mappings (asset_id IS NULL) from concurrent
+    // dashboard requests. Asset-level mappings (asset_id NOT NULL) are allowed
+    // to be many-to-one per requirement.
+    orgReqOrgLevelUniq: uniqueIndex("compliance_mappings_org_req_org_level_uniq")
+      .on(table.organizationId, table.requirementId)
+      .where(sql`${table.assetId} IS NULL`),
   })
 );
 

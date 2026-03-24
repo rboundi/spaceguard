@@ -202,6 +202,11 @@ export async function ingestPoints(
  * If the packet has a secondary header with a CUC timestamp, that
  * timestamp is used as the point time. Otherwise current time is used.
  */
+// 512 KB / 7 bytes per minimum packet ≈ 73 000 packets. Each becomes up to 8
+// telemetry_points rows, so an uncapped payload could trigger ~580 000 inserts
+// in one request. Cap well below that to keep ingestion predictable.
+const MAX_CCSDS_PACKETS_PER_REQUEST = 5_000;
+
 export async function ingestCcsdsPacket(
   streamId: string,
   rawBuffer: Buffer
@@ -210,6 +215,12 @@ export async function ingestCcsdsPacket(
 
   if (packets.length === 0) {
     return { inserted: 0, streamId };
+  }
+
+  if (packets.length > MAX_CCSDS_PACKETS_PER_REQUEST) {
+    throw new HTTPException(413, {
+      message: `CCSDS payload contains ${packets.length} packets which exceeds the per-request limit of ${MAX_CCSDS_PACKETS_PER_REQUEST}. Split into smaller chunks.`,
+    });
   }
 
   const now = new Date();
@@ -305,6 +316,17 @@ export async function queryPoints(
   await getStream(streamId);
 
   const rangeMs = to.getTime() - from.getTime();
+  if (rangeMs < 0) {
+    throw new HTTPException(400, {
+      message: "'from' must not be after 'to'",
+    });
+  }
+
+  // Zero-width range: return empty result immediately without hitting DB
+  if (rangeMs === 0) {
+    return { streamId, parameterName, from: from.toISOString(), to: to.toISOString(), downsampled: false, bucketInterval: null, data: [], total: 0 };
+  }
+
   const needsDownsample = rangeMs > MS_24H;
   const offset = (page - 1) * perPage;
 
