@@ -688,10 +688,7 @@ export async function getActiveIncidentCount(
     .where(
       and(
         eq(incidents.organizationId, organizationId),
-        sql`${incidents.status} = ANY(ARRAY[${sql.join(
-          ACTIVE_STATUSES.map((s) => sql`${s}`),
-          sql`, `
-        )}]::text[])`
+        inArray(incidents.status, ACTIVE_STATUSES)
       )
     );
   return Number(total);

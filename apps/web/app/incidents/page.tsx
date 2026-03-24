@@ -14,8 +14,6 @@ import {
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -338,6 +336,13 @@ export default function IncidentsPage() {
     }
   }, [orgId, filterSeverity, filterStatus]);
 
+  // Clear seen-incident tracking when org changes so the new-highlight
+  // animation doesn't misfire on the first load of the new org's incidents.
+  useEffect(() => {
+    seenIds.current = new Set();
+    setNewIds(new Set());
+  }, [orgId]);
+
   // Load assets for create dialog
   useEffect(() => {
     if (!orgId) return;
@@ -355,7 +360,7 @@ export default function IncidentsPage() {
     setIncidents((prev) => [inc, ...prev]);
     setTotal((t) => t + 1);
     setNewIds(new Set([inc.id]));
-    setTimeout(() => setNewIds(new Set()), 3000);
+    setTimeout(() => { if (mountedRef.current) setNewIds(new Set()); }, 3000);
   }
 
   const activeCount = incidents.filter((i) =>

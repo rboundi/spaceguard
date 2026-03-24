@@ -78,6 +78,12 @@ interface AbsenceState {
   lastSeenMs: number;
   /** Unix ms when absence was first detected; null = stream is not absent */
   absenceStartMs: number | null;
+  /**
+   * True once the alert has fired for this absence event.
+   * Prevents re-firing on every ticker call while the stream stays silent.
+   * Reset to false when the stream comes back online.
+   */
+  fired: boolean;
 }
 
 // Keyed by streamId -> parameterName -> state
@@ -116,7 +122,7 @@ function setRateState(streamId: string, param: string, st: RateOfChangeState): v
 function getAbsenceState(streamId: string): AbsenceState {
   let st = absenceState.get(streamId);
   if (!st) {
-    st = { lastSeenMs: Date.now(), absenceStartMs: null };
+    st = { lastSeenMs: Date.now(), absenceStartMs: null, fired: false };
     absenceState.set(streamId, st);
   }
   return st;
@@ -232,6 +238,7 @@ export function touchStream(streamId: string): void {
   const st = getAbsenceState(streamId);
   st.lastSeenMs = Date.now();
   st.absenceStartMs = null; // stream is alive again
+  st.fired = false;          // allow the next absence event to fire
 }
 
 /**
@@ -260,15 +267,19 @@ export function checkAbsenceRules(
         if (st.absenceStartMs === null) {
           st.absenceStartMs = nowMs;
         }
-
-        triggered.push(
-          buildAlert(rule, streamId, organizationId, assetId, {
-            silentForMs: silentFor,
-            maxGapSeconds: cond.max_gap_seconds,
-          })
-        );
+        // Only fire once per absence event - same fired-flag pattern as threshold/rate
+        if (!st.fired) {
+          st.fired = true;
+          triggered.push(
+            buildAlert(rule, streamId, organizationId, assetId, {
+              silentForMs: silentFor,
+              maxGapSeconds: cond.max_gap_seconds,
+            })
+          );
+        }
       } else {
         st.absenceStartMs = null;
+        st.fired = false;
       }
     }
   }
