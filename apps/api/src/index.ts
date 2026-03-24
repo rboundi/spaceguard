@@ -12,6 +12,7 @@ import { reportRoutes } from "./routes/reports";
 import { telemetryRoutes } from "./routes/telemetry";
 import { alertRoutes } from "./routes/alerts";
 import { incidentRoutes } from "./routes/incidents";
+import { intelRoutes } from "./routes/intel";
 
 const app = new Hono();
 
@@ -61,6 +62,9 @@ app.route("/api/v1", alertRoutes);
 
 // Module 4 routes
 app.route("/api/v1", incidentRoutes);
+
+// Module 5 routes
+app.route("/api/v1", intelRoutes);
 
 const port = Number(process.env.PORT) || 3001;
 

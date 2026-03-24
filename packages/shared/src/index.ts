@@ -5,3 +5,4 @@ export * from "./schemas/compliance";
 export * from "./schemas/telemetry";
 export * from "./schemas/alert";
 export * from "./schemas/incident";
+export * from "./schemas/intel";

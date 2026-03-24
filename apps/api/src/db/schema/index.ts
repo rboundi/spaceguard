@@ -17,3 +17,6 @@ export * from "./alerts";
 
 // Module 4: Incident Management
 export * from "./incidents";
+
+// Module 5: Threat Intelligence
+export * from "./intel";
