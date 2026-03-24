@@ -285,4 +285,184 @@ export const getAlertStats = (organizationId: string) => {
   return api.get<AlertStats>(`/api/v1/alerts/stats?${params.toString()}`);
 };
 
+// ---------------------------------------------------------------------------
+// Incidents
+// ---------------------------------------------------------------------------
+
+export interface SpartaTechniqueEntry {
+  tactic: string;
+  technique: string;
+}
+
+export interface TimelineEntry {
+  timestamp: string;
+  event: string;
+  actor?: string;
+}
+
+export interface IncidentResponse {
+  id: string;
+  organizationId: string;
+  title: string;
+  description: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  status:
+    | "DETECTED"
+    | "TRIAGING"
+    | "INVESTIGATING"
+    | "CONTAINING"
+    | "ERADICATING"
+    | "RECOVERING"
+    | "CLOSED"
+    | "FALSE_POSITIVE";
+  nis2Classification: "SIGNIFICANT" | "NON_SIGNIFICANT";
+  spartaTechniques: SpartaTechniqueEntry[];
+  affectedAssetIds: string[];
+  timeline: TimelineEntry[];
+  detectedAt: string | null;
+  resolvedAt: string | null;
+  timeToDetectMinutes: number | null;
+  timeToRespondMinutes: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IncidentNoteResponse {
+  id: string;
+  incidentId: string;
+  author: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface IncidentAlertLinkResponse {
+  id: string;
+  incidentId: string;
+  alertId: string;
+  createdAt: string;
+}
+
+export interface IncidentReportResponse {
+  id: string;
+  incidentId: string;
+  reportType:
+    | "EARLY_WARNING"
+    | "INCIDENT_NOTIFICATION"
+    | "INTERMEDIATE_REPORT"
+    | "FINAL_REPORT";
+  content: Record<string, unknown>;
+  submittedTo: string | null;
+  submittedAt: string | null;
+  deadline: string | null;
+  createdAt: string;
+}
+
+export const getIncidents = (query: {
+  organizationId: string;
+  status?: string;
+  severity?: string;
+  nis2Classification?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  perPage?: number;
+}) => {
+  const params = new URLSearchParams({
+    organizationId: query.organizationId,
+  });
+  if (query.status)             params.set("status", query.status);
+  if (query.severity)           params.set("severity", query.severity);
+  if (query.nis2Classification) params.set("nis2Classification", query.nis2Classification);
+  if (query.from)               params.set("from", query.from);
+  if (query.to)                 params.set("to", query.to);
+  if (query.page)               params.set("page", String(query.page));
+  if (query.perPage)            params.set("perPage", String(query.perPage));
+  return api.get<{ data: IncidentResponse[]; total: number }>(
+    `/api/v1/incidents?${params.toString()}`
+  );
+};
+
+export const getIncident = (id: string) =>
+  api.get<IncidentResponse>(`/api/v1/incidents/${id}`);
+
+export const createIncident = (data: {
+  organizationId: string;
+  title: string;
+  description: string;
+  severity: string;
+  nis2Classification?: string;
+  spartaTechniques?: SpartaTechniqueEntry[];
+  affectedAssetIds?: string[];
+  detectedAt?: string;
+}) => api.post<IncidentResponse>("/api/v1/incidents", data);
+
+export const updateIncident = (
+  id: string,
+  data: {
+    title?: string;
+    description?: string;
+    severity?: string;
+    status?: string;
+    nis2Classification?: string;
+    spartaTechniques?: SpartaTechniqueEntry[];
+    affectedAssetIds?: string[];
+    resolvedAt?: string;
+  }
+) => api.put<IncidentResponse>(`/api/v1/incidents/${id}`, data);
+
+export const getIncidentNotes = (incidentId: string) =>
+  api.get<{ data: IncidentNoteResponse[] }>(
+    `/api/v1/incidents/${incidentId}/notes`
+  );
+
+export const addIncidentNote = (
+  incidentId: string,
+  data: { author: string; content: string }
+) =>
+  api.post<IncidentNoteResponse>(
+    `/api/v1/incidents/${incidentId}/notes`,
+    data
+  );
+
+export const getIncidentAlerts = (incidentId: string) =>
+  api.get<{ data: IncidentAlertLinkResponse[] }>(
+    `/api/v1/incidents/${incidentId}/alerts`
+  );
+
+export const addAlertToIncident = (
+  incidentId: string,
+  alertId: string
+) =>
+  api.post<IncidentAlertLinkResponse>(
+    `/api/v1/incidents/${incidentId}/alerts`,
+    { alertId }
+  );
+
+export const getIncidentReports = (incidentId: string) =>
+  api.get<{ data: IncidentReportResponse[] }>(
+    `/api/v1/incidents/${incidentId}/reports`
+  );
+
+export const generateIncidentReport = (
+  incidentId: string,
+  data: { reportType: string; submittedTo?: string }
+) =>
+  api.post<IncidentReportResponse>(
+    `/api/v1/incidents/${incidentId}/reports`,
+    data
+  );
+
+export const submitIncidentReport = (
+  incidentId: string,
+  reportId: string,
+  submittedTo: string
+) =>
+  api.put<IncidentReportResponse>(
+    `/api/v1/incidents/${incidentId}/reports/${reportId}/submit`,
+    { submittedTo }
+  );
+
+// Re-export shared types used across pages
+export type { AssetResponse };
+
 export { ApiError };

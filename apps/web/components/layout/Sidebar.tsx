@@ -13,8 +13,10 @@ import {
   Shield,
   Waves,
   Bell,
+  AlertTriangle,
 } from "lucide-react";
 import { useAlerts } from "@/lib/alerts-context";
+import { useIncidents } from "@/lib/incidents-context";
 
 const navItems = [
   {
@@ -43,7 +45,14 @@ const navItems = [
     href: "/alerts",
     icon: Bell,
     exact: false,
-    badge: true,   // shows newCount badge
+    badge: "alerts" as const,
+  },
+  {
+    label: "Incidents",
+    href: "/incidents",
+    icon: AlertTriangle,
+    exact: false,
+    badge: "incidents" as const,
   },
   {
     label: "Compliance",
@@ -70,6 +79,13 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
   const { newCount } = useAlerts();
+  const { activeCount: incidentActiveCount } = useIncidents();
+
+  function getBadgeCount(badge: string | false): number {
+    if (badge === "alerts")    return newCount;
+    if (badge === "incidents") return incidentActiveCount;
+    return 0;
+  }
 
   return (
     <aside
@@ -105,7 +121,8 @@ export function Sidebar() {
           {navItems.map((item) => {
             const active = isActive(pathname, item.href, item.exact);
             const Icon = item.icon;
-            const showBadge = item.badge && newCount > 0;
+            const badgeCount = getBadgeCount(item.badge);
+            const showBadge = item.badge && badgeCount > 0;
             return (
               <li key={item.href}>
                 <Link
@@ -133,7 +150,7 @@ export function Sidebar() {
                     <Icon size={18} aria-hidden="true" />
                     {showBadge && collapsed && (
                       <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none">
-                        {newCount > 99 ? "99+" : newCount}
+                        {badgeCount > 99 ? "99+" : badgeCount}
                       </span>
                     )}
                   </span>
@@ -143,7 +160,7 @@ export function Sidebar() {
                   {/* Badge when expanded */}
                   {showBadge && !collapsed && (
                     <span className="ml-auto flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
-                      {newCount > 99 ? "99+" : newCount}
+                      {badgeCount > 99 ? "99+" : badgeCount}
                     </span>
                   )}
                 </Link>
