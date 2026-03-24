@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1742817600000,
+      "tag": "0004_incident_management",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1742904000000,
+      "tag": "0005_threat_intelligence",
+      "breakpoints": true
+    }
+  ]
+}
