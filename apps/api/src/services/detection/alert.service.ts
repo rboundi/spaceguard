@@ -26,6 +26,7 @@ import type {
   AlertResponse,
   AlertQuery,
 } from "@spaceguard/shared";
+import { createIncidentFromAlert } from "../incident.service";
 
 // ---------------------------------------------------------------------------
 // Redis client (lazily initialised, shared singleton)
@@ -143,6 +144,13 @@ export async function createAlert(data: CreateAlert): Promise<AlertResponse | nu
     .returning();
 
   const response = alertToResponse(row);
+
+  // Auto-create incident for HIGH/CRITICAL alerts (fire-and-forget)
+  if (row.severity === "HIGH" || row.severity === "CRITICAL") {
+    createIncidentFromAlert(row.id, row.organizationId).catch((err: unknown) => {
+      console.error("[alert-service] Failed to auto-create incident:", err);
+    });
+  }
 
   // Fire-and-forget Redis publish
   publishAlert(data.organizationId, response).catch((err: unknown) => {

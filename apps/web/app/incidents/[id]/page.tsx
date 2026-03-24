@@ -21,8 +21,6 @@ import {
   Satellite,
   CheckCircle2,
   Send,
-  ChevronDown,
-  ChevronUp,
   Plus,
 } from "lucide-react";
 import {
@@ -39,13 +37,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -230,6 +221,13 @@ function Nis2DeadlineCard({
   reports: IncidentReportResponse[];
   onGenerate: (type: ReportType) => void;
 }) {
+  // Tick every 60 s so countdown labels stay current without a full page reload
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const reportTypes: ReportType[] = [
     "EARLY_WARNING",
     "INCIDENT_NOTIFICATION",
@@ -861,16 +859,17 @@ function NotesSection({
 
 function RelatedAlertsSection({ alertLinks }: { alertLinks: IncidentAlertLinkResponse[] }) {
   const [alertDetails, setAlertDetails] = useState<Map<string, AlertResponse>>(new Map());
+  const fetchedIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     for (const link of alertLinks) {
-      if (!alertDetails.has(link.alertId)) {
+      if (!fetchedIds.current.has(link.alertId)) {
+        fetchedIds.current.add(link.alertId);
         getAlert(link.alertId)
           .then((a) => setAlertDetails((m) => new Map(m).set(a.id, a)))
-          .catch(() => {});
+          .catch(() => { fetchedIds.current.delete(link.alertId); });
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alertLinks]);
 
   return (
@@ -941,16 +940,17 @@ function RelatedAlertsSection({ alertLinks }: { alertLinks: IncidentAlertLinkRes
 
 function AffectedAssetsSection({ assetIds }: { assetIds: string[] }) {
   const [assets, setAssets] = useState<Map<string, AssetResponse>>(new Map());
+  const fetchedIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     for (const id of assetIds) {
-      if (!assets.has(id)) {
+      if (!fetchedIds.current.has(id)) {
+        fetchedIds.current.add(id);
         getAsset(id)
           .then((a) => setAssets((m) => new Map(m).set(a.id, a)))
-          .catch(() => {});
+          .catch(() => { fetchedIds.current.delete(id); });
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetIds]);
 
   if (assetIds.length === 0) return null;

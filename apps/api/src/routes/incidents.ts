@@ -44,6 +44,7 @@ import {
   generateNis2Report,
   listReports,
   markReportSubmitted,
+  getActiveIncidentCount,
 } from "../services/incident.service";
 
 export const incidentRoutes = new Hono();
@@ -57,6 +58,17 @@ const reportUuidParams = z.object({
 // ---------------------------------------------------------------------------
 // Incidents CRUD
 // ---------------------------------------------------------------------------
+
+// GET /incidents/stats?organizationId=
+incidentRoutes.get(
+  "/incidents/stats",
+  zValidator("query", z.object({ organizationId: z.string().uuid() })),
+  async (c) => {
+    const { organizationId } = c.req.valid("query");
+    const activeCount = await getActiveIncidentCount(organizationId);
+    return c.json({ activeCount });
+  }
+);
 
 // POST /incidents
 incidentRoutes.post(

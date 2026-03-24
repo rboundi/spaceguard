@@ -17,7 +17,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getIncidents } from "@/lib/api";
+
+import { getIncidentStats } from "@/lib/api";
 import { useOrg } from "@/lib/context";
 
 interface IncidentContextValue {
@@ -29,16 +30,6 @@ const IncidentContext = createContext<IncidentContextValue>({
 });
 
 const POLL_INTERVAL_MS = 30_000;
-
-// Statuses that count as "active" (not resolved)
-const ACTIVE_STATUSES = [
-  "DETECTED",
-  "TRIAGING",
-  "INVESTIGATING",
-  "CONTAINING",
-  "ERADICATING",
-  "RECOVERING",
-] as const;
 
 export function IncidentProvider({ children }: { children: ReactNode }) {
   const { orgId, loading: orgLoading } = useOrg();
@@ -53,19 +44,9 @@ export function IncidentProvider({ children }: { children: ReactNode }) {
   const poll = useCallback(async () => {
     if (!orgId) return;
     try {
-      // Sum totals across all active statuses in parallel
-      const counts = await Promise.all(
-        ACTIVE_STATUSES.map((status) =>
-          getIncidents({
-            organizationId: orgId,
-            status,
-            perPage: 1,
-            page: 1,
-          }).then((r) => r.total)
-        )
-      );
-      const total = counts.reduce((a, b) => a + b, 0);
-      if (mountedRef.current) setActiveCount(total);
+      // Single stats endpoint instead of 6 parallel status queries
+      const { activeCount: count } = await getIncidentStats(orgId);
+      if (mountedRef.current) setActiveCount(count);
     } catch {
       // Silently degrade if incidents table not yet migrated
     }

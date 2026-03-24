@@ -357,6 +357,11 @@ export interface IncidentReportResponse {
   createdAt: string;
 }
 
+export const getIncidentStats = (organizationId: string) =>
+  api.get<{ activeCount: number }>(
+    `/api/v1/incidents/stats?organizationId=${organizationId}`
+  );
+
 export const getIncidents = (query: {
   organizationId: string;
   status?: string;

@@ -16,7 +16,7 @@
  *  - listReports           - list reports for an incident
  */
 
-import { eq, and, gte, lte, desc, count, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, desc, count, inArray, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db/client";
 import {
@@ -129,19 +129,11 @@ async function appendTimeline(
   incidentId: string,
   entry: TimelineEntry
 ): Promise<void> {
-  const [existing] = await db
-    .select({ timeline: incidents.timeline })
-    .from(incidents)
-    .where(eq(incidents.id, incidentId))
-    .limit(1);
-
-  if (!existing) return;
-
-  const current = (existing.timeline as TimelineEntry[]) ?? [];
+  // Atomic single-statement append: no SELECT + UPDATE race condition
   await db
     .update(incidents)
     .set({
-      timeline: [...current, entry],
+      timeline: sql`${incidents.timeline} || ${JSON.stringify([entry])}::jsonb`,
       updatedAt: new Date(),
     })
     .where(eq(incidents.id, incidentId));
@@ -618,16 +610,46 @@ export async function generateNis2Report(
     recommendedActions: undefined,
   };
 
-  const [row] = await db
-    .insert(incidentReports)
-    .values({
-      incidentId,
-      reportType: data.reportType as IncidentReport["reportType"],
-      content,
-      submittedTo: data.submittedTo ?? null,
-      deadline: deadlines[data.reportType as IncidentReportType],
-    })
-    .returning();
+  // Upsert: if a report for this (incidentId, reportType) already exists,
+  // overwrite content/deadline so regenerating is idempotent.
+  const [existing] = await db
+    .select({ id: incidentReports.id })
+    .from(incidentReports)
+    .where(
+      and(
+        eq(incidentReports.incidentId, incidentId),
+        eq(
+          incidentReports.reportType,
+          data.reportType as IncidentReport["reportType"]
+        )
+      )
+    )
+    .limit(1);
+
+  let row: IncidentReport;
+  if (existing) {
+    [row] = await db
+      .update(incidentReports)
+      .set({
+        content,
+        submittedTo: data.submittedTo ?? null,
+        deadline: deadlines[data.reportType as IncidentReportType],
+        // preserve submittedAt if already submitted
+      })
+      .where(eq(incidentReports.id, existing.id))
+      .returning();
+  } else {
+    [row] = await db
+      .insert(incidentReports)
+      .values({
+        incidentId,
+        reportType: data.reportType as IncidentReport["reportType"],
+        content,
+        submittedTo: data.submittedTo ?? null,
+        deadline: deadlines[data.reportType as IncidentReportType],
+      })
+      .returning();
+  }
 
   await appendTimeline(
     incidentId,
@@ -638,6 +660,41 @@ export async function generateNis2Report(
   );
 
   return reportToResponse(row);
+}
+
+// ---------------------------------------------------------------------------
+// Stats
+// ---------------------------------------------------------------------------
+
+const ACTIVE_STATUSES: Array<Incident["status"]> = [
+  "DETECTED",
+  "TRIAGING",
+  "INVESTIGATING",
+  "CONTAINING",
+  "ERADICATING",
+  "RECOVERING",
+];
+
+/**
+ * Returns the count of open (non-closed) incidents for an organization.
+ * Used by the frontend sidebar badge to avoid 6 parallel queries.
+ */
+export async function getActiveIncidentCount(
+  organizationId: string
+): Promise<number> {
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(incidents)
+    .where(
+      and(
+        eq(incidents.organizationId, organizationId),
+        sql`${incidents.status} = ANY(ARRAY[${sql.join(
+          ACTIVE_STATUSES.map((s) => sql`${s}`),
+          sql`, `
+        )}]::text[])`
+      )
+    );
+  return Number(total);
 }
 
 export async function listReports(
