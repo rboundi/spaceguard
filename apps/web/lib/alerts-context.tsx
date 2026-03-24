@@ -78,13 +78,13 @@ export function AlertProvider({ children }: { children: ReactNode }) {
   const poll = useCallback(async () => {
     if (!orgId) return;
     try {
-      const { data } = await getAlerts({
+      const { data, total } = await getAlerts({
         organizationId: orgId,
         status: "NEW",
         perPage: 100,
       });
 
-      setNewCount(data.length);
+      setNewCount(total);
 
       if (!initialized.current) {
         // First load: populate seen set without showing toasts

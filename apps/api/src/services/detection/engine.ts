@@ -28,12 +28,35 @@ import { AlertSeverity } from "@spaceguard/shared";
 import type { CreateAlert } from "@spaceguard/shared";
 
 // ---------------------------------------------------------------------------
+// Module-level rule cache
+// ---------------------------------------------------------------------------
+
+/**
+ * Cached rules map - loaded once at startup and reused on every evaluatePoint
+ * call to avoid repeated filesystem reads per telemetry point.
+ */
+let cachedRulesMap: Map<string, DetectionRule> | null = null;
+
+function getRulesMap(): Map<string, DetectionRule> {
+  if (!cachedRulesMap) {
+    cachedRulesMap = loadRulesMap();
+  }
+  return cachedRulesMap;
+}
+
+// ---------------------------------------------------------------------------
 // In-memory state
 // ---------------------------------------------------------------------------
 
 interface ThresholdState {
   /** Unix ms when the breach first started; null = not currently breaching */
   breachStartMs: number | null;
+  /**
+   * True once the alert has fired for this breach event.
+   * Prevents flooding repeated alerts on every subsequent breaching point.
+   * Reset to false when the condition clears.
+   */
+  fired: boolean;
 }
 
 interface RateOfChangeState {
@@ -43,6 +66,11 @@ interface RateOfChangeState {
   lastTimeMs: number;
   /** Unix ms when the rate-of-change breach started; null = not currently breaching */
   breachStartMs: number | null;
+  /**
+   * True once the alert has fired for this breach event.
+   * Reset to false when the condition clears.
+   */
+  fired: boolean;
 }
 
 interface AbsenceState {
@@ -66,7 +94,7 @@ function getThresholdState(streamId: string, param: string): ThresholdState {
   }
   let st = byStream.get(param);
   if (!st) {
-    st = { breachStartMs: null };
+    st = { breachStartMs: null, fired: false };
     byStream.set(param, st);
   }
   return st;
@@ -128,10 +156,16 @@ function evalThreshold(
       st.breachStartMs = nowMs;
     }
     const durationRequired = (cond.duration_seconds ?? 0) * 1000;
-    return (nowMs - st.breachStartMs) >= durationRequired;
+    const durationMet = (nowMs - st.breachStartMs) >= durationRequired;
+    if (durationMet && !st.fired) {
+      st.fired = true;
+      return true;
+    }
+    return false;
   } else {
-    // Condition cleared
+    // Condition cleared - reset so the next breach fires again
     st.breachStartMs = null;
+    st.fired = false;
     return false;
   }
 }
@@ -151,7 +185,7 @@ function evalRateOfChange(
 
   if (!prev) {
     // First data point - no rate can be calculated yet
-    setRateState(streamId, param, { lastValue: value, lastTimeMs: nowMs, breachStartMs: null });
+    setRateState(streamId, param, { lastValue: value, lastTimeMs: nowMs, breachStartMs: null, fired: false });
     return false;
   }
 
@@ -168,12 +202,18 @@ function evalRateOfChange(
       prev.breachStartMs = nowMs;
     }
     const durationRequired = (cond.duration_seconds ?? 0) * 1000;
-    const fires = (nowMs - prev.breachStartMs) >= durationRequired;
+    const durationMet = (nowMs - prev.breachStartMs) >= durationRequired;
     prev.lastValue = value;
     prev.lastTimeMs = nowMs;
-    return fires;
+    if (durationMet && !prev.fired) {
+      prev.fired = true;
+      return true;
+    }
+    return false;
   } else {
+    // Condition cleared - reset so the next breach fires again
     prev.breachStartMs = null;
+    prev.fired = false;
     prev.lastValue = value;
     prev.lastTimeMs = nowMs;
     return false;
@@ -203,7 +243,7 @@ export function touchStream(streamId: string): void {
 export function checkAbsenceRules(
   streams: Array<{ streamId: string; organizationId: string; assetId: string }>
 ): CreateAlert[] {
-  const rules = loadRulesMap();
+  const rules = getRulesMap();
   const nowMs = Date.now();
   const triggered: CreateAlert[] = [];
 
@@ -296,7 +336,7 @@ export function evaluatePoint(
   // Only numeric values are evaluable by threshold/rate rules
   if (point.valueNumeric === null) return [];
 
-  const rules = loadRulesMap();
+  const rules = getRulesMap();
   const nowMs = new Date(point.time).getTime() || Date.now();
   const value = point.valueNumeric;
   const param = point.parameterName;

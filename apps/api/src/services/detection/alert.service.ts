@@ -37,7 +37,6 @@ function getRedis(): Redis {
   if (!redisClient) {
     const url = process.env.REDIS_URL ?? "redis://localhost:6379";
     redisClient = new Redis(url, {
-      lazyConnect: true,
       maxRetriesPerRequest: 1,
       // Don't crash the process if Redis is unavailable
       enableOfflineQueue: false,
@@ -271,7 +270,7 @@ export interface AlertStats {
  * Returns aggregated alert counts for an organization.
  */
 export async function getAlertStats(organizationId: string): Promise<AlertStats> {
-  // Three queries in parallel
+  // Four queries in parallel
   const [bySeverityRows, byStatusRows, [{ openCritical }], [{ openHigh }]] =
     await Promise.all([
       db
