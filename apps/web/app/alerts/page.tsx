@@ -9,6 +9,9 @@ import {
   ChevronDown,
   ChevronRight,
   RefreshCw,
+  Shield,
+  Eye,
+  BookOpen,
 } from "lucide-react";
 import {
   Card,
@@ -32,7 +35,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getAlerts, updateAlert, getAsset } from "@/lib/api";
+import { getAlerts, updateAlert, getAsset, enrichAlert } from "@/lib/api";
+import type { AlertEnrichment } from "@/lib/api";
 import type { AlertResponse } from "@/lib/api";
 import { useOrg } from "@/lib/context";
 
@@ -86,6 +90,109 @@ function relativeTime(iso: string): string {
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   return `${days}d ago`;
+}
+
+
+// ---------------------------------------------------------------------------
+// Intel context card (shown inside ExpandedRow when alert has SPARTA fields)
+// ---------------------------------------------------------------------------
+
+interface IntelContextCardProps {
+  alertId: string;
+}
+
+function IntelContextCard({ alertId }: IntelContextCardProps) {
+  const [enrichment, setEnrichment] = useState<AlertEnrichment | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await enrichAlert(alertId);
+        if (!cancelled) setEnrichment(data);
+      } catch {
+        if (!cancelled) setError("Unable to load intelligence context.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void load();
+    return () => { cancelled = true; };
+  }, [alertId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-2">
+        <div className="h-3 w-3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+        <span className="text-xs text-slate-600">Loading intelligence context...</span>
+      </div>
+    );
+  }
+
+  if (error || !enrichment || enrichment.matchedIntel.length === 0) {
+    return (
+      <p className="text-xs text-slate-600 italic py-1">
+        {error ?? "No matched SPARTA techniques found in the intel store."}
+      </p>
+    );
+  }
+
+  const technique = enrichment.matchedIntel[0];
+  const data = technique.data as Record<string, unknown>;
+
+  return (
+    <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3 space-y-3">
+      {/* Technique header */}
+      <div className="flex items-start gap-2">
+        <Shield size={13} className="text-blue-400 shrink-0 mt-0.5" aria-hidden="true" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-blue-300 leading-snug">{technique.name}</p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {enrichment.spartaTactic && (
+              <span className="text-[10px] text-slate-500">{enrichment.spartaTactic}</span>
+            )}
+            {typeof data.x_sparta_id === "string" && (
+              <span className="text-[10px] font-mono text-slate-600 bg-slate-800 border border-slate-700 px-1 py-0.5 rounded">
+                {data.x_sparta_id}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Detection tips */}
+      {enrichment.detectionTips.length > 0 && (
+        <div>
+          <div className="flex items-center gap-1 mb-1">
+            <Eye size={11} className="text-amber-400" aria-hidden="true" />
+            <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold">Detection Guidance</p>
+          </div>
+          <p className="text-xs text-slate-400 leading-relaxed">{enrichment.detectionTips[0]}</p>
+        </div>
+      )}
+
+      {/* Mitigations */}
+      {enrichment.mitigations.length > 0 && (
+        <div>
+          <div className="flex items-center gap-1 mb-1">
+            <BookOpen size={11} className="text-emerald-400" aria-hidden="true" />
+            <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold">Recommended Mitigation</p>
+          </div>
+          <p className="text-xs text-slate-400 leading-relaxed">{enrichment.mitigations[0]}</p>
+        </div>
+      )}
+
+      {enrichment.matchedIntel.length > 1 && (
+        <p className="text-[10px] text-slate-600">
+          +{enrichment.matchedIntel.length - 1} additional technique{enrichment.matchedIntel.length > 2 ? "s" : ""} matched.
+        </p>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -179,6 +286,16 @@ function ExpandedRow({ alert, onAction, actionLoading, assetName }: ExpandedRowP
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Intelligence Context */}
+      {(alert.spartaTactic || alert.spartaTechnique) && (
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-slate-600 mb-2 font-semibold">
+            Intelligence Context
+          </p>
+          <IntelContextCard alertId={alert.id} />
         </div>
       )}
 

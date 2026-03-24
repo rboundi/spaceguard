@@ -14,6 +14,7 @@ import {
   Waves,
   Bell,
   AlertTriangle,
+  ShieldAlert,
 } from "lucide-react";
 import { useAlerts } from "@/lib/alerts-context";
 import { useIncidents } from "@/lib/incidents-context";
@@ -53,6 +54,13 @@ const navItems = [
     icon: AlertTriangle,
     exact: false,
     badge: "incidents" as const,
+  },
+  {
+    label: "Threat Intel",
+    href: "/intel",
+    icon: ShieldAlert,
+    exact: false,
+    badge: false,
   },
   {
     label: "Compliance",

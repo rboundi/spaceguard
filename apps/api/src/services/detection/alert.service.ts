@@ -14,7 +14,7 @@
  * the new payload is silently dropped (returns null).
  */
 
-import { eq, and, gte, lte, count, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lte, count, desc, sql, ilike } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { Redis } from "ioredis";
 import { db } from "../../db/client";
@@ -207,6 +207,12 @@ export async function listAlerts(
   }
   if (query.ruleId) {
     conditions.push(eq(alerts.ruleId, query.ruleId));
+  }
+  if (query.spartaTactic) {
+    conditions.push(ilike(alerts.spartaTactic, `%${query.spartaTactic}%`));
+  }
+  if (query.spartaTechnique) {
+    conditions.push(ilike(alerts.spartaTechnique, `%${query.spartaTechnique}%`));
   }
   if (query.from) {
     conditions.push(gte(alerts.triggeredAt, new Date(query.from)));

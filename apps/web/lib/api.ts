@@ -254,21 +254,25 @@ export const getAlerts = (query: {
   streamId?: string;
   affectedAssetId?: string;
   ruleId?: string;
+  spartaTactic?: string;
+  spartaTechnique?: string;
   from?: string;
   to?: string;
   page?: number;
   perPage?: number;
 }) => {
   const params = new URLSearchParams({ organizationId: query.organizationId });
-  if (query.status)          params.set("status", query.status);
-  if (query.severity)        params.set("severity", query.severity);
-  if (query.streamId)        params.set("streamId", query.streamId);
-  if (query.affectedAssetId) params.set("affectedAssetId", query.affectedAssetId);
-  if (query.ruleId)          params.set("ruleId", query.ruleId);
-  if (query.from)            params.set("from", query.from);
-  if (query.to)              params.set("to", query.to);
-  if (query.page)            params.set("page", String(query.page));
-  if (query.perPage)         params.set("perPage", String(query.perPage));
+  if (query.status)           params.set("status", query.status);
+  if (query.severity)         params.set("severity", query.severity);
+  if (query.streamId)         params.set("streamId", query.streamId);
+  if (query.affectedAssetId)  params.set("affectedAssetId", query.affectedAssetId);
+  if (query.ruleId)           params.set("ruleId", query.ruleId);
+  if (query.spartaTactic)     params.set("spartaTactic", query.spartaTactic);
+  if (query.spartaTechnique)  params.set("spartaTechnique", query.spartaTechnique);
+  if (query.from)             params.set("from", query.from);
+  if (query.to)               params.set("to", query.to);
+  if (query.page)             params.set("page", String(query.page));
+  if (query.perPage)          params.set("perPage", String(query.perPage));
   return api.get<{ data: AlertResponse[]; total: number }>(
     `/api/v1/alerts?${params.toString()}`
   );
@@ -471,3 +475,64 @@ export const submitIncidentReport = (
 export type { AssetResponse };
 
 export { ApiError };
+
+// ---------------------------------------------------------------------------
+// Intel (Threat Intelligence)
+// ---------------------------------------------------------------------------
+
+export interface IntelResponse {
+  id: string;
+  stixId: string;
+  stixType: string;
+  name: string;
+  description: string | null;
+  data: Record<string, unknown>;
+  source: string;
+  confidence: number | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AlertEnrichment {
+  alertId: string;
+  spartaTactic: string | null;
+  spartaTechnique: string | null;
+  matchedIntel: IntelResponse[];
+  relatedTactics: string[];
+  mitigations: string[];
+  detectionTips: string[];
+}
+
+export const getIntelList = (query?: {
+  stixType?: string;
+  source?: string;
+  tactic?: string;
+  q?: string;
+  page?: number;
+  perPage?: number;
+}) => {
+  const params = new URLSearchParams();
+  if (query?.stixType) params.set("stixType", query.stixType);
+  if (query?.source)   params.set("source", query.source);
+  if (query?.tactic)   params.set("tactic", query.tactic);
+  if (query?.q)        params.set("q", query.q);
+  if (query?.page)     params.set("page", String(query.page));
+  if (query?.perPage)  params.set("perPage", String(query.perPage));
+  const qs = params.toString();
+  return api.get<{ data: IntelResponse[]; total: number }>(
+    `/api/v1/intel${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const getIntel = (id: string) =>
+  api.get<IntelResponse>(`/api/v1/intel/${id}`);
+
+export const searchIntel = (q: string, limit = 20) =>
+  api.get<{ data: IntelResponse[]; total: number }>(
+    `/api/v1/intel/search?q=${encodeURIComponent(q)}&limit=${limit}`
+  );
+
+export const enrichAlert = (alertId: string) =>
+  api.get<AlertEnrichment>(`/api/v1/intel/enrich/alert/${alertId}`);

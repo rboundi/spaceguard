@@ -65,6 +65,8 @@ export const alertQuerySchema = z.object({
   streamId: z.string().uuid().optional(),
   affectedAssetId: z.string().uuid().optional(),
   ruleId: z.string().max(64).optional(),
+  spartaTactic: z.string().max(100).optional(),
+  spartaTechnique: z.string().max(100).optional(),
   // ISO date strings for time-window filtering
   from: z.string().datetime({ offset: true }).optional(),
   to: z.string().datetime({ offset: true }).optional(),
