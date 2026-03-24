@@ -74,22 +74,22 @@ function fmtDate(iso: string) {
 function EmptyState({ orgName }: { orgName: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="rounded-full bg-slate-800 p-4 mb-4">
-        <Radio size={28} className="text-slate-500" />
+      <div className="rounded-full bg-blue-500/10 border border-blue-500/20 p-4 mb-4">
+        <Radio size={28} className="text-blue-400" />
       </div>
       <h3 className="text-slate-200 font-semibold text-base mb-1">
-        No telemetry streams for {orgName || "this organization"}
+        No telemetry streams configured
       </h3>
       <p className="text-slate-500 text-sm max-w-sm">
-        The simulator creates streams for the org it finds. If you just ran it,
-        check that the org selected in the header matches the org printed in the
-        simulator output.
+        {orgName
+          ? `Connect your first telemetry stream for ${orgName} to start monitoring satellite health, link quality, and subsystem parameters.`
+          : "Select an organization and connect a telemetry stream to start monitoring."}
       </p>
-      <code className="mt-4 px-3 py-2 rounded bg-slate-800 text-slate-400 text-xs font-mono">
+      <code className="mt-4 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-400 text-xs font-mono">
         npm run simulate
       </code>
       <p className="mt-3 text-slate-600 text-xs max-w-xs">
-        After running, the simulator prints which org to select in the dropdown above.
+        Run the simulator to generate sample CCSDS telemetry with optional anomaly injection.
       </p>
     </div>
   );

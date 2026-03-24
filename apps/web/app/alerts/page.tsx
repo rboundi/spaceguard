@@ -12,6 +12,8 @@ import {
   Shield,
   Eye,
   BookOpen,
+  Download,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Card,
@@ -91,6 +93,65 @@ function relativeTime(iso: string): string {
   return `${days}d ago`;
 }
 
+
+// ---------------------------------------------------------------------------
+// STIX 2.1 export
+// ---------------------------------------------------------------------------
+
+function buildStixBundle(alerts: AlertResponse[]): string {
+  const objects = alerts.map((a) => ({
+    type: "indicator",
+    spec_version: "2.1",
+    id: `indicator--${a.id}`,
+    created: a.createdAt,
+    modified: a.updatedAt,
+    name: a.title,
+    description: a.description,
+    indicator_types: ["anomalous-activity"],
+    pattern: `[x-spaceguard:rule_id = '${a.ruleId}']`,
+    pattern_type: "stix",
+    valid_from: a.triggeredAt,
+    severity: a.severity.toLowerCase(),
+    labels: [
+      `severity:${a.severity.toLowerCase()}`,
+      `status:${a.status.toLowerCase()}`,
+      ...(a.spartaTactic ? [`sparta-tactic:${a.spartaTactic}`] : []),
+      ...(a.spartaTechnique ? [`sparta-technique:${a.spartaTechnique}`] : []),
+    ],
+    ...(a.spartaTactic && {
+      kill_chain_phases: [
+        {
+          kill_chain_name: "sparta",
+          phase_name: a.spartaTactic.toLowerCase().replace(/\s+/g, "-"),
+        },
+      ],
+    }),
+    x_spaceguard_alert_id: a.id,
+    x_spaceguard_rule_id: a.ruleId,
+    x_spaceguard_affected_asset_id: a.affectedAssetId,
+  }));
+
+  const bundle = {
+    type: "bundle",
+    id: `bundle--${crypto.randomUUID()}`,
+    objects,
+  };
+
+  return JSON.stringify(bundle, null, 2);
+}
+
+function downloadStixBundle(alerts: AlertResponse[]) {
+  const json = buildStixBundle(alerts);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `spaceguard-stix-bundle-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 // ---------------------------------------------------------------------------
 // Intel context card (shown inside ExpandedRow when alert has SPARTA fields)
@@ -358,6 +419,7 @@ export default function AlertsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [assetNames, setAssetNames] = useState<Record<string, string>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -429,6 +491,31 @@ export default function AlertsPage() {
     if (assetId) void loadAssetName(assetId);
   };
 
+  const toggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === sorted.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sorted.map((a) => a.id)));
+    }
+  };
+
+  const handleExportStix = () => {
+    const toExport = selectedIds.size > 0
+      ? alerts.filter((a) => selectedIds.has(a.id))
+      : alerts;
+    downloadStixBundle(toExport);
+  };
+
   // ---------------------------------------------------------------------------
   // Actions
   // ---------------------------------------------------------------------------
@@ -478,9 +565,11 @@ export default function AlertsPage() {
   if (!orgId) {
     return (
       <div className="p-6">
-        <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-center">
-          <p className="text-slate-400 text-sm">
-            Select an organization to view alerts.
+        <div className="rounded-lg border border-slate-800 bg-slate-900 p-12 text-center">
+          <ShieldCheck size={36} className="mx-auto text-slate-600 mb-3" />
+          <p className="text-slate-300 text-sm font-medium">Select an organization</p>
+          <p className="text-slate-500 text-xs mt-1">
+            Choose an organization from the switcher above to view security alerts.
           </p>
         </div>
       </div>
@@ -497,16 +586,32 @@ export default function AlertsPage() {
             Security events detected by the monitoring engine
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void fetchAlerts()}
-          disabled={loading}
-          className="gap-1.5 text-xs border-slate-700 text-slate-400 hover:text-slate-200"
-        >
-          <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {alerts.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportStix}
+              className="gap-1.5 text-xs border-slate-700 text-slate-400 hover:text-slate-200"
+            >
+              <Download size={13} />
+              Export STIX
+              {selectedIds.size > 0 && (
+                <span className="text-[10px] text-blue-400 ml-0.5">({selectedIds.size})</span>
+              )}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void fetchAlerts()}
+            disabled={loading}
+            className="gap-1.5 text-xs border-slate-700 text-slate-400 hover:text-slate-200"
+          >
+            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -587,18 +692,28 @@ export default function AlertsPage() {
               <div className="inline-block h-5 w-5 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
             </div>
           ) : sorted.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-slate-400 text-sm font-medium">No alerts found</p>
-              <p className="text-slate-600 text-xs mt-1">
+            <div className="p-12 text-center">
+              <ShieldCheck size={36} className="mx-auto text-emerald-500 mb-3" />
+              <p className="text-slate-200 font-medium text-sm">No alerts detected</p>
+              <p className="text-slate-500 text-xs mt-1.5 max-w-xs mx-auto">
                 {severityFilter || statusFilter
-                  ? "Try clearing the filters."
-                  : "The detection engine hasn't fired any rules yet."}
+                  ? "No alerts match your current filters. Try adjusting them."
+                  : "Your space systems are looking good. The detection engine is actively monitoring telemetry for anomalies."}
               </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableHead className="w-8 px-2">
+                    <input
+                      type="checkbox"
+                      checked={sorted.length > 0 && selectedIds.size === sorted.length}
+                      onChange={toggleSelectAll}
+                      className="accent-blue-500"
+                      aria-label="Select all alerts"
+                    />
+                  </TableHead>
                   <TableHead className="w-6 px-4" />
                   <TableHead className="text-slate-500 text-xs font-medium px-3 py-2.5">
                     Severity
@@ -632,6 +747,18 @@ export default function AlertsPage() {
                         onClick={() => handleRowClick(alert.id, alert.affectedAssetId)}
                         aria-expanded={expanded}
                       >
+                        {/* Checkbox */}
+                        <TableCell className="px-2 py-2.5 w-8" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(alert.id)}
+                            onChange={() => {}}
+                            onClick={(e) => toggleSelect(alert.id, e)}
+                            className="accent-blue-500"
+                            aria-label={`Select ${alert.title}`}
+                          />
+                        </TableCell>
+
                         {/* Expand chevron */}
                         <TableCell className="px-4 py-2.5 w-6">
                           {expanded ? (
@@ -701,7 +828,7 @@ export default function AlertsPage() {
                       {/* Expanded detail row */}
                       {expanded && (
                         <TableRow className="border-slate-800 bg-slate-800/40">
-                          <TableCell colSpan={6} className="px-0 py-0">
+                          <TableCell colSpan={7} className="px-0 py-0">
                             <ExpandedRow
                               alert={alert}
                               onAction={handleAction}

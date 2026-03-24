@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { Plus, RotateCcw, SlidersHorizontal, Satellite } from "lucide-react";
 import {
   AssetType,
   AssetStatus,
@@ -313,15 +313,22 @@ export default function AssetsPage() {
               ))
             ) : assets.length === 0 ? (
               <TableRow className="border-slate-800 hover:bg-transparent">
-                <TableCell
-                  colSpan={5}
-                  className="py-16 text-center text-slate-500 text-sm"
-                >
-                  {orgId
-                    ? filtersActive
-                      ? "No assets match your filters"
-                      : "No assets yet — click Add Asset to register your first"
-                    : "Set up your organization first to add assets"}
+                <TableCell colSpan={5} className="py-16 text-center">
+                  <Satellite size={32} className="mx-auto text-blue-500 mb-3" />
+                  <p className="text-slate-200 font-medium text-sm">
+                    {orgId
+                      ? filtersActive
+                        ? "No assets match your filters"
+                        : "No assets registered yet"
+                      : "Set up your organization first"}
+                  </p>
+                  <p className="text-slate-500 text-xs mt-1 max-w-xs mx-auto">
+                    {orgId
+                      ? filtersActive
+                        ? "Try adjusting your filter criteria to see more results."
+                        : "Register your satellites, ground stations, and infrastructure components to begin tracking compliance."
+                      : "Create an organization to start managing your space assets."}
+                  </p>
                 </TableCell>
               </TableRow>
             ) : (

@@ -10,10 +10,15 @@ import {
   Plus,
   RefreshCw,
   ChevronRight,
+  Clock,
+  TrendingDown,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Card,
   CardContent,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -277,6 +282,92 @@ function CreateIncidentDialog({
 }
 
 // ---------------------------------------------------------------------------
+// MTTD / MTTR metrics card
+// ---------------------------------------------------------------------------
+
+function formatMinutes(mins: number): string {
+  if (mins < 60) return `${Math.round(mins)}m`;
+  if (mins < 1440) return `${(mins / 60).toFixed(1)}h`;
+  return `${(mins / 1440).toFixed(1)}d`;
+}
+
+function MetricsCard({ incidents }: { incidents: IncidentResponse[] }) {
+  const closed = incidents.filter(
+    (i) => i.status === "CLOSED" || i.status === "FALSE_POSITIVE"
+  );
+
+  if (closed.length === 0) return null;
+
+  const withTTD = closed.filter(
+    (i) => i.timeToDetectMinutes != null && i.timeToDetectMinutes > 0
+  );
+  const withTTR = closed.filter(
+    (i) => i.timeToRespondMinutes != null && i.timeToRespondMinutes > 0
+  );
+
+  const avgTTD =
+    withTTD.length > 0
+      ? withTTD.reduce((sum, i) => sum + (i.timeToDetectMinutes ?? 0), 0) /
+        withTTD.length
+      : null;
+  const avgTTR =
+    withTTR.length > 0
+      ? withTTR.reduce((sum, i) => sum + (i.timeToRespondMinutes ?? 0), 0) /
+        withTTR.length
+      : null;
+
+  return (
+    <Card className="bg-slate-900 border-slate-800">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-sm font-semibold text-slate-200">
+          Response Metrics
+        </CardTitle>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Based on {closed.length} resolved incident{closed.length !== 1 ? "s" : ""}
+        </p>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <div className="grid grid-cols-2 gap-4">
+          {/* MTTD */}
+          <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Clock size={12} className="text-blue-400" />
+              <span className="text-[10px] uppercase tracking-widest text-blue-400 font-semibold">
+                MTTD
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-blue-300">
+              {avgTTD != null ? formatMinutes(avgTTD) : "N/A"}
+            </p>
+            <p className="text-[10px] text-slate-500 mt-1">
+              Mean Time to Detect
+              {withTTD.length > 0 && ` (${withTTD.length} samples)`}
+            </p>
+          </div>
+
+          {/* MTTR */}
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <TrendingDown size={12} className="text-emerald-400" />
+              <span className="text-[10px] uppercase tracking-widest text-emerald-400 font-semibold">
+                MTTR
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-emerald-300">
+              {avgTTR != null ? formatMinutes(avgTTR) : "N/A"}
+            </p>
+            <p className="text-[10px] text-slate-500 mt-1">
+              Mean Time to Respond
+              {withTTR.length > 0 && ` (${withTTR.length} samples)`}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -437,6 +528,9 @@ export default function IncidentsPage() {
         </Select>
       </div>
 
+      {/* MTTD / MTTR metrics */}
+      <MetricsCard incidents={incidents} />
+
       {/* Error */}
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400 text-sm">
@@ -469,8 +563,14 @@ export default function IncidentsPage() {
               )}
               {!loading && incidents.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-slate-500 py-10 text-sm">
-                    No incidents found.
+                  <TableCell colSpan={7} className="py-16 text-center">
+                    <ShieldCheck size={32} className="mx-auto text-emerald-500 mb-3" />
+                    <p className="text-slate-200 font-medium text-sm">No incidents recorded</p>
+                    <p className="text-slate-500 text-xs mt-1 max-w-xs mx-auto">
+                      {filterSeverity !== "all" || filterStatus !== "all"
+                        ? "No incidents match your current filters. Try adjusting them."
+                        : "Your space infrastructure is operating normally. Incidents will appear here when detected or manually created."}
+                    </p>
                   </TableCell>
                 </TableRow>
               )}
