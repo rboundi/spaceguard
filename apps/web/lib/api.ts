@@ -14,6 +14,13 @@ import type {
   CreateStream,
 } from "@spaceguard/shared";
 
+// NOTE: Alert, Incident, Intel, and enrichment response types are defined
+// locally below rather than imported from @spaceguard/shared. This is
+// intentional: the shared schemas use z.nativeEnum() which infers nominal
+// TypeScript enum types (e.g. IncidentStatus), but the API sends plain JSON
+// strings. The frontend receives these as string literals, so the local types
+// use string literal unions to match the JSON wire format.
+
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 

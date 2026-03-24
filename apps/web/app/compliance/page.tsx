@@ -85,7 +85,7 @@ function getEffectiveStatus(
 }
 
 // ---------------------------------------------------------------------------
-// MappingRow — inline per-asset editing
+// MappingRow: inline per-asset editing
 // ---------------------------------------------------------------------------
 
 interface MappingRowProps {
@@ -177,7 +177,7 @@ function MappingRow({ mapping, asset, onUpdated }: MappingRowProps) {
 }
 
 // ---------------------------------------------------------------------------
-// OrgLevelStatus — org-wide mapping (no assetId)
+// OrgLevelStatus: org-wide mapping (no assetId)
 // ---------------------------------------------------------------------------
 
 interface OrgLevelStatusProps {
@@ -302,7 +302,7 @@ function MapAssetDialog({
       setSelectedAssetId("");
       onOpenChange(false);
     } catch {
-      // ignore — keep dialog open
+      // ignore: keep dialog open
     } finally {
       setSaving(false);
     }
@@ -368,7 +368,7 @@ function MapAssetDialog({
 }
 
 // ---------------------------------------------------------------------------
-// RequirementDetail — right panel
+// RequirementDetail: right panel
 // ---------------------------------------------------------------------------
 
 interface RequirementDetailProps {
@@ -523,7 +523,7 @@ function RequirementDetail({
 }
 
 // ---------------------------------------------------------------------------
-// RequirementCard — left panel item
+// RequirementCard: left panel item
 // ---------------------------------------------------------------------------
 
 interface RequirementCardProps {
@@ -577,7 +577,7 @@ function RequirementCard({
 }
 
 // ---------------------------------------------------------------------------
-// CategorySection — collapsible group
+// CategorySection: collapsible group
 // ---------------------------------------------------------------------------
 
 interface CategorySectionProps {
@@ -793,7 +793,7 @@ export default function CompliancePage() {
               Compliance Mapper
             </h1>
             <p className="text-slate-500 text-xs mt-0.5">
-              NIS2 Article 21 requirements — map to assets and track status
+              NIS2 Article 21 requirements - map to assets and track status
             </p>
           </div>
           <div className="flex items-center gap-4">

@@ -490,7 +490,7 @@ function GenerateReportDialog({
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <Field label="Incident ID"   value={incident.id.slice(0, 8) + "..."} />
-              <Field label="Detected At"   value={incident.detectedAt ? formatDatetime(incident.detectedAt) : "—"} />
+              <Field label="Detected At"   value={incident.detectedAt ? formatDatetime(incident.detectedAt) : "-"} />
               <Field label="Severity"      value={incident.severity} />
               <Field label="NIS2 Class"    value={incident.nis2Classification === "SIGNIFICANT" ? "Significant" : "Non-Significant"} />
             </div>
@@ -588,7 +588,7 @@ function GenerateReportDialog({
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded p-3 flex items-center gap-2">
               <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
               <span className="text-xs text-emerald-300">
-                Report generated{generated.submittedAt ? " and submitted" : " — ready to submit"}.
+                Report generated{generated.submittedAt ? " and submitted" : " - ready to submit"}.
               </span>
             </div>
           )}
@@ -660,7 +660,7 @@ function TimelineSection({
     if (!eventText.trim()) return;
     setSaving(true);
     try {
-      // Timeline entries are appended via notes — we add a note
+      // Timeline entries are appended via notes. We add a note
       // which the service appends to the timeline automatically
       const note = await addIncidentNote(incidentId, {
         author: actor.trim() || "analyst",
@@ -918,10 +918,10 @@ function RelatedAlertsSection({ alertLinks }: { alertLinks: IncidentAlertLinkRes
                       )}
                     </TableCell>
                     <TableCell className="text-xs text-slate-400">
-                      {a?.status ?? "—"}
+                      {a?.status ?? "-"}
                     </TableCell>
                     <TableCell className="text-xs text-slate-500">
-                      {a ? relativeTime(a.triggeredAt) : "—"}
+                      {a ? relativeTime(a.triggeredAt) : "-"}
                     </TableCell>
                   </TableRow>
                 );

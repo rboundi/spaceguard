@@ -217,12 +217,12 @@ export default function TelemetryPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="py-3 text-slate-400 text-sm font-mono">
-                      {stream.apid ?? <span className="text-slate-600">—</span>}
+                      {stream.apid ?? <span className="text-slate-600">-</span>}
                     </TableCell>
                     <TableCell className="py-3 text-slate-400 text-sm">
                       {stream.sampleRateHz != null
                         ? `${stream.sampleRateHz} Hz`
-                        : <span className="text-slate-600">—</span>
+                        : <span className="text-slate-600">-</span>
                       }
                     </TableCell>
                     <TableCell className="py-3">

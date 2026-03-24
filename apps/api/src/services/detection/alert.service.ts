@@ -14,7 +14,7 @@
  * the new payload is silently dropped (returns null).
  */
 
-import { eq, and, gte, lte, count, desc, sql, ilike } from "drizzle-orm";
+import { eq, and, gte, lte, count, desc, ilike, inArray } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { Redis } from "ioredis";
 import { db } from "../../db/client";
@@ -96,7 +96,7 @@ async function isDuplicate(
     eq(alerts.ruleId, ruleId),
     gte(alerts.triggeredAt, windowStart),
     // Only consider open alerts
-    sql`${alerts.status} IN ('NEW', 'INVESTIGATING')`,
+    inArray(alerts.status, ["NEW", "INVESTIGATING"]),
   ];
 
   if (streamId) {
@@ -304,7 +304,7 @@ export async function getAlertStats(organizationId: string): Promise<AlertStats>
           and(
             eq(alerts.organizationId, organizationId),
             eq(alerts.severity, "CRITICAL"),
-            sql`${alerts.status} IN ('NEW', 'INVESTIGATING')`
+            inArray(alerts.status, ["NEW", "INVESTIGATING"])
           )
         ),
       db
@@ -314,7 +314,7 @@ export async function getAlertStats(organizationId: string): Promise<AlertStats>
           and(
             eq(alerts.organizationId, organizationId),
             eq(alerts.severity, "HIGH"),
-            sql`${alerts.status} IN ('NEW', 'INVESTIGATING')`
+            inArray(alerts.status, ["NEW", "INVESTIGATING"])
           )
         ),
     ]);

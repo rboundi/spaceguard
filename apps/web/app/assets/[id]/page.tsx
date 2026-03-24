@@ -261,14 +261,14 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                             <span className="block text-slate-600 text-[10px] mt-0.5">{req.articleReference}</span>
                           )}
                         </TableCell>
-                        <TableCell className="px-4 py-2.5 text-xs text-slate-500">{req?.category ?? "—"}</TableCell>
+                        <TableCell className="px-4 py-2.5 text-xs text-slate-500">{req?.category ?? "-"}</TableCell>
                         <TableCell className="px-4 py-2.5">
                           <Badge variant={COMPLIANCE_VARIANT[mapping.status] ?? "muted"} className="text-[10px] px-1.5 py-0">
                             {complianceStatusLabels[mapping.status as keyof typeof complianceStatusLabels] ?? mapping.status}
                           </Badge>
                         </TableCell>
                         <TableCell className="px-4 py-2.5 text-xs text-slate-500 max-w-[200px]">
-                          <span className="line-clamp-2">{mapping.evidenceDescription ?? "—"}</span>
+                          <span className="line-clamp-2">{mapping.evidenceDescription ?? "-"}</span>
                         </TableCell>
                       </TableRow>
                     );

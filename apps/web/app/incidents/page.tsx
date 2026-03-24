@@ -630,7 +630,7 @@ export default function IncidentsPage() {
                       <span className="text-xs text-slate-400">
                         {inc.affectedAssetIds.length > 0
                           ? `${inc.affectedAssetIds.length} asset${inc.affectedAssetIds.length !== 1 ? "s" : ""}`
-                          : <span className="text-slate-600">—</span>
+                          : <span className="text-slate-600">-</span>
                         }
                       </span>
                     </TableCell>

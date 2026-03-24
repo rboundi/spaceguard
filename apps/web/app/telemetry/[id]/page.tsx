@@ -128,7 +128,7 @@ function fmtAxisTime(iso: string, hours: number): string {
 }
 
 function fmtVal(v: number | undefined, unit: string): string {
-  if (v === undefined || v === null) return "—";
+  if (v === undefined || v === null) return "-";
   return `${v.toPrecision(5).replace(/\.?0+$/, "")} ${unit}`.trim();
 }
 
@@ -272,7 +272,7 @@ export default function TelemetryStreamPage() {
     setLoadingData(true);
     setDataError(null);
     try {
-      // Step 1: discovery fetch — small result, no param filter — to learn what params exist
+      // Step 1: discovery fetch (small result, no param filter) to learn what params exist
       const discovery = await getTelemetryPoints({
         streamId: id,
         from: from.toISOString(),

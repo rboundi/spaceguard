@@ -106,7 +106,7 @@ export default function ReportsPage() {
     getDashboard(orgId)
       .then(setDashboard)
       .catch(() => {
-        /* silently fall through — page still renders without stats */
+        /* silently fall through - page still renders without stats */
       })
       .finally(() => setLoading(false));
   }, [orgId, orgLoading]);
@@ -169,7 +169,7 @@ export default function ReportsPage() {
                     NIS2 Compliance Report
                   </CardTitle>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Full Article 21 compliance status — PDF
+                    Full Article 21 compliance status - PDF
                   </p>
                 </div>
               </div>
@@ -321,7 +321,7 @@ export default function ReportsPage() {
         <PlaceholderCard
           icon={<ShieldCheck size={18} />}
           title="Supply Chain Risk Assessment"
-          description="Analysis of third-party dependencies in your space systems — ground segment vendors, component suppliers, and software integrations — against known vulnerability databases."
+          description="Analysis of third-party dependencies in your space systems - ground segment vendors, component suppliers, and software integrations - against known vulnerability databases."
         />
 
         <PlaceholderCard
