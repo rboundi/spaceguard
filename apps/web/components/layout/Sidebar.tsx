@@ -15,6 +15,7 @@ import {
   Bell,
   AlertTriangle,
   ShieldAlert,
+  Settings,
 } from "lucide-react";
 import { useAlerts } from "@/lib/alerts-context";
 import { useIncidents } from "@/lib/incidents-context";
@@ -75,6 +76,15 @@ const navItems = [
     icon: FileText,
     exact: false,
     badge: false,
+  },
+] as const;
+
+const adminItems = [
+  {
+    label: "SPARTA Data",
+    href: "/admin/sparta",
+    icon: Settings,
+    exact: false,
   },
 ] as const;
 
@@ -171,6 +181,44 @@ export function Sidebar() {
                       {badgeCount > 99 ? "99+" : badgeCount}
                     </span>
                   )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+
+        {/* Admin section */}
+        {!collapsed && (
+          <p className="px-4 py-1 mt-4 text-[10px] font-semibold uppercase tracking-widest text-slate-600 mb-1">
+            Admin
+          </p>
+        )}
+        <ul className="space-y-0.5">
+          {adminItems.map((item) => {
+            const active = isActive(pathname, item.href, item.exact);
+            const Icon = item.icon;
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  title={collapsed ? item.label : undefined}
+                  className={[
+                    "flex items-center gap-3 mx-2 rounded-md text-sm font-medium",
+                    "transition-colors duration-150 relative",
+                    collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5",
+                    active
+                      ? "bg-slate-800 text-blue-400"
+                      : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200",
+                  ].join(" ")}
+                >
+                  {active && (
+                    <span
+                      className="absolute left-0 top-1 bottom-1 w-0.5 bg-blue-400 rounded-r-full"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <Icon size={18} aria-hidden="true" />
+                  {!collapsed && <span className="flex-1">{item.label}</span>}
                 </Link>
               </li>
             );

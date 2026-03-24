@@ -13,6 +13,7 @@ import { telemetryRoutes } from "./routes/telemetry";
 import { alertRoutes } from "./routes/alerts";
 import { incidentRoutes } from "./routes/incidents";
 import { intelRoutes } from "./routes/intel";
+import { adminSpartaRoutes } from "./routes/admin-sparta";
 
 const app = new Hono();
 
@@ -33,7 +34,15 @@ app.use(
     credentials: true,
   })
 );
-// Limit request bodies to 512 KB to prevent memory-exhaustion via large payloads
+// SPARTA imports can be 10+ MB (full STIX bundles with 4800+ objects)
+app.use(
+  "/api/v1/admin/sparta/import",
+  bodyLimit({
+    maxSize: 20 * 1024 * 1024,
+    onError: (c) => c.json({ error: "STIX bundle too large (max 20 MB)" }, 413),
+  })
+);
+// Limit all other request bodies to 512 KB
 app.use(
   "/api/v1/*",
   bodyLimit({
@@ -65,6 +74,9 @@ app.route("/api/v1", incidentRoutes);
 
 // Module 5 routes
 app.route("/api/v1", intelRoutes);
+
+// Admin routes
+app.route("/api/v1", adminSpartaRoutes);
 
 const port = Number(process.env.PORT) || 3001;
 

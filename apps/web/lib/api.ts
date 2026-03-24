@@ -543,3 +543,79 @@ export const searchIntel = (q: string, limit = 20) =>
 
 export const enrichAlert = (alertId: string) =>
   api.get<AlertEnrichment>(`/api/v1/intel/enrich/alert/${alertId}`);
+
+// ---------------------------------------------------------------------------
+// Admin: SPARTA Data Management
+// ---------------------------------------------------------------------------
+
+export interface SpartaDiffCounts {
+  added: number;
+  updated: number;
+  unchanged: number;
+  total: number;
+}
+
+export interface SpartaImportDiff {
+  techniques: SpartaDiffCounts;
+  countermeasures: SpartaDiffCounts;
+  indicators: SpartaDiffCounts;
+  relationships: SpartaDiffCounts;
+  version: string | null;
+  importedAt: string;
+}
+
+export interface SpartaStatusResponse {
+  version: string | null;
+  lastImportedAt: string | null;
+  lastImportSource: string | null;
+  counts: {
+    attackPatterns: number;
+    courseOfActions: number;
+    indicators: number;
+    relationships: number;
+    total: number;
+  };
+  recentImports: Array<{
+    id: string;
+    source: string;
+    version: string | null;
+    techniquesAdded: number;
+    techniquesUpdated: number;
+    countermeasuresAdded: number;
+    countermeasuresUpdated: number;
+    importedAt: string;
+  }>;
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+export const getSpartaStatus = () =>
+  api.get<SpartaStatusResponse>("/api/v1/admin/sparta/status");
+
+export const fetchSpartaFromServer = () =>
+  api.post<SpartaImportDiff>("/api/v1/admin/sparta/fetch", {});
+
+/** Upload a STIX 2.1 JSON file via multipart form data */
+export async function uploadSpartaBundle(
+  file: File
+): Promise<SpartaImportDiff> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(`${API_BASE}/api/v1/admin/sparta/import`, {
+    method: "POST",
+    body: formData,
+    // Do NOT set Content-Type - browser sets it with boundary for multipart
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const msg =
+      typeof body.error === "string"
+        ? body.error
+        : (body.message ?? res.statusText);
+    throw new ApiError(res.status, msg);
+  }
+
+  return res.json() as Promise<SpartaImportDiff>;
+}

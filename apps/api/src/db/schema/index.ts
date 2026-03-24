@@ -20,3 +20,6 @@ export * from "./incidents";
 
 // Module 5: Threat Intelligence
 export * from "./intel";
+
+// Admin: SPARTA Data Management
+export * from "./sparta";
