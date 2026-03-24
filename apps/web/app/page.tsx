@@ -3,9 +3,6 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  PieChart,
-  Pie,
-  Cell,
   BarChart,
   Bar,
   XAxis,
@@ -28,21 +25,40 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getDashboard, getAlerts, getAlertStats } from "@/lib/api";
-import type { AlertResponse, AlertStats } from "@/lib/api";
+import {
+  getDashboard,
+  getAlerts,
+  getAlertStats,
+  getIncidents,
+  getTelemetryStreams,
+} from "@/lib/api";
+import type { AlertResponse, AlertStats, IncidentResponse } from "@/lib/api";
+import type { StreamResponse } from "@spaceguard/shared";
 import { useOrg } from "@/lib/context";
 import type { DashboardResponse } from "@spaceguard/shared";
-import { assetTypeLabels } from "@spaceguard/shared";
-import { AlertTriangle, Zap, AlertCircle } from "lucide-react";
+import {
+  ShieldCheck,
+  Bell,
+  AlertTriangle,
+  Waves,
+  Satellite,
+  Zap,
+  AlertCircle,
+  Clock,
+  ArrowRight,
+  Activity,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function scoreColor(score: number): string {
-  if (score >= 70) return "#10b981"; // emerald
-  if (score >= 40) return "#f59e0b"; // amber
-  return "#ef4444"; // red
+  if (score >= 70) return "#10b981";
+  if (score >= 40) return "#f59e0b";
+  return "#ef4444";
 }
 
 function scoreTextClass(score: number): string {
@@ -51,10 +67,17 @@ function scoreTextClass(score: number): string {
   return "text-red-400";
 }
 
-const STATUS_BADGE: Record<
-  string,
-  "success" | "warning" | "danger" | "muted"
-> = {
+function relTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+const STATUS_BADGE: Record<string, "success" | "warning" | "danger" | "muted"> = {
   COMPLIANT: "success",
   PARTIALLY_COMPLIANT: "warning",
   NON_COMPLIANT: "danger",
@@ -81,15 +104,13 @@ function Skeleton({ className = "" }: { className?: string }) {
   );
 }
 
-function StatCardSkeleton() {
+function MetricCardSkeleton() {
   return (
     <Card className="bg-slate-900 border-slate-800">
-      <CardHeader className="pb-2">
-        <Skeleton className="h-3 w-24" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-10 w-20 mb-2" />
-        <Skeleton className="h-3 w-32" />
+      <CardContent className="px-4 py-4">
+        <Skeleton className="h-3 w-20 mb-3" />
+        <Skeleton className="h-8 w-16 mb-2" />
+        <Skeleton className="h-3 w-28" />
       </CardContent>
     </Card>
   );
@@ -102,7 +123,7 @@ function StatCardSkeleton() {
 function SetupPrompt() {
   return (
     <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-4">
-      <div className="text-5xl">🛰️</div>
+      <div className="text-5xl">&#x1F6F0;&#xFE0F;</div>
       <h2 className="text-xl font-semibold text-slate-200">
         Welcome to SpaceGuard
       </h2>
@@ -121,172 +142,287 @@ function SetupPrompt() {
 }
 
 // ---------------------------------------------------------------------------
-// Row 1 stat cards
+// Row 1 - Key Metric Cards
 // ---------------------------------------------------------------------------
 
-function ScoreCard({ score }: { score: number }) {
-  const color = scoreColor(score);
-  const pieData = [
-    { name: "Compliant", value: score },
-    { name: "Remaining", value: 100 - score },
-  ];
+interface MetricCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  subtitle: string;
+  href?: string;
+  accentClass?: string;
+}
 
-  return (
-    <Card className="bg-slate-900 border-slate-800">
-      <CardHeader className="pb-0 pt-4 px-4">
-        <CardTitle className="text-xs font-medium uppercase tracking-widest text-slate-500">
-          Compliance Score
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="px-4 pb-4 flex items-center gap-3">
-        <div className="relative w-20 h-20 shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={pieData}
-                innerRadius={26}
-                outerRadius={36}
-                startAngle={90}
-                endAngle={-270}
-                dataKey="value"
-                strokeWidth={0}
-              >
-                <Cell fill={color} />
-                <Cell fill="#1e293b" />
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-          <span
-            className="absolute inset-0 flex items-center justify-center text-sm font-bold"
-            style={{ color }}
-          >
-            {score}%
+function MetricCard({ icon, label, value, subtitle, href, accentClass = "text-slate-100" }: MetricCardProps) {
+  const content = (
+    <Card className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors group">
+      <CardContent className="px-4 py-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            {label}
+          </span>
+          <span className="text-slate-600 group-hover:text-slate-500 transition-colors">
+            {icon}
           </span>
         </div>
-        <div>
-          <p className={`text-3xl font-bold ${scoreTextClass(score)}`}>
-            {score}%
-          </p>
-          <p className="text-xs text-slate-500 mt-0.5">NIS2 Article 21</p>
-          <p className="text-xs text-slate-600 mt-1">
-            {score >= 70
-              ? "Good posture"
-              : score >= 40
-              ? "Needs improvement"
-              : "Critical gaps"}
-          </p>
-        </div>
+        <p className={`text-3xl font-bold ${accentClass}`}>{value}</p>
+        <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
       </CardContent>
     </Card>
   );
+
+  if (href) {
+    return <Link href={href} className="block">{content}</Link>;
+  }
+  return content;
 }
 
-function AssetsCard({ summary }: { summary: DashboardResponse["assetsSummary"] }) {
-  // Build a readable breakdown string (top 3 types)
-  const topTypes = Object.entries(summary.byType)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([type, count]) => {
-      const label =
-        assetTypeLabels[type as keyof typeof assetTypeLabels] ?? type;
-      return `${count} ${label.toLowerCase()}${count !== 1 ? "s" : ""}`;
-    });
+// ---------------------------------------------------------------------------
+// Row 2 Left - Recent Alerts Table
+// ---------------------------------------------------------------------------
 
+const SEV_BADGE_STYLE: Record<string, string> = {
+  CRITICAL: "bg-red-500/20 text-red-300 border-red-500/40",
+  HIGH:     "bg-amber-500/20 text-amber-300 border-amber-500/40",
+  MEDIUM:   "bg-yellow-500/20 text-yellow-300 border-yellow-500/40",
+  LOW:      "bg-blue-500/20 text-blue-300 border-blue-500/40",
+};
+
+const ALERT_STATUS_STYLE: Record<string, string> = {
+  NEW:            "bg-red-500/20 text-red-300 border-red-500/40",
+  INVESTIGATING:  "bg-amber-500/20 text-amber-300 border-amber-500/40",
+  RESOLVED:       "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+  FALSE_POSITIVE: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+};
+
+function RecentAlertsCard({ alerts }: { alerts: AlertResponse[] }) {
   return (
-    <Card className="bg-slate-900 border-slate-800">
-      <CardHeader className="pb-0 pt-4 px-4">
-        <CardTitle className="text-xs font-medium uppercase tracking-widest text-slate-500">
-          Total Assets
-        </CardTitle>
+    <Card className="bg-slate-900 border-slate-800 flex flex-col h-full">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold text-slate-200">
+            Recent Alerts
+          </CardTitle>
+          <Link
+            href="/alerts"
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+          >
+            View all <ArrowRight size={10} />
+          </Link>
+        </div>
+        <p className="text-xs text-slate-500 mt-0.5">Latest triggered events</p>
       </CardHeader>
-      <CardContent className="px-4 pb-4">
-        <p className="text-4xl font-bold text-slate-100">{summary.total}</p>
-        {topTypes.length > 0 ? (
-          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-            {topTypes.join(", ")}
-          </p>
+      <CardContent className="px-0 pb-0 flex-1">
+        {alerts.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <p className="text-slate-500 text-sm font-medium">No alerts yet</p>
+            <p className="text-slate-600 text-xs mt-1">
+              Detection engine is active and monitoring.
+            </p>
+          </div>
         ) : (
-          <p className="text-xs text-slate-600 mt-1">No assets registered</p>
+          <div className="overflow-auto max-h-[300px]">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableHead className="text-slate-500 text-xs font-medium px-4 py-2">Alert</TableHead>
+                  <TableHead className="text-slate-500 text-xs font-medium px-4 py-2">Severity</TableHead>
+                  <TableHead className="text-slate-500 text-xs font-medium px-4 py-2">Status</TableHead>
+                  <TableHead className="text-slate-500 text-xs font-medium px-4 py-2 text-right">When</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {alerts.map((a) => (
+                  <TableRow
+                    key={a.id}
+                    className="border-slate-800 hover:bg-slate-800/40"
+                  >
+                    <TableCell className="px-4 py-2.5">
+                      <Link href="/alerts" className="group">
+                        <span className="text-xs text-slate-300 group-hover:text-blue-400 transition-colors line-clamp-1">
+                          {a.title}
+                        </span>
+                      </Link>
+                    </TableCell>
+                    <TableCell className="px-4 py-2.5">
+                      <span
+                        className={[
+                          "inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded border",
+                          SEV_BADGE_STYLE[a.severity] ?? "",
+                        ].join(" ")}
+                      >
+                        {a.severity}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-4 py-2.5">
+                      <span
+                        className={[
+                          "inline-flex items-center text-[9px] font-medium px-1 py-0 rounded border",
+                          ALERT_STATUS_STYLE[a.status] ?? "",
+                        ].join(" ")}
+                      >
+                        {a.status.replaceAll("_", " ")}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-4 py-2.5 text-right">
+                      <span className="text-[11px] text-slate-500">
+                        {relTime(a.triggeredAt)}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>
   );
 }
 
-function GapsCard({
-  byStatus,
-}: {
-  byStatus: DashboardResponse["byStatus"];
-}) {
-  const gaps =
-    (byStatus.NOT_ASSESSED ?? 0) + (byStatus.NON_COMPLIANT ?? 0);
+// ---------------------------------------------------------------------------
+// Row 2 Right - NIS2 Deadlines / Incident Overview
+// ---------------------------------------------------------------------------
+
+const INCIDENT_STATUS_ACTIVE = new Set([
+  "DETECTED", "TRIAGING", "INVESTIGATING", "CONTAINING", "ERADICATING", "RECOVERING",
+]);
+
+function IncidentOverviewCard({ incidents }: { incidents: IncidentResponse[] }) {
+  const active = incidents.filter((i) => INCIDENT_STATUS_ACTIVE.has(i.status));
+  const significant = active.filter((i) => i.nis2Classification === "SIGNIFICANT");
+
+  // NIS2 regulatory deadlines from detected date:
+  //   Early warning: 24h, Incident notification: 72h, Final report: 30 days
+  interface Deadline {
+    incidentTitle: string;
+    label: string;
+    deadlineTime: Date;
+    overdue: boolean;
+  }
+
+  const deadlines: Deadline[] = [];
+  for (const inc of significant.slice(0, 5)) {
+    const detected = inc.detectedAt ? new Date(inc.detectedAt) : new Date(inc.createdAt);
+    const rules = [
+      { label: "Early warning (24h)", hoursOffset: 24 },
+      { label: "Notification (72h)", hoursOffset: 72 },
+      { label: "Final report (30d)", hoursOffset: 30 * 24 },
+    ];
+    for (const rule of rules) {
+      const dl = new Date(detected.getTime() + rule.hoursOffset * 60 * 60 * 1000);
+      if (dl.getTime() > Date.now()) {
+        deadlines.push({
+          incidentTitle: inc.title,
+          label: rule.label,
+          deadlineTime: dl,
+          overdue: false,
+        });
+      } else {
+        deadlines.push({
+          incidentTitle: inc.title,
+          label: rule.label,
+          deadlineTime: dl,
+          overdue: true,
+        });
+      }
+    }
+  }
+  // Sort by deadline (soonest first)
+  deadlines.sort((a, b) => a.deadlineTime.getTime() - b.deadlineTime.getTime());
+  // Show only upcoming or overdue (not past and completed)
+  const relevantDeadlines = deadlines.slice(0, 6);
 
   return (
-    <Card className="bg-slate-900 border-slate-800">
-      <CardHeader className="pb-0 pt-4 px-4">
-        <CardTitle className="text-xs font-medium uppercase tracking-widest text-slate-500">
-          Open Gaps
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="px-4 pb-4">
-        <p
-          className={`text-4xl font-bold ${
-            gaps > 0 ? "text-red-400" : "text-emerald-400"
-          }`}
-        >
-          {gaps}
-        </p>
-        <p className="text-xs text-slate-500 mt-1">
-          {byStatus.NON_COMPLIANT ?? 0} non-compliant,{" "}
-          {byStatus.NOT_ASSESSED ?? 0} not assessed
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function AssessedCard({
-  byStatus,
-  total,
-}: {
-  byStatus: DashboardResponse["byStatus"];
-  total: number;
-}) {
-  const assessed =
-    (byStatus.COMPLIANT ?? 0) +
-    (byStatus.NON_COMPLIANT ?? 0) +
-    (byStatus.PARTIALLY_COMPLIANT ?? 0);
-  const pct = total > 0 ? Math.round((assessed / total) * 100) : 0;
-
-  return (
-    <Card className="bg-slate-900 border-slate-800">
-      <CardHeader className="pb-0 pt-4 px-4">
-        <CardTitle className="text-xs font-medium uppercase tracking-widest text-slate-500">
-          Assessed
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="px-4 pb-4">
-        <p className="text-4xl font-bold text-slate-100">
-          {assessed}
-          <span className="text-xl text-slate-500 font-normal">
-            {" "}
-            of {total}
-          </span>
-        </p>
-        <div className="mt-2 h-1.5 rounded-full bg-slate-800 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-blue-500 transition-all"
-            style={{ width: `${pct}%` }}
-          />
+    <Card className="bg-slate-900 border-slate-800 flex flex-col h-full">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold text-slate-200">
+            Incidents & NIS2 Deadlines
+          </CardTitle>
+          <Link
+            href="/incidents"
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+          >
+            View all <ArrowRight size={10} />
+          </Link>
         </div>
-        <p className="text-xs text-slate-500 mt-1">{pct}% reviewed</p>
+        <p className="text-xs text-slate-500 mt-0.5">
+          {active.length} active incident{active.length !== 1 ? "s" : ""},
+          {" "}{significant.length} NIS2-significant
+        </p>
+      </CardHeader>
+      <CardContent className="px-4 pb-4 flex-1 space-y-3">
+        {/* Active incident severity breakdown */}
+        <div className="grid grid-cols-4 gap-2">
+          {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map((sev) => {
+            const ct = active.filter((i) => i.severity === sev).length;
+            const styles: Record<string, { bg: string; text: string }> = {
+              CRITICAL: { bg: "bg-red-500/10", text: "text-red-400" },
+              HIGH: { bg: "bg-amber-500/10", text: "text-amber-400" },
+              MEDIUM: { bg: "bg-yellow-500/10", text: "text-yellow-400" },
+              LOW: { bg: "bg-blue-500/10", text: "text-blue-400" },
+            };
+            const s = styles[sev];
+            return (
+              <div key={sev} className={`rounded-md px-2 py-1.5 ${s.bg} text-center`}>
+                <p className={`text-lg font-bold ${s.text}`}>{ct}</p>
+                <p className={`text-[9px] font-semibold uppercase tracking-wider ${s.text} opacity-70`}>{sev}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Regulatory deadlines */}
+        {relevantDeadlines.length > 0 ? (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600 mb-2">
+              Regulatory Deadlines
+            </p>
+            <div className="space-y-1.5">
+              {relevantDeadlines.map((d, i) => (
+                <div
+                  key={i}
+                  className={[
+                    "flex items-center justify-between rounded-md border px-3 py-1.5",
+                    d.overdue
+                      ? "border-red-500/30 bg-red-500/5"
+                      : "border-slate-700/50 bg-slate-800/30",
+                  ].join(" ")}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Clock size={12} className={d.overdue ? "text-red-400 shrink-0" : "text-slate-500 shrink-0"} />
+                    <div className="min-w-0">
+                      <p className="text-xs text-slate-300 truncate">{d.incidentTitle}</p>
+                      <p className="text-[10px] text-slate-500">{d.label}</p>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-medium shrink-0 ml-2 ${d.overdue ? "text-red-400" : "text-slate-400"}`}>
+                    {d.overdue ? "OVERDUE" : relTime(new Date(Date.now() + (d.deadlineTime.getTime() - Date.now())).toISOString()).replace(" ago", "")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : significant.length === 0 ? (
+          <div className="text-center py-4">
+            <CheckCircle2 size={20} className="mx-auto text-emerald-500 mb-1" />
+            <p className="text-xs text-slate-500">No NIS2-significant incidents</p>
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <CheckCircle2 size={20} className="mx-auto text-emerald-500 mb-1" />
+            <p className="text-xs text-slate-500">All deadlines met</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Row 2 - Category bar chart
+// Row 3 Left - Category bar chart
 // ---------------------------------------------------------------------------
 
 interface CatBarEntry {
@@ -297,7 +433,6 @@ interface CatBarEntry {
   score: number;
 }
 
-// Truncate long category names for axis display
 function shortCat(cat: string): string {
   const map: Record<string, string> = {
     "Risk Management": "Risk Mgmt",
@@ -323,9 +458,6 @@ function CategoryChart({ byCategory }: { byCategory: DashboardResponse["byCatego
     score: c.score,
   }));
 
-  // Custom label rendered inside the compliant bar.
-  // Recharts requires the label renderer to always return a ReactElement (not null),
-  // so we return an empty <g> when the bar is too narrow to fit the text.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderLabel = (props: any): React.ReactElement => {
     const { x, y, width, height, value } = props as {
@@ -351,11 +483,19 @@ function CategoryChart({ byCategory }: { byCategory: DashboardResponse["byCatego
   };
 
   return (
-    <Card className="bg-slate-900 border-slate-800">
+    <Card className="bg-slate-900 border-slate-800 h-full">
       <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm font-semibold text-slate-200">
-          Compliance by Category
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold text-slate-200">
+            Compliance by Category
+          </CardTitle>
+          <Link
+            href="/compliance"
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+          >
+            Details <ArrowRight size={10} />
+          </Link>
+        </div>
         <p className="text-xs text-slate-500 mt-0.5">
           NIS2 Article 21 domain scores
         </p>
@@ -368,11 +508,7 @@ function CategoryChart({ byCategory }: { byCategory: DashboardResponse["byCatego
             margin={{ top: 0, right: 48, left: 0, bottom: 0 }}
             barSize={16}
           >
-            <XAxis
-              type="number"
-              domain={[0, 100]}
-              hide
-            />
+            <XAxis type="number" domain={[0, 100]} hide />
             <YAxis
               type="category"
               dataKey="shortCategory"
@@ -419,7 +555,106 @@ function CategoryChart({ byCategory }: { byCategory: DashboardResponse["byCatego
 }
 
 // ---------------------------------------------------------------------------
-// Row 3 left - Gap Analysis table
+// Row 3 Right - Telemetry Health
+// ---------------------------------------------------------------------------
+
+function TelemetryHealthCard({ streams }: { streams: StreamResponse[] }) {
+  const active = streams.filter((s) => s.status === "ACTIVE");
+  const paused = streams.filter((s) => s.status === "PAUSED");
+  const error = streams.filter((s) => s.status === "ERROR");
+
+  return (
+    <Card className="bg-slate-900 border-slate-800 h-full flex flex-col">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold text-slate-200">
+            Telemetry Health
+          </CardTitle>
+          <Link
+            href="/telemetry"
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+          >
+            Details <ArrowRight size={10} />
+          </Link>
+        </div>
+        <p className="text-xs text-slate-500 mt-0.5">
+          {streams.length} stream{streams.length !== 1 ? "s" : ""} configured
+        </p>
+      </CardHeader>
+      <CardContent className="px-4 pb-4 flex-1 space-y-3">
+        {/* Status summary */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-md border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-center">
+            <div className="flex items-center justify-center gap-1 mb-0.5">
+              <Activity size={12} className="text-emerald-400" />
+              <span className="text-lg font-bold text-emerald-400">{active.length}</span>
+            </div>
+            <p className="text-[9px] uppercase tracking-wider text-emerald-500">Active</p>
+          </div>
+          <div className="rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-center">
+            <div className="flex items-center justify-center gap-1 mb-0.5">
+              <Clock size={12} className="text-amber-400" />
+              <span className="text-lg font-bold text-amber-400">{paused.length}</span>
+            </div>
+            <p className="text-[9px] uppercase tracking-wider text-amber-500">Paused</p>
+          </div>
+          <div className="rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2 text-center">
+            <div className="flex items-center justify-center gap-1 mb-0.5">
+              <XCircle size={12} className="text-red-400" />
+              <span className="text-lg font-bold text-red-400">{error.length}</span>
+            </div>
+            <p className="text-[9px] uppercase tracking-wider text-red-500">Error</p>
+          </div>
+        </div>
+
+        {/* Stream list (last 5) */}
+        {streams.length > 0 ? (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+              Recent Streams
+            </p>
+            {streams.slice(0, 5).map((s) => {
+              const statusStyles: Record<string, string> = {
+                ACTIVE: "text-emerald-400",
+                PAUSED: "text-amber-400",
+                ERROR: "text-red-400",
+                DISABLED: "text-slate-500",
+              };
+              const dotStyles: Record<string, string> = {
+                ACTIVE: "bg-emerald-400",
+                PAUSED: "bg-amber-400",
+                ERROR: "bg-red-400",
+                DISABLED: "bg-slate-500",
+              };
+              return (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between rounded-md border border-slate-700/50 bg-slate-800/30 px-3 py-1.5"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotStyles[s.status] ?? "bg-slate-500"}`} />
+                    <span className="text-xs text-slate-300 truncate">{s.name}</span>
+                  </div>
+                  <span className={`text-[10px] font-medium shrink-0 ml-2 ${statusStyles[s.status] ?? "text-slate-500"}`}>
+                    {s.status}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <Waves size={20} className="mx-auto text-slate-600 mb-1" />
+            <p className="text-xs text-slate-500">No telemetry streams configured</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Row 4 - Gap Analysis table (full width)
 // ---------------------------------------------------------------------------
 
 function GapTable({ gaps }: { gaps: DashboardResponse["gaps"] }) {
@@ -428,24 +663,35 @@ function GapTable({ gaps }: { gaps: DashboardResponse["gaps"] }) {
   );
 
   return (
-    <Card className="bg-slate-900 border-slate-800 flex flex-col">
+    <Card className="bg-slate-900 border-slate-800">
       <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm font-semibold text-slate-200">
-          Gap Analysis
-        </CardTitle>
-        <p className="text-xs text-slate-500 mt-0.5">
-          {filtered.length} requirement{filtered.length !== 1 ? "s" : ""}{" "}
-          requiring attention
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-sm font-semibold text-slate-200">
+              Gap Analysis
+            </CardTitle>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {filtered.length} requirement{filtered.length !== 1 ? "s" : ""}{" "}
+              requiring attention
+            </p>
+          </div>
+          <Link
+            href="/compliance"
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+          >
+            View compliance <ArrowRight size={10} />
+          </Link>
+        </div>
       </CardHeader>
-      <CardContent className="px-0 pb-0 flex-1">
+      <CardContent className="px-0 pb-0">
         {filtered.length === 0 ? (
           <div className="px-4 py-8 text-center">
+            <CheckCircle2 size={24} className="mx-auto text-emerald-400 mb-2" />
             <p className="text-emerald-400 font-medium text-sm">
               All requirements addressed
             </p>
             <p className="text-slate-500 text-xs mt-1">
-              No gaps identified
+              No compliance gaps identified
             </p>
           </div>
         ) : (
@@ -470,7 +716,7 @@ function GapTable({ gaps }: { gaps: DashboardResponse["gaps"] }) {
                     key={gap.requirementId}
                     className="border-slate-800 hover:bg-slate-800/40"
                   >
-                    <TableCell className="px-4 py-2.5 text-xs text-slate-300 max-w-[200px]">
+                    <TableCell className="px-4 py-2.5 text-xs text-slate-300 max-w-[300px]">
                       <span className="line-clamp-2">{gap.title}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2.5 text-xs text-slate-500">
@@ -496,292 +742,6 @@ function GapTable({ gaps }: { gaps: DashboardResponse["gaps"] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Row 3 right - Asset summary
-// ---------------------------------------------------------------------------
-
-const ASSET_TYPE_ICONS: Record<string, string> = {
-  LEO_SATELLITE: "🛰️",
-  MEO_SATELLITE: "🛰️",
-  GEO_SATELLITE: "🛰️",
-  GROUND_STATION: "📡",
-  CONTROL_CENTER: "🖥️",
-  UPLINK: "📶",
-  DOWNLINK: "📶",
-  INTER_SATELLITE_LINK: "🔗",
-  DATA_CENTER: "🗄️",
-  NETWORK_SEGMENT: "🌐",
-};
-
-const CRIT_BADGE: Record<string, "danger" | "warning" | "default" | "muted"> =
-  {
-    CRITICAL: "danger",
-    HIGH: "warning",
-    MEDIUM: "default",
-    LOW: "muted",
-  };
-
-function AssetSummary({
-  summary,
-}: {
-  summary: DashboardResponse["assetsSummary"];
-}) {
-  const types = Object.entries(summary.byType).sort((a, b) => b[1] - a[1]);
-  const crits = Object.entries(summary.byCriticality).sort(
-    (a, b) =>
-      ["CRITICAL", "HIGH", "MEDIUM", "LOW"].indexOf(a[0]) -
-      ["CRITICAL", "HIGH", "MEDIUM", "LOW"].indexOf(b[0])
-  );
-
-  return (
-    <Card className="bg-slate-900 border-slate-800 flex flex-col">
-      <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm font-semibold text-slate-200">
-          Assets
-        </CardTitle>
-        <p className="text-xs text-slate-500 mt-0.5">
-          {summary.total} registered asset{summary.total !== 1 ? "s" : ""}
-        </p>
-      </CardHeader>
-      <CardContent className="px-4 pb-4 flex flex-col gap-4">
-        {/* By type */}
-        {types.length > 0 ? (
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-slate-600 mb-2">
-              By Type
-            </p>
-            <div className="space-y-1.5">
-              {types.map(([type, count]) => {
-                const label =
-                  assetTypeLabels[type as keyof typeof assetTypeLabels] ??
-                  type;
-                const icon = ASSET_TYPE_ICONS[type] ?? "📦";
-                return (
-                  <div
-                    key={type}
-                    className="flex items-center justify-between"
-                  >
-                    <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                      <span>{icon}</span>
-                      {label}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-300">
-                      {count}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <p className="text-xs text-slate-600 py-4 text-center">
-            No assets registered yet
-          </p>
-        )}
-
-        {/* By criticality */}
-        {crits.length > 0 && (
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-slate-600 mb-2">
-              By Criticality
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {crits.map(([crit, count]) => (
-                <div key={crit} className="flex items-center gap-1">
-                  <Badge
-                    variant={CRIT_BADGE[crit] ?? "muted"}
-                    className="text-[10px] px-1.5 py-0"
-                  >
-                    {crit}
-                  </Badge>
-                  <span className="text-xs text-slate-400">{count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Alert severity stat cards
-// ---------------------------------------------------------------------------
-
-const ALERT_SEV_STYLES: Record<string, { bg: string; text: string; border: string; icon: React.ReactNode }> = {
-  CRITICAL: { bg: "bg-red-500/10",     text: "text-red-400",    border: "border-red-500/30",    icon: <Zap size={14} className="text-red-400" /> },
-  HIGH:     { bg: "bg-amber-500/10",   text: "text-amber-400",  border: "border-amber-500/30",  icon: <AlertTriangle size={14} className="text-amber-400" /> },
-  MEDIUM:   { bg: "bg-yellow-500/10",  text: "text-yellow-400", border: "border-yellow-500/30", icon: <AlertCircle size={14} className="text-yellow-400" /> },
-  LOW:      { bg: "bg-blue-500/10",    text: "text-blue-400",   border: "border-blue-500/30",   icon: <AlertCircle size={14} className="text-blue-400" /> },
-};
-
-function AlertSeverityCards({ stats }: { stats: AlertStats }) {
-  const severities = ["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const;
-  const openTotal = (stats.byStatus["NEW"] ?? 0) + (stats.byStatus["INVESTIGATING"] ?? 0);
-
-  return (
-    <Card className="bg-slate-900 border-slate-800">
-      <CardHeader className="pb-2 pt-4 px-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-slate-200">
-            Active Alerts
-          </CardTitle>
-          <Link
-            href="/alerts"
-            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            View all
-          </Link>
-        </div>
-        <p className="text-xs text-slate-500 mt-0.5">
-          {openTotal} open alert{openTotal !== 1 ? "s" : ""} requiring attention
-        </p>
-      </CardHeader>
-      <CardContent className="px-4 pb-4">
-        <div className="grid grid-cols-4 gap-3">
-          {severities.map((sev) => {
-            const count = stats.bySeverity[sev] ?? 0;
-            const style = ALERT_SEV_STYLES[sev];
-            return (
-              <Link
-                key={sev}
-                href={`/alerts?severity=${sev}`}
-                className={[
-                  "rounded-lg border px-3 py-2.5 flex flex-col gap-1",
-                  "transition-colors hover:brightness-110",
-                  style.bg,
-                  style.border,
-                ].join(" ")}
-              >
-                <div className="flex items-center gap-1.5">
-                  {style.icon}
-                  <span className={`text-[10px] font-semibold uppercase tracking-widest ${style.text}`}>
-                    {sev}
-                  </span>
-                </div>
-                <span className={`text-2xl font-bold ${style.text}`}>
-                  {count}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Recent alerts table
-// ---------------------------------------------------------------------------
-
-const RECENT_SEV_BADGE: Record<string, string> = {
-  CRITICAL: "bg-red-500/20 text-red-300 border-red-500/40",
-  HIGH:     "bg-amber-500/20 text-amber-300 border-amber-500/40",
-  MEDIUM:   "bg-yellow-500/20 text-yellow-300 border-yellow-500/40",
-  LOW:      "bg-blue-500/20 text-blue-300 border-blue-500/40",
-};
-
-const RECENT_STATUS_BADGE: Record<string, string> = {
-  NEW:            "bg-red-500/20 text-red-300 border-red-500/40",
-  INVESTIGATING:  "bg-amber-500/20 text-amber-300 border-amber-500/40",
-  RESOLVED:       "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
-  FALSE_POSITIVE: "bg-slate-500/20 text-slate-400 border-slate-500/30",
-};
-
-function relTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60_000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
-function RecentAlertsCard({ alerts }: { alerts: AlertResponse[] }) {
-  return (
-    <Card className="bg-slate-900 border-slate-800 flex flex-col">
-      <CardHeader className="pb-2 pt-4 px-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-slate-200">
-            Recent Alerts
-          </CardTitle>
-          <Link
-            href="/alerts"
-            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            View all
-          </Link>
-        </div>
-        <p className="text-xs text-slate-500 mt-0.5">Last 5 triggered events</p>
-      </CardHeader>
-      <CardContent className="px-0 pb-0 flex-1">
-        {alerts.length === 0 ? (
-          <div className="px-4 py-8 text-center">
-            <p className="text-slate-500 text-sm font-medium">No alerts yet</p>
-            <p className="text-slate-600 text-xs mt-1">
-              Detection engine is active and monitoring telemetry.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-slate-800 hover:bg-transparent">
-                  <TableHead className="text-slate-500 text-xs font-medium px-4 py-2">Alert</TableHead>
-                  <TableHead className="text-slate-500 text-xs font-medium px-4 py-2">Severity</TableHead>
-                  <TableHead className="text-slate-500 text-xs font-medium px-4 py-2 text-right">When</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {alerts.map((a) => (
-                  <TableRow
-                    key={a.id}
-                    className="border-slate-800 hover:bg-slate-800/40"
-                  >
-                    <TableCell className="px-4 py-2.5">
-                      <Link href="/alerts" className="group">
-                        <span className="text-xs text-slate-300 group-hover:text-blue-400 transition-colors line-clamp-1">
-                          {a.title}
-                        </span>
-                        <span
-                          className={[
-                            "inline-flex items-center text-[9px] font-medium px-1 py-0 rounded border mt-0.5",
-                            RECENT_STATUS_BADGE[a.status] ?? "",
-                          ].join(" ")}
-                        >
-                          {a.status.replace("_", " ")}
-                        </span>
-                      </Link>
-                    </TableCell>
-                    <TableCell className="px-4 py-2.5">
-                      <span
-                        className={[
-                          "inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded border",
-                          RECENT_SEV_BADGE[a.severity] ?? "",
-                        ].join(" ")}
-                      >
-                        {a.severity}
-                      </span>
-                    </TableCell>
-                    <TableCell className="px-4 py-2.5 text-right">
-                      <span className="text-[11px] text-slate-500">
-                        {relTime(a.triggeredAt)}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main dashboard page
 // ---------------------------------------------------------------------------
 
@@ -790,6 +750,8 @@ export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [alertStats, setAlertStats] = useState<AlertStats | null>(null);
   const [recentAlerts, setRecentAlerts] = useState<AlertResponse[]>([]);
+  const [incidents, setIncidents] = useState<IncidentResponse[]>([]);
+  const [streams, setStreams] = useState<StreamResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -801,23 +763,25 @@ export default function DashboardPage() {
       return;
     }
 
-    // Local cancellation flag prevents stale fetches (from a previous orgId)
-    // from overwriting state after the org has already changed.
     let cancelled = false;
 
     async function load() {
       try {
         setLoading(true);
         setError(null);
-        const [dash, stats, recent] = await Promise.all([
+        const [dash, stats, recent, inc, str] = await Promise.all([
           getDashboard(orgId!),
           getAlertStats(orgId!).catch(() => null),
-          getAlerts({ organizationId: orgId!, perPage: 5 }).catch(() => ({ data: [], total: 0 })),
+          getAlerts({ organizationId: orgId!, perPage: 8 }).catch(() => ({ data: [], total: 0 })),
+          getIncidents({ organizationId: orgId!, perPage: 20 }).catch(() => ({ data: [], total: 0 })),
+          getTelemetryStreams(orgId!).catch(() => ({ data: [], total: 0 })),
         ]);
         if (cancelled) return;
         setDashboard(dash);
         setAlertStats(stats);
         setRecentAlerts(recent.data);
+        setIncidents(inc.data);
+        setStreams(str.data);
       } catch (err) {
         if (cancelled) return;
         setError(
@@ -834,26 +798,27 @@ export default function DashboardPage() {
   // ---- Loading state ----
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-5">
         <div className="mb-4">
           <Skeleton className="h-7 w-48 mb-2" />
           <Skeleton className="h-4 w-64" />
         </div>
-        <div className="grid grid-cols-4 gap-4">
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <MetricCardSkeleton />
+          <MetricCardSkeleton />
+          <MetricCardSkeleton />
+          <MetricCardSkeleton />
+          <MetricCardSkeleton />
+        </div>
+        <div className="grid grid-cols-5 gap-4">
+          <div className="col-span-3"><Skeleton className="h-72 rounded-lg" /></div>
+          <div className="col-span-2"><Skeleton className="h-72 rounded-lg" /></div>
+        </div>
+        <div className="grid grid-cols-5 gap-4">
+          <div className="col-span-3"><Skeleton className="h-80 rounded-lg" /></div>
+          <div className="col-span-2"><Skeleton className="h-80 rounded-lg" /></div>
         </div>
         <Skeleton className="h-64 w-full rounded-lg" />
-        <div className="grid grid-cols-5 gap-4">
-          <div className="col-span-3">
-            <Skeleton className="h-72 rounded-lg" />
-          </div>
-          <div className="col-span-2">
-            <Skeleton className="h-72 rounded-lg" />
-          </div>
-        </div>
       </div>
     );
   }
@@ -875,6 +840,15 @@ export default function DashboardPage() {
   // ---- Data ----
   if (!dashboard) return null;
 
+  // Derived values for metric cards
+  const openAlerts = alertStats
+    ? (alertStats.byStatus["NEW"] ?? 0) + (alertStats.byStatus["INVESTIGATING"] ?? 0)
+    : 0;
+  const openIncidents = incidents.filter((i) =>
+    INCIDENT_STATUS_ACTIVE.has(i.status)
+  ).length;
+  const activeStreams = streams.filter((s) => s.status === "ACTIVE").length;
+
   return (
     <div className="p-6 space-y-5">
       {/* Page header */}
@@ -882,7 +856,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-50">Dashboard</h1>
           <p className="text-slate-400 text-sm mt-0.5">
-            {orgName} &mdash; NIS2 compliance posture
+            {orgName} &mdash; Operational overview
           </p>
         </div>
         <span className="text-xs text-slate-600 mt-1">
@@ -894,35 +868,85 @@ export default function DashboardPage() {
         </span>
       </div>
 
-      {/* Row 1 - Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <ScoreCard score={dashboard.overallScore} />
-        <AssetsCard summary={dashboard.assetsSummary} />
-        <GapsCard byStatus={dashboard.byStatus} />
-        <AssessedCard
-          byStatus={dashboard.byStatus}
-          total={dashboard.totalRequirements}
+      {/* Row 1 - Key metric cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <MetricCard
+          icon={<ShieldCheck size={16} />}
+          label="Compliance Score"
+          value={
+            <span className={scoreTextClass(dashboard.overallScore)}>
+              {dashboard.overallScore}%
+            </span>
+          }
+          subtitle={
+            dashboard.overallScore >= 70
+              ? "Good posture"
+              : dashboard.overallScore >= 40
+              ? "Needs improvement"
+              : "Critical gaps"
+          }
+          href="/compliance"
+          accentClass={scoreTextClass(dashboard.overallScore)}
+        />
+        <MetricCard
+          icon={<Bell size={16} />}
+          label="Active Alerts"
+          value={openAlerts}
+          subtitle={
+            alertStats
+              ? `${alertStats.openCritical} critical, ${alertStats.openHigh} high`
+              : "No alert data"
+          }
+          href="/alerts"
+          accentClass={openAlerts > 0 ? "text-red-400" : "text-emerald-400"}
+        />
+        <MetricCard
+          icon={<AlertTriangle size={16} />}
+          label="Open Incidents"
+          value={openIncidents}
+          subtitle={`${incidents.filter((i) => i.nis2Classification === "SIGNIFICANT" && INCIDENT_STATUS_ACTIVE.has(i.status)).length} NIS2-significant`}
+          href="/incidents"
+          accentClass={openIncidents > 0 ? "text-amber-400" : "text-emerald-400"}
+        />
+        <MetricCard
+          icon={<Waves size={16} />}
+          label="Telemetry Streams"
+          value={activeStreams}
+          subtitle={`${streams.length} total configured`}
+          href="/telemetry"
+          accentClass={activeStreams > 0 ? "text-blue-400" : "text-slate-400"}
+        />
+        <MetricCard
+          icon={<Satellite size={16} />}
+          label="Total Assets"
+          value={dashboard.assetsSummary.total}
+          subtitle={`${dashboard.assetsSummary.byCriticality?.CRITICAL ?? 0} critical assets`}
+          href="/assets"
         />
       </div>
 
-      {/* Row 2 - Alert stats + Recent alerts */}
-      {alertStats && (
-        <AlertSeverityCards stats={alertStats} />
-      )}
-
-      {/* Row 3 - Category chart */}
-      <CategoryChart byCategory={dashboard.byCategory} />
-
-      {/* Row 4 - Gap table + Asset summary + Recent alerts */}
+      {/* Row 2 - Recent Alerts (60%) + Incidents/Deadlines (40%) */}
       <div className="grid grid-cols-5 gap-4">
         <div className="col-span-3">
-          <GapTable gaps={dashboard.gaps} />
-        </div>
-        <div className="col-span-2 flex flex-col gap-4">
           <RecentAlertsCard alerts={recentAlerts} />
-          <AssetSummary summary={dashboard.assetsSummary} />
+        </div>
+        <div className="col-span-2">
+          <IncidentOverviewCard incidents={incidents} />
         </div>
       </div>
+
+      {/* Row 3 - Compliance by category (60%) + Telemetry health (40%) */}
+      <div className="grid grid-cols-5 gap-4">
+        <div className="col-span-3">
+          <CategoryChart byCategory={dashboard.byCategory} />
+        </div>
+        <div className="col-span-2">
+          <TelemetryHealthCard streams={streams} />
+        </div>
+      </div>
+
+      {/* Row 4 - Full-width Gap Analysis */}
+      <GapTable gaps={dashboard.gaps} />
     </div>
   );
 }
