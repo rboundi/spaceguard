@@ -1,0 +1,122 @@
+---
+# SpaceGuard Detection Rules - Telecommand Link Security
+# Format version: 1
+#
+# These rules detect anomalies in the telecommand (TC) uplink that may
+# indicate adversarial activity against the spacecraft command chain.
+#
+# Parameter naming convention:
+#   tc.invalid_apid_count        - count of TC frames with unregistered APID
+#   tc.outside_pass_window_flag  - 1 when TC received outside scheduled pass
+#   tc.command_rate_per_sec      - number of TC frames per second
+#   tc.unencrypted_flag          - 1 when unencrypted TC received on secure link
+#   tc.safe_mode_command_flag    - 1 when a critical command sent to safe-mode satellite
+
+rules:
+  - id: SG-TC-001
+    name: "Telecommand to Non-Existent APID"
+    description: >
+      One or more telecommand frames have been received containing an APID that
+      is not registered in the spacecraft command dictionary. Telecommands to
+      unknown APIDs may represent a probing attempt to discover undocumented
+      command interfaces, test for buffer overflows, or exploit unpatched
+      command decoders.
+    severity: MEDIUM
+    sparta:
+      tactic: "Discovery"
+      technique: "Command Probing"
+    condition:
+      type: threshold
+      parameter: tc.invalid_apid_count
+      operator: gt
+      value: 0
+      duration_seconds: 10
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-TC-002
+    name: "Telecommand Received Outside Scheduled Pass Window"
+    description: >
+      A telecommand has been received outside of a scheduled ground contact
+      window. This is a strong indicator of an unauthorised or rogue uplink
+      station transmitting commands to the spacecraft. Immediate review of the
+      TC source and content is required to assess whether the command was
+      executed.
+    severity: CRITICAL
+    sparta:
+      tactic: "Initial Access"
+      technique: "Rogue Uplink Station"
+    condition:
+      type: threshold
+      parameter: tc.outside_pass_window_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-TC-003
+    name: "Rapid Successive Telecommands (Possible Replay Attack)"
+    description: >
+      The telecommand uplink rate has increased abnormally rapidly. A sudden
+      burst of commands is consistent with a replay attack where a previously
+      captured command sequence is retransmitted to the spacecraft. This can
+      cause unintended mode changes, subsystem resets, or safe-mode entry.
+    severity: HIGH
+    sparta:
+      tactic: "Execution"
+      technique: "Replay Attack"
+    condition:
+      type: rate_of_change
+      parameter: tc.command_rate_per_sec
+      max_change_per_second: 10
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-TC-004
+    name: "Unencrypted Telecommand on Encrypted Link"
+    description: >
+      An unencrypted telecommand frame has been detected on a link that is
+      configured to require encryption. This may indicate a downgrade attack
+      where an adversary is intercepting the encrypted link and injecting
+      plaintext commands, or a misconfiguration that has disabled TC encryption.
+    severity: CRITICAL
+    sparta:
+      tactic: "Defense Evasion"
+      technique: "Protocol Downgrade"
+    condition:
+      type: threshold
+      parameter: tc.unencrypted_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: cryptography
+
+  - id: SG-TC-005
+    name: "Commanding Attempted on Safe-Mode Spacecraft"
+    description: >
+      A telecommand has been sent to a spacecraft currently in safe mode.
+      Safe mode restricts accepted commands to a predefined recovery set.
+      Commands outside this set during safe mode may destabilise the spacecraft
+      before operators can perform a controlled recovery. This event may also
+      indicate an attacker deliberately triggered safe mode to create a
+      disruption opportunity.
+    severity: HIGH
+    sparta:
+      tactic: "Impact"
+      technique: "Degradation"
+    condition:
+      type: threshold
+      parameter: tc.safe_mode_command_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: significant_incident

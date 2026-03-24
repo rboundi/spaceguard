@@ -1,0 +1,120 @@
+---
+# SpaceGuard Detection Rules - Ground Segment Security
+# Format version: 1
+#
+# These rules detect security events at the ground station and mission control
+# level. Parameters are ingested via the ground segment log ingest endpoint or
+# the JSON telemetry ingest endpoint.
+#
+# Parameter naming convention for ground segment security events:
+#   gs.auth_failure_count   - rolling count of failed authentication attempts
+#   gs.unknown_ip_flag      - 1 when a login originates from an unrecognised IP
+#   gs.config_change_flag   - 1 when a configuration change event is detected
+#   gs.uplink_volume_kb     - uplink data volume in kilobytes over the last minute
+#   gs.heartbeat            - 1 = ground station alive; rule fires on absence
+
+rules:
+  - id: SG-GS-001
+    name: "Excessive Ground Station Authentication Failures"
+    description: >
+      More than 5 consecutive authentication failures have been recorded at a
+      ground station or mission control interface. This pattern is consistent
+      with a brute-force or credential-stuffing attack against the operational
+      network. Immediate investigation of the source address and account is
+      required.
+    severity: HIGH
+    sparta:
+      tactic: "Initial Access"
+      technique: "Credential Access"
+    condition:
+      type: threshold
+      parameter: gs.auth_failure_count
+      operator: gt
+      value: 5
+      duration_seconds: 600
+    actions:
+      - alert
+      - nis2_category: access_control
+
+  - id: SG-GS-002
+    name: "Login from Unrecognised IP Address"
+    description: >
+      A successful or attempted login to a ground segment system has originated
+      from an IP address not in the approved allowlist. This may indicate
+      compromised credentials being used from an external location, a VPN
+      misconfiguration, or an insider threat using an unauthorised device.
+    severity: MEDIUM
+    sparta:
+      tactic: "Initial Access"
+      technique: "External Remote Services"
+    condition:
+      type: threshold
+      parameter: gs.unknown_ip_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: access_control
+
+  - id: SG-GS-003
+    name: "Configuration Change Outside Maintenance Window"
+    description: >
+      A configuration change event has been detected on a ground segment system
+      outside of a scheduled maintenance window. Unauthorised configuration
+      changes may alter uplink parameters, disable security controls, or
+      redirect telemetry to an attacker-controlled endpoint.
+    severity: HIGH
+    sparta:
+      tactic: "Persistence"
+      technique: "Modify System Configuration"
+    condition:
+      type: threshold
+      parameter: gs.config_change_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: change_management
+
+  - id: SG-GS-004
+    name: "Anomalous Uplink Data Volume (Possible Command Injection)"
+    description: >
+      The uplink data volume to the spacecraft has exceeded the expected
+      operational threshold. An unusually large volume of uplink traffic may
+      indicate command replay, command injection, or an attempt to overwhelm
+      the spacecraft command decoder. Review the uplink log for unexpected
+      command sequences or packet floods.
+    severity: HIGH
+    sparta:
+      tactic: "Execution"
+      technique: "Command Injection"
+    condition:
+      type: threshold
+      parameter: gs.uplink_volume_kb
+      operator: gt
+      value: 5000
+      duration_seconds: 60
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-GS-005
+    name: "Ground Station Connectivity Loss"
+    description: >
+      No heartbeat has been received from a ground station for an extended
+      period. This may indicate a network outage, power failure, equipment
+      fault, or a deliberate denial-of-service attack against ground
+      infrastructure. Loss of ground connectivity prevents spacecraft
+      commanding and telemetry reception.
+    severity: HIGH
+    sparta:
+      tactic: "Impact"
+      technique: "Denial of Service"
+    condition:
+      type: absence
+      max_gap_seconds: 300
+    actions:
+      - alert
+      - nis2_category: significant_incident

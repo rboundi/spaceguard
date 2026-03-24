@@ -12,7 +12,9 @@ import {
   ChevronRight,
   Shield,
   Waves,
+  Bell,
 } from "lucide-react";
+import { useAlerts } from "@/lib/alerts-context";
 
 const navItems = [
   {
@@ -20,30 +22,42 @@ const navItems = [
     href: "/",
     icon: LayoutDashboard,
     exact: true,
+    badge: false,
   },
   {
     label: "Assets",
     href: "/assets",
     icon: Satellite,
     exact: false,
+    badge: false,
   },
   {
     label: "Telemetry",
     href: "/telemetry",
     icon: Waves,
     exact: false,
+    badge: false,
+  },
+  {
+    label: "Alerts",
+    href: "/alerts",
+    icon: Bell,
+    exact: false,
+    badge: true,   // shows newCount badge
   },
   {
     label: "Compliance",
     href: "/compliance",
     icon: ShieldCheck,
     exact: false,
+    badge: false,
   },
   {
     label: "Reports",
     href: "/reports",
     icon: FileText,
     exact: false,
+    badge: false,
   },
 ] as const;
 
@@ -55,6 +69,7 @@ function isActive(pathname: string, href: string, exact: boolean): boolean {
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const { newCount } = useAlerts();
 
   return (
     <aside
@@ -90,6 +105,7 @@ export function Sidebar() {
           {navItems.map((item) => {
             const active = isActive(pathname, item.href, item.exact);
             const Icon = item.icon;
+            const showBadge = item.badge && newCount > 0;
             return (
               <li key={item.href}>
                 <Link
@@ -111,8 +127,25 @@ export function Sidebar() {
                       aria-hidden="true"
                     />
                   )}
-                  <Icon size={18} className="shrink-0" aria-hidden="true" />
-                  {!collapsed && <span>{item.label}</span>}
+
+                  {/* Icon with badge when collapsed */}
+                  <span className="relative shrink-0">
+                    <Icon size={18} aria-hidden="true" />
+                    {showBadge && collapsed && (
+                      <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none">
+                        {newCount > 99 ? "99+" : newCount}
+                      </span>
+                    )}
+                  </span>
+
+                  {!collapsed && <span className="flex-1">{item.label}</span>}
+
+                  {/* Badge when expanded */}
+                  {showBadge && !collapsed && (
+                    <span className="ml-auto flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+                      {newCount > 99 ? "99+" : newCount}
+                    </span>
+                  )}
                 </Link>
               </li>
             );

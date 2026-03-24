@@ -28,10 +28,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getDashboard } from "@/lib/api";
+import { getDashboard, getAlerts, getAlertStats } from "@/lib/api";
+import type { AlertResponse, AlertStats } from "@/lib/api";
 import { useOrg } from "@/lib/context";
 import type { DashboardResponse } from "@spaceguard/shared";
 import { assetTypeLabels } from "@spaceguard/shared";
+import { AlertTriangle, Zap, AlertCircle } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -603,12 +605,191 @@ function AssetSummary({
 }
 
 // ---------------------------------------------------------------------------
+// Alert severity stat cards
+// ---------------------------------------------------------------------------
+
+const ALERT_SEV_STYLES: Record<string, { bg: string; text: string; border: string; icon: React.ReactNode }> = {
+  CRITICAL: { bg: "bg-red-500/10",     text: "text-red-400",    border: "border-red-500/30",    icon: <Zap size={14} className="text-red-400" /> },
+  HIGH:     { bg: "bg-amber-500/10",   text: "text-amber-400",  border: "border-amber-500/30",  icon: <AlertTriangle size={14} className="text-amber-400" /> },
+  MEDIUM:   { bg: "bg-yellow-500/10",  text: "text-yellow-400", border: "border-yellow-500/30", icon: <AlertCircle size={14} className="text-yellow-400" /> },
+  LOW:      { bg: "bg-blue-500/10",    text: "text-blue-400",   border: "border-blue-500/30",   icon: <AlertCircle size={14} className="text-blue-400" /> },
+};
+
+function AlertSeverityCards({ stats }: { stats: AlertStats }) {
+  const severities = ["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const;
+  const openTotal = (stats.byStatus["NEW"] ?? 0) + (stats.byStatus["INVESTIGATING"] ?? 0);
+
+  return (
+    <Card className="bg-slate-900 border-slate-800">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold text-slate-200">
+            Active Alerts
+          </CardTitle>
+          <Link
+            href="/alerts"
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            View all
+          </Link>
+        </div>
+        <p className="text-xs text-slate-500 mt-0.5">
+          {openTotal} open alert{openTotal !== 1 ? "s" : ""} requiring attention
+        </p>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <div className="grid grid-cols-4 gap-3">
+          {severities.map((sev) => {
+            const count = stats.bySeverity[sev] ?? 0;
+            const style = ALERT_SEV_STYLES[sev];
+            return (
+              <Link
+                key={sev}
+                href={`/alerts?severity=${sev}`}
+                className={[
+                  "rounded-lg border px-3 py-2.5 flex flex-col gap-1",
+                  "transition-colors hover:brightness-110",
+                  style.bg,
+                  style.border,
+                ].join(" ")}
+              >
+                <div className="flex items-center gap-1.5">
+                  {style.icon}
+                  <span className={`text-[10px] font-semibold uppercase tracking-widest ${style.text}`}>
+                    {sev}
+                  </span>
+                </div>
+                <span className={`text-2xl font-bold ${style.text}`}>
+                  {count}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Recent alerts table
+// ---------------------------------------------------------------------------
+
+const RECENT_SEV_BADGE: Record<string, string> = {
+  CRITICAL: "bg-red-500/20 text-red-300 border-red-500/40",
+  HIGH:     "bg-amber-500/20 text-amber-300 border-amber-500/40",
+  MEDIUM:   "bg-yellow-500/20 text-yellow-300 border-yellow-500/40",
+  LOW:      "bg-blue-500/20 text-blue-300 border-blue-500/40",
+};
+
+const RECENT_STATUS_BADGE: Record<string, string> = {
+  NEW:            "bg-red-500/20 text-red-300 border-red-500/40",
+  INVESTIGATING:  "bg-amber-500/20 text-amber-300 border-amber-500/40",
+  RESOLVED:       "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+  FALSE_POSITIVE: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+};
+
+function relTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function RecentAlertsCard({ alerts }: { alerts: AlertResponse[] }) {
+  return (
+    <Card className="bg-slate-900 border-slate-800 flex flex-col">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold text-slate-200">
+            Recent Alerts
+          </CardTitle>
+          <Link
+            href="/alerts"
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            View all
+          </Link>
+        </div>
+        <p className="text-xs text-slate-500 mt-0.5">Last 5 triggered events</p>
+      </CardHeader>
+      <CardContent className="px-0 pb-0 flex-1">
+        {alerts.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <p className="text-slate-500 text-sm font-medium">No alerts yet</p>
+            <p className="text-slate-600 text-xs mt-1">
+              Detection engine is active and monitoring telemetry.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableHead className="text-slate-500 text-xs font-medium px-4 py-2">Alert</TableHead>
+                  <TableHead className="text-slate-500 text-xs font-medium px-4 py-2">Severity</TableHead>
+                  <TableHead className="text-slate-500 text-xs font-medium px-4 py-2 text-right">When</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {alerts.map((a) => (
+                  <TableRow
+                    key={a.id}
+                    className="border-slate-800 hover:bg-slate-800/40"
+                  >
+                    <TableCell className="px-4 py-2.5">
+                      <Link href="/alerts" className="group">
+                        <span className="text-xs text-slate-300 group-hover:text-blue-400 transition-colors line-clamp-1">
+                          {a.title}
+                        </span>
+                        <span
+                          className={[
+                            "inline-flex items-center text-[9px] font-medium px-1 py-0 rounded border mt-0.5",
+                            RECENT_STATUS_BADGE[a.status] ?? "",
+                          ].join(" ")}
+                        >
+                          {a.status.replace("_", " ")}
+                        </span>
+                      </Link>
+                    </TableCell>
+                    <TableCell className="px-4 py-2.5">
+                      <span
+                        className={[
+                          "inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded border",
+                          RECENT_SEV_BADGE[a.severity] ?? "",
+                        ].join(" ")}
+                      >
+                        {a.severity}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-4 py-2.5 text-right">
+                      <span className="text-[11px] text-slate-500">
+                        {relTime(a.triggeredAt)}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main dashboard page
 // ---------------------------------------------------------------------------
 
 export default function DashboardPage() {
   const { orgId, orgName, loading: orgLoading } = useOrg();
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [alertStats, setAlertStats] = useState<AlertStats | null>(null);
+  const [recentAlerts, setRecentAlerts] = useState<AlertResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -624,8 +805,14 @@ export default function DashboardPage() {
       try {
         setLoading(true);
         setError(null);
-        const dash = await getDashboard(orgId!);
+        const [dash, stats, recent] = await Promise.all([
+          getDashboard(orgId!),
+          getAlertStats(orgId!).catch(() => null),
+          getAlerts({ organizationId: orgId!, perPage: 5 }).catch(() => ({ data: [], total: 0 })),
+        ]);
         setDashboard(dash);
+        setAlertStats(stats);
+        setRecentAlerts(recent.data);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load dashboard"
@@ -711,15 +898,21 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Row 2 - Category chart */}
+      {/* Row 2 - Alert stats + Recent alerts */}
+      {alertStats && (
+        <AlertSeverityCards stats={alertStats} />
+      )}
+
+      {/* Row 3 - Category chart */}
       <CategoryChart byCategory={dashboard.byCategory} />
 
-      {/* Row 3 - Gap table + Asset summary */}
+      {/* Row 4 - Gap table + Asset summary + Recent alerts */}
       <div className="grid grid-cols-5 gap-4">
         <div className="col-span-3">
           <GapTable gaps={dashboard.gaps} />
         </div>
-        <div className="col-span-2">
+        <div className="col-span-2 flex flex-col gap-4">
+          <RecentAlertsCard alerts={recentAlerts} />
           <AssetSummary summary={dashboard.assetsSummary} />
         </div>
       </div>

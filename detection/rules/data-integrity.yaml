@@ -1,0 +1,126 @@
+---
+# SpaceGuard Detection Rules - Data Link Integrity
+# Format version: 1
+#
+# These rules detect anomalies in the telemetry data stream that may indicate
+# data manipulation, signal spoofing, or hardware degradation. They evaluate
+# integrity indicators ingested alongside normal telemetry parameters.
+#
+# Parameter naming convention:
+#   di.crc_error_rate        - fraction of frames with CRC errors (0.0-1.0)
+#   di.sequence_gap_count    - number of discontinuities in packet sequence count
+#   di.apid_mismatch_count   - count of frames where received APID != expected
+#   di.timestamp_skew_sec    - absolute difference in seconds between on-board
+#                              time and ground receive time
+#   di.duplicate_scid_count  - count of frames with Spacecraft ID matching
+#                              another registered spacecraft in the session
+
+rules:
+  - id: SG-DI-001
+    name: "CRC Error Rate Exceeds Threshold"
+    description: >
+      The cyclic redundancy check (CRC) error rate on the telemetry downlink has
+      exceeded the acceptable threshold. While occasional CRC errors are normal
+      due to atmospheric conditions, a sustained high error rate may indicate
+      deliberate RF interference, physical damage to the spacecraft antenna, or
+      active manipulation of the telemetry stream by an adversary.
+    severity: MEDIUM
+    sparta:
+      tactic: "Impact"
+      technique: "Jamming"
+    condition:
+      type: threshold
+      parameter: di.crc_error_rate
+      operator: gt
+      value: 0.05
+      duration_seconds: 30
+    actions:
+      - alert
+
+  - id: SG-DI-002
+    name: "Packet Sequence Discontinuity Detected"
+    description: >
+      A gap has been detected in the CCSDS packet sequence count. Sequence
+      discontinuities indicate that one or more packets have been dropped,
+      reordered, or selectively suppressed. An adversary intercepting the
+      downlink could selectively filter packets to hide anomalous behaviour or
+      prevent operators from seeing critical telemetry.
+    severity: MEDIUM
+    sparta:
+      tactic: "Defense Evasion"
+      technique: "Data Suppression"
+    condition:
+      type: threshold
+      parameter: di.sequence_gap_count
+      operator: gt
+      value: 0
+      duration_seconds: 10
+    actions:
+      - alert
+
+  - id: SG-DI-003
+    name: "APID Mismatch - Unexpected Spacecraft Application Process"
+    description: >
+      A telemetry frame has been received with an APID that does not match any
+      registered application process for this spacecraft. An unexpected APID
+      in the telemetry stream may indicate that an attacker has injected
+      synthetic telemetry frames into the downlink in order to spoof sensor
+      readings or mask abnormal spacecraft behaviour.
+    severity: HIGH
+    sparta:
+      tactic: "Defense Evasion"
+      technique: "Telemetry Spoofing"
+    condition:
+      type: threshold
+      parameter: di.apid_mismatch_count
+      operator: gt
+      value: 0
+      duration_seconds: 10
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-DI-004
+    name: "Timestamp Anomaly Detected (Possible Spoofed Telemetry)"
+    description: >
+      The on-board computer timestamp in received telemetry frames differs from
+      the ground station receive time by more than 5 minutes. Large timestamp
+      discrepancies may indicate that an attacker is replaying old telemetry
+      frames to mislead operators about the current spacecraft state, or that
+      the spacecraft clock has experienced an anomalous jump.
+    severity: HIGH
+    sparta:
+      tactic: "Defense Evasion"
+      technique: "Telemetry Spoofing"
+    condition:
+      type: threshold
+      parameter: di.timestamp_skew_sec
+      operator: gt
+      value: 300
+      duration_seconds: 15
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-DI-005
+    name: "Duplicate Spacecraft ID Detected (Possible SCID Spoofing)"
+    description: >
+      Multiple telemetry streams have been received bearing the same Spacecraft
+      ID (SCID) within the current session. A duplicate SCID is a strong
+      indicator of spacecraft identity spoofing, where an adversary broadcasts
+      synthetic telemetry using the legitimate spacecraft's identifier to inject
+      false health data or disrupt ground processing. This is a known SPARTA
+      technique against satellite communication links.
+    severity: CRITICAL
+    sparta:
+      tactic: "Defense Evasion"
+      technique: "Spacecraft Identity Spoofing"
+    condition:
+      type: threshold
+      parameter: di.duplicate_scid_count
+      operator: gt
+      value: 0
+      duration_seconds: 10
+    actions:
+      - alert
+      - nis2_category: significant_incident

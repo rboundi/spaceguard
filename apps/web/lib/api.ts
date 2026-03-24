@@ -215,4 +215,74 @@ export const getTelemetryPoints = (query: {
   return api.get<TelemetryQueryResult>(`/api/v1/telemetry/points?${params.toString()}`);
 };
 
+// ---------------------------------------------------------------------------
+// Alerts
+// ---------------------------------------------------------------------------
+
+export interface AlertResponse {
+  id: string;
+  organizationId: string;
+  streamId: string | null;
+  ruleId: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  title: string;
+  description: string;
+  status: "NEW" | "INVESTIGATING" | "RESOLVED" | "FALSE_POSITIVE";
+  spartaTactic: string | null;
+  spartaTechnique: string | null;
+  affectedAssetId: string | null;
+  triggeredAt: string;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AlertStats {
+  total: number;
+  bySeverity: Record<string, number>;
+  byStatus: Record<string, number>;
+  openCritical: number;
+  openHigh: number;
+}
+
+export const getAlerts = (query: {
+  organizationId: string;
+  status?: string;
+  severity?: string;
+  streamId?: string;
+  affectedAssetId?: string;
+  ruleId?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  perPage?: number;
+}) => {
+  const params = new URLSearchParams({ organizationId: query.organizationId });
+  if (query.status)          params.set("status", query.status);
+  if (query.severity)        params.set("severity", query.severity);
+  if (query.streamId)        params.set("streamId", query.streamId);
+  if (query.affectedAssetId) params.set("affectedAssetId", query.affectedAssetId);
+  if (query.ruleId)          params.set("ruleId", query.ruleId);
+  if (query.from)            params.set("from", query.from);
+  if (query.to)              params.set("to", query.to);
+  if (query.page)            params.set("page", String(query.page));
+  if (query.perPage)         params.set("perPage", String(query.perPage));
+  return api.get<{ data: AlertResponse[]; total: number }>(
+    `/api/v1/alerts?${params.toString()}`
+  );
+};
+
+export const getAlert = (id: string) =>
+  api.get<AlertResponse>(`/api/v1/alerts/${id}`);
+
+export const updateAlert = (id: string, data: { status?: string; resolvedBy?: string }) =>
+  api.put<AlertResponse>(`/api/v1/alerts/${id}`, data);
+
+export const getAlertStats = (organizationId: string) => {
+  const params = new URLSearchParams({ organizationId });
+  return api.get<AlertStats>(`/api/v1/alerts/stats?${params.toString()}`);
+};
+
 export { ApiError };
