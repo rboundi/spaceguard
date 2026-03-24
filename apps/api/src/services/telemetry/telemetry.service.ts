@@ -9,6 +9,8 @@ import {
 } from "../../db/schema/telemetry";
 import { organizations, spaceAssets } from "../../db/schema/index";
 import { parseCcsdsStream } from "./ccsds-parser";
+import { evaluatePoint } from "../detection/engine";
+import { createAlert } from "../detection/alert.service";
 import type {
   CreateStream,
   UpdateStream,
@@ -194,7 +196,8 @@ export interface IngestResult {
 }
 
 /**
- * Bulk-inserts pre-parsed telemetry points into the hypertable.
+ * Bulk-inserts pre-parsed telemetry points into the hypertable, then runs the
+ * detection engine against each point and fires alerts for triggered rules.
  */
 export async function ingestPoints(
   streamId: string,
@@ -222,7 +225,54 @@ export async function ingestPoints(
     inserted += batch.length;
   }
 
+  // Run detection engine against each ingested point.
+  // Fetch stream metadata once (organizationId + assetId) for alert payloads.
+  // We do this asynchronously and catch errors so detection failures never
+  // block or break the ingestion response.
+  runDetection(streamId, points).catch((err: unknown) => {
+    console.error("[detection] Error evaluating points for stream", streamId, err);
+  });
+
   return { inserted, streamId };
+}
+
+/**
+ * Internal: looks up stream context then evaluates each point against rules.
+ */
+async function runDetection(streamId: string, points: IngestPoint[]): Promise<void> {
+  // Fetch stream to get organizationId and assetId
+  const [stream] = await db
+    .select({
+      organizationId: telemetryStreams.organizationId,
+      assetId: telemetryStreams.assetId,
+    })
+    .from(telemetryStreams)
+    .where(eq(telemetryStreams.id, streamId))
+    .limit(1);
+
+  if (!stream) return; // Stream deleted between ingest and detection - skip
+
+  for (const point of points) {
+    const alertPayloads = evaluatePoint(streamId, stream.organizationId, stream.assetId, {
+      parameterName: point.parameterName,
+      valueNumeric: point.valueNumeric ?? null,
+      valueText: point.valueText ?? null,
+      time: point.time,
+    });
+
+    for (const payload of alertPayloads) {
+      try {
+        const created = await createAlert(payload);
+        if (created) {
+          console.info(
+            `[detection] Alert created: ${created.ruleId} severity=${created.severity} stream=${streamId}`
+          );
+        }
+      } catch (err) {
+        console.error("[detection] Failed to create alert:", err);
+      }
+    }
+  }
 }
 
 /**
