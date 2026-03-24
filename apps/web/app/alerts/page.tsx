@@ -246,6 +246,17 @@ export default function AlertsPage() {
     return () => { mountedRef.current = false; };
   }, []);
 
+  // Tracks asset IDs for which a fetch has already been dispatched.
+  // Using a ref avoids making loadAssetName depend on assetNames state,
+  // which would cause it to be recreated on every fetch completion.
+  const fetchedAssetIds = useRef<Set<string>>(new Set());
+
+  // Clear stale asset name cache and fetched-IDs set on org change
+  useEffect(() => {
+    fetchedAssetIds.current = new Set();
+    setAssetNames({});
+  }, [orgId]);
+
   // ---------------------------------------------------------------------------
   // Fetch alerts
   // ---------------------------------------------------------------------------
@@ -281,16 +292,18 @@ export default function AlertsPage() {
   // ---------------------------------------------------------------------------
 
   const loadAssetName = useCallback(async (assetId: string) => {
-    if (assetNames[assetId] !== undefined) return;
+    if (fetchedAssetIds.current.has(assetId)) return;
+    fetchedAssetIds.current.add(assetId);
     try {
       const asset = await getAsset(assetId);
       if (mountedRef.current) {
         setAssetNames((prev) => ({ ...prev, [assetId]: asset.name }));
       }
     } catch {
-      // ignore
+      // Allow retry on next click by removing from the fetched set
+      fetchedAssetIds.current.delete(assetId);
     }
-  }, [assetNames]);
+  }, []);
 
   const handleRowClick = (id: string, assetId: string | null) => {
     setExpandedId((prev) => (prev === id ? null : id));

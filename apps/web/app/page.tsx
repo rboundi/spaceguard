@@ -801,6 +801,10 @@ export default function DashboardPage() {
       return;
     }
 
+    // Local cancellation flag prevents stale fetches (from a previous orgId)
+    // from overwriting state after the org has already changed.
+    let cancelled = false;
+
     async function load() {
       try {
         setLoading(true);
@@ -810,18 +814,21 @@ export default function DashboardPage() {
           getAlertStats(orgId!).catch(() => null),
           getAlerts({ organizationId: orgId!, perPage: 5 }).catch(() => ({ data: [], total: 0 })),
         ]);
+        if (cancelled) return;
         setDashboard(dash);
         setAlertStats(stats);
         setRecentAlerts(recent.data);
       } catch (err) {
+        if (cancelled) return;
         setError(
           err instanceof Error ? err.message : "Failed to load dashboard"
         );
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     load();
+    return () => { cancelled = true; };
   }, [orgId, orgLoading]);
 
   // ---- Loading state ----

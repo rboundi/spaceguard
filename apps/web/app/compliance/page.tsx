@@ -685,6 +685,10 @@ export default function CompliancePage() {
       return;
     }
 
+    // Cancellation flag prevents a stale fetch (from a previous orgId) from
+    // overwriting state after the org has already changed to a new one.
+    let cancelled = false;
+
     async function init() {
       try {
         setLoading(true);
@@ -697,16 +701,19 @@ export default function CompliancePage() {
           getAssets({ organizationId: orgId!, perPage: 100 }),
         ]);
 
+        if (cancelled) return;
         setRequirements(reqResult.data);
         setMappings(mappingResult.data);
         setAssets(assetResult.data);
       } catch (err) {
+        if (cancelled) return;
         setError(err instanceof Error ? err.message : "Failed to load compliance data");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     void init();
+    return () => { cancelled = true; };
   }, [orgId, orgLoading]);
 
   const handleMappingUpdated = useCallback((updated: MappingResponse) => {
