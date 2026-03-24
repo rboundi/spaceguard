@@ -1,0 +1,117 @@
+---
+# SpaceGuard Detection Rules - Telemetry Anomalies
+# Format version: 1
+#
+# Each rule specifies:
+#   id:          Unique rule identifier (SG-<domain>-<number>)
+#   name:        Human-readable title (becomes alert title)
+#   description: Explanation shown in the alert
+#   severity:    LOW | MEDIUM | HIGH | CRITICAL
+#   sparta:      Optional SPARTA ATT&CK for Space tactic/technique mapping
+#   condition:   Rule evaluation logic (see condition types below)
+#   actions:     What to do when the rule fires
+#
+# Condition types:
+#   threshold:       value_numeric comparison against a static threshold
+#   rate_of_change:  absolute change per second exceeds max_change_per_second
+#   absence:         no telemetry points received for max_gap_seconds
+
+rules:
+  - id: SG-TM-001
+    name: "Battery Voltage Below Safe Threshold"
+    description: >
+      Battery voltage dropped below the minimum safe operating level. Sustained
+      low voltage risks permanent battery damage and potential power loss to
+      onboard systems.
+    severity: HIGH
+    sparta:
+      tactic: "Impact"
+      technique: "Denial of Service"
+    condition:
+      type: threshold
+      parameter: battery_voltage_v
+      operator: lt
+      value: 26.0
+      # Must remain below threshold for this many consecutive seconds to fire
+      duration_seconds: 10
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-TM-002
+    name: "Satellite Component Temperature Exceeded Operational Limit"
+    description: >
+      A satellite component temperature has exceeded the operational limit.
+      Sustained overtemperature can degrade electronics, shorten component
+      lifespan, and trigger automatic safe-mode transitions.
+    severity: HIGH
+    sparta:
+      tactic: "Impact"
+      technique: "Degradation"
+    condition:
+      type: threshold
+      parameter: temperature_obc_c
+      operator: gt
+      value: 55.0
+      duration_seconds: 5
+    actions:
+      - alert
+
+  - id: SG-TM-003
+    name: "Reaction Wheel Speed Anomaly"
+    description: >
+      A reaction wheel is experiencing an abnormally rapid speed change,
+      indicating a possible attitude control failure, bearing degradation,
+      or an unexpected torque event. This may indicate an adversarial
+      attitude-control manipulation attempt.
+    severity: CRITICAL
+    sparta:
+      tactic: "Impact"
+      technique: "Degradation"
+    condition:
+      type: rate_of_change
+      parameter: reaction_wheel_0_rpm
+      # Alert if speed changes more than this many RPM in one second
+      max_change_per_second: 100
+      duration_seconds: 3
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-TM-004
+    name: "Downlink Signal Strength Degradation"
+    description: >
+      Downlink signal strength has fallen below the minimum acceptable threshold.
+      Possible causes include ground station equipment failure, atmospheric
+      conditions, or deliberate jamming of the RF link.
+    severity: MEDIUM
+    sparta:
+      tactic: "Execution"
+      technique: "Jamming"
+    condition:
+      type: threshold
+      parameter: signal_strength_dbm
+      operator: lt
+      value: -90.0
+      duration_seconds: 30
+    actions:
+      - alert
+
+  - id: SG-TM-005
+    name: "Telemetry Dropout - Extended Gap Detected"
+    description: >
+      No telemetry frames have been received for an extended period. This may
+      indicate a satellite communication fault, ground station outage, or
+      deliberate interruption of the telemetry link. Immediate investigation
+      is required to assess spacecraft health.
+    severity: HIGH
+    sparta:
+      tactic: "Impact"
+      technique: "Denial of Service"
+    condition:
+      type: absence
+      # Fire if no points arrive for this many consecutive seconds
+      max_gap_seconds: 120
+    actions:
+      - alert
+      - nis2_category: significant_incident

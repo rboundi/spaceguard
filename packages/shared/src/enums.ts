@@ -103,3 +103,19 @@ export enum LogSeverity {
   ALERT = "ALERT",
   EMERGENCY = "EMERGENCY",
 }
+
+// Module 3: Detection Engine enums
+
+export enum AlertSeverity {
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+  CRITICAL = "CRITICAL",
+}
+
+export enum AlertStatus {
+  NEW = "NEW",
+  INVESTIGATING = "INVESTIGATING",
+  RESOLVED = "RESOLVED",
+  FALSE_POSITIVE = "FALSE_POSITIVE",
+}
