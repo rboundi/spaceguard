@@ -240,6 +240,15 @@ export default function TelemetryStreamPage() {
   // Tracks the AbortController for the in-flight fetchData so we can cancel it
   // when the user switches time ranges before the previous request completes.
   const fetchAbortRef = useRef<AbortController | null>(null);
+  // Ref that always holds the latest `selected` value so fetchData (which is
+  // memoized on [id, timeRange]) can read the up-to-date selection without
+  // being stale when auto-refresh fires between time-range changes.
+  const selectedRef = useRef<string[]>(selected);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
+  // True while the component is mounted; prevents fetchParamData from calling
+  // setState after an unmount (avoids React 18 "can't update unmounted" warning).
+  const mountedRef = useRef(true);
+  useEffect(() => { return () => { mountedRef.current = false; }; }, []);
 
   // ---- Load stream metadata once ----
   useEffect(() => {
@@ -277,15 +286,19 @@ export default function TelemetryStreamPage() {
       const discovered = Array.from(new Set(discovery.data.map((p) => p.parameterName))).sort();
       setAllParams(discovered);
 
-      // Decide which params to fetch fully
+      // Decide which params to fetch fully.
+      // Use selectedRef.current (not the closure-captured `selected`) so that
+      // auto-refresh always sees the user's current param selection even when
+      // `timeRange` (the only memo dep) hasn't changed since the last toggle.
+      const currentSelected = selectedRef.current;
       let toFetch: string[];
-      if (selected.length === 0 && discovered.length > 0) {
+      if (currentSelected.length === 0 && discovered.length > 0) {
         // First load: default to first 2 params
         const defaults = discovered.slice(0, 2);
         setSelected(defaults);
         toFetch = defaults;
       } else {
-        toFetch = selected;
+        toFetch = currentSelected;
       }
 
       if (toFetch.length === 0) {
@@ -322,10 +335,12 @@ export default function TelemetryStreamPage() {
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
-  // Cancel any in-flight fetch when the component unmounts
+  // Cancel any in-flight fetch when the component unmounts (fetchAbortRef is
+  // set on each fetchData call; mountedRef guards fetchParamData setState).
   useEffect(() => {
     return () => { fetchAbortRef.current?.abort(); };
   }, []);
+  // Note: mountedRef cleanup is handled by the effect above (initialized inline)
 
   // ---- Auto-refresh ----
   useEffect(() => {
@@ -354,6 +369,8 @@ export default function TelemetryStreamPage() {
           getTelemetryPoints({ streamId: id, from: from.toISOString(), to: to.toISOString(), parameterName, perPage: 5000 })
         )
       );
+      // Guard against updating state after the component unmounts
+      if (!mountedRef.current) return;
       setRawPoints((prev) => {
         // Remove old data for these params, then append fresh data
         const otherPoints = prev.filter((pt) => !params.includes(pt.parameterName));

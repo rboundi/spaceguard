@@ -144,15 +144,16 @@ export const deleteMapping = (id: string) =>
   api.delete(`/api/v1/compliance/mappings/${id}`);
 
 // Dashboard
-export const getDashboard = (organizationId: string) =>
-  api.get<DashboardResponse>(
-    `/api/v1/compliance/dashboard?organizationId=${organizationId}`
-  );
+export const getDashboard = (organizationId: string) => {
+  const params = new URLSearchParams({ organizationId });
+  return api.get<DashboardResponse>(`/api/v1/compliance/dashboard?${params.toString()}`);
+};
 
 // PDF report - returns a Blob for direct download in the browser
 export const getCompliancePdf = async (organizationId: string): Promise<Blob> => {
+  const params = new URLSearchParams({ organizationId });
   const res = await fetch(
-    `${API_URL}/api/v1/reports/compliance/pdf?organizationId=${organizationId}`,
+    `${API_URL}/api/v1/reports/compliance/pdf?${params.toString()}`,
     { method: "GET" }
   );
   if (!res.ok) {
@@ -186,10 +187,12 @@ export interface TelemetryQueryResult {
   total: number;
 }
 
-export const getTelemetryStreams = (organizationId: string) =>
-  api.get<{ data: StreamResponse[]; total: number }>(
-    `/api/v1/telemetry/streams?organizationId=${organizationId}`
+export const getTelemetryStreams = (organizationId: string) => {
+  const params = new URLSearchParams({ organizationId });
+  return api.get<{ data: StreamResponse[]; total: number }>(
+    `/api/v1/telemetry/streams?${params.toString()}`
   );
+};
 
 export const getTelemetryStream = (id: string) =>
   api.get<StreamResponse>(`/api/v1/telemetry/streams/${id}`);

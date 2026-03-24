@@ -5,7 +5,7 @@ export const createAssetSchema = z.object({
   organizationId: z.string().uuid(),
   name: z.string().min(1).max(255),
   assetType: z.nativeEnum(AssetType),
-  description: z.string().optional(),
+  description: z.string().max(2000).optional(),
   metadata: z.record(z.unknown()).optional(),
   status: z.nativeEnum(AssetStatus).default(AssetStatus.OPERATIONAL),
   criticality: z.nativeEnum(Criticality).default(Criticality.MEDIUM),

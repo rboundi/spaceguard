@@ -5,7 +5,7 @@ export const createOrganizationSchema = z.object({
   name: z.string().min(1).max(255),
   nis2Classification: z.nativeEnum(NIS2Classification),
   country: z.string().length(2, "Must be ISO 3166-1 alpha-2 code"),
-  sector: z.string().default("space"),
+  sector: z.string().max(100).default("space"),
   contactEmail: z.string().email(),
   contactName: z.string().min(1).max(255),
 });

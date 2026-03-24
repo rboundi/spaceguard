@@ -16,10 +16,17 @@ const app = new Hono();
 // Global middleware
 app.use("*", logger());
 app.use("*", secureHeaders());
+// Allow the frontend origin to be configured via env var for production deployments.
+// Falls back to localhost:3000 for local development.
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN ?? "http://localhost:3000")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 app.use(
   "*",
   cors({
-    origin: ["http://localhost:3000"],
+    origin: ALLOWED_ORIGINS,
     credentials: true,
   })
 );

@@ -23,10 +23,12 @@ export const createMappingSchema = z.object({
   assetId: z.string().uuid().nullable().optional(),
   requirementId: z.string().uuid(),
   status: z.nativeEnum(ComplianceStatus).default(ComplianceStatus.NOT_ASSESSED),
-  evidenceDescription: z.string().optional(),
-  responsiblePerson: z.string().optional(),
+  // Reasonable upper bounds match the DB column types (text is unlimited in PG,
+  // but we enforce limits at the API boundary to prevent huge writes).
+  evidenceDescription: z.string().max(10000).optional(),
+  responsiblePerson: z.string().max(255).optional(),
   nextReviewDate: z.string().date().optional(),
-  notes: z.string().optional(),
+  notes: z.string().max(10000).optional(),
 });
 
 export const updateMappingSchema = createMappingSchema

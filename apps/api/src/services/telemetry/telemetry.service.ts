@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, count, sql } from "drizzle-orm";
+import { eq, and, gte, lte, count, sql, desc } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { randomUUID } from "node:crypto";
 import { db } from "../../db/client";
@@ -91,14 +91,51 @@ export async function createStream(data: CreateStream): Promise<StreamResponse> 
 }
 
 export async function listStreams(
-  organizationId: string
-): Promise<StreamResponse[]> {
-  const rows = await db
-    .select()
-    .from(telemetryStreams)
-    .where(eq(telemetryStreams.organizationId, organizationId))
-    .orderBy(telemetryStreams.createdAt);
-  return rows.map(streamToResponse);
+  organizationId: string,
+  options?: {
+    protocol?: string;
+    status?: string;
+    page?: number;
+    perPage?: number;
+  }
+): Promise<{ data: StreamResponse[]; total: number }> {
+  const page = options?.page ?? 1;
+  const perPage = options?.perPage ?? 50;
+  const offset = (page - 1) * perPage;
+
+  const conditions = [eq(telemetryStreams.organizationId, organizationId)];
+
+  if (options?.protocol) {
+    conditions.push(
+      eq(
+        telemetryStreams.protocol,
+        options.protocol as typeof telemetryStreams.$inferSelect["protocol"]
+      )
+    );
+  }
+  if (options?.status) {
+    conditions.push(
+      eq(
+        telemetryStreams.status,
+        options.status as typeof telemetryStreams.$inferSelect["status"]
+      )
+    );
+  }
+
+  const where = and(...conditions);
+
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select()
+      .from(telemetryStreams)
+      .where(where)
+      .orderBy(telemetryStreams.createdAt)
+      .limit(perPage)
+      .offset(offset),
+    db.select({ total: count() }).from(telemetryStreams).where(where),
+  ]);
+
+  return { data: rows.map(streamToResponse), total: Number(total) };
 }
 
 export async function getStream(id: string): Promise<StreamResponse> {
@@ -533,7 +570,7 @@ export async function queryLogs(
       .select()
       .from(groundSegmentLogs)
       .where(where)
-      .orderBy(groundSegmentLogs.timestamp)
+      .orderBy(desc(groundSegmentLogs.timestamp))
       .limit(perPage)
       .offset(offset),
     db.select({ total: count() }).from(groundSegmentLogs).where(where),

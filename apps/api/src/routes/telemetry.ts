@@ -70,7 +70,7 @@ telemetryRoutes.post(
   }
 );
 
-// GET /api/v1/telemetry/streams?organizationId=&assetId=&protocol=&status=
+// GET /api/v1/telemetry/streams?organizationId=&protocol=&status=&page=&perPage=
 telemetryRoutes.get(
   "/telemetry/streams",
   zValidator("query", streamQuerySchema),
@@ -81,8 +81,13 @@ telemetryRoutes.get(
         message: "organizationId query parameter is required",
       });
     }
-    const streams = await listStreams(query.organizationId);
-    return c.json({ data: streams, total: streams.length });
+    const result = await listStreams(query.organizationId, {
+      protocol: query.protocol,
+      status: query.status,
+      page: query.page,
+      perPage: query.perPage,
+    });
+    return c.json({ data: result.data, total: result.total });
   }
 );
 

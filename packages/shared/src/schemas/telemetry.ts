@@ -94,7 +94,7 @@ export const logEntrySchema = z.object({
   organizationId: z.string().uuid(),
   source: z.string().min(1).max(255),
   severity: z.nativeEnum(LogSeverity),
-  message: z.string().min(1),
+  message: z.string().min(1).max(10000),
   structuredData: z.record(z.unknown()).optional(),
   timestamp: z.string().datetime({ offset: true }),
 });
