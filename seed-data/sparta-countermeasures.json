@@ -1,0 +1,1322 @@
+{
+  "version": "3.2",
+  "generated": "2026-03-25",
+  "source": "SPARTA - Space Attack Research & Tactic Analysis (The Aerospace Corporation)",
+  "url": "https://sparta.aerospace.org",
+  "total_countermeasures": 30,
+  "countermeasures": [
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0001",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Encrypted Communications",
+      "description": "Implement authenticated encryption (AES-256-GCM or equivalent) for all uplink, downlink, and crosslink communications to prevent eavesdropping, replay, and command injection.",
+      "x_sparta_id": "CM-0001",
+      "x_nist_sp800_53_mappings": [
+        "SC-8",
+        "SC-12",
+        "SC-13"
+      ],
+      "x_applicable_techniques": [
+        "REC-0005",
+        "EX-0001",
+        "EX-0006",
+        "EX-0014",
+        "EXF-0001",
+        "EXF-0003"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0001"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-8",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/8"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-12",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/12"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-13",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/13"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0002",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Command Authentication",
+      "description": "Apply cryptographic authentication to all spacecraft commands using digital signatures or message authentication codes, with sequence counters to prevent replay.",
+      "x_sparta_id": "CM-0002",
+      "x_nist_sp800_53_mappings": [
+        "IA-3",
+        "SC-8",
+        "SC-13",
+        "SC-23"
+      ],
+      "x_applicable_techniques": [
+        "EX-0001",
+        "EX-0014",
+        "IA-0008",
+        "DE-0004"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0002"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "IA-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/ia/3"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-8",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/8"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-13",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/13"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-23",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/23"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0003",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Secure Boot",
+      "description": "Implement hardware-rooted secure boot that cryptographically verifies boot images before execution to prevent bootkit and boot memory compromise attacks.",
+      "x_sparta_id": "CM-0003",
+      "x_nist_sp800_53_mappings": [
+        "SI-7",
+        "SC-34",
+        "CM-14"
+      ],
+      "x_applicable_techniques": [
+        "EX-0004",
+        "DE-0007",
+        "DE-0008",
+        "PER-0001"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0003"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/7"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-34",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/34"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "CM-14",
+          "url": "https://csf.tools/reference/sp800-53/r5/cm/14"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0004",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Supply Chain Risk Management",
+      "description": "Establish hardware and software provenance tracking, component authentication, and secure integration procedures throughout the space system supply chain.",
+      "x_sparta_id": "CM-0004",
+      "x_nist_sp800_53_mappings": [
+        "SR-1",
+        "SR-3",
+        "SR-4",
+        "SR-5",
+        "SR-6"
+      ],
+      "x_applicable_techniques": [
+        "IA-0001",
+        "IA-0012",
+        "EXF-0008"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0004"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SR-1",
+          "url": "https://csf.tools/reference/sp800-53/r5/sr/1"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SR-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/sr/3"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SR-4",
+          "url": "https://csf.tools/reference/sp800-53/r5/sr/4"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SR-5",
+          "url": "https://csf.tools/reference/sp800-53/r5/sr/5"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SR-6",
+          "url": "https://csf.tools/reference/sp800-53/r5/sr/6"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0005",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Bus Segregation",
+      "description": "Implement hardware-enforced isolation between spacecraft bus subsystems using dedicated bus channels, memory protection, and access control for inter-subsystem communications.",
+      "x_sparta_id": "CM-0005",
+      "x_nist_sp800_53_mappings": [
+        "SC-3",
+        "SC-4",
+        "SC-7",
+        "AC-4"
+      ],
+      "x_applicable_techniques": [
+        "LM-0001",
+        "LM-0002",
+        "IA-0006"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0005"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/3"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-4",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/4"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/7"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AC-4",
+          "url": "https://csf.tools/reference/sp800-53/r5/ac/4"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0006",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Space Situational Awareness",
+      "description": "Maintain comprehensive tracking and characterization of objects in proximity to operational spacecraft to detect rendezvous, proximity operations, and kinetic threats.",
+      "x_sparta_id": "CM-0006",
+      "x_nist_sp800_53_mappings": [
+        "RA-5",
+        "SI-4",
+        "PE-20"
+      ],
+      "x_applicable_techniques": [
+        "IA-0005",
+        "EXF-0005",
+        "EX-0017",
+        "DE-0009"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0006"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "RA-5",
+          "url": "https://csf.tools/reference/sp800-53/r5/ra/5"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-4",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/4"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "PE-20",
+          "url": "https://csf.tools/reference/sp800-53/r5/pe/20"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0007",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "RF Spectrum Monitoring",
+      "description": "Deploy ground-based and space-based RF monitoring to detect jamming, spoofing, unauthorized transmissions, and rogue ground stations operating on spacecraft frequencies.",
+      "x_sparta_id": "CM-0007",
+      "x_nist_sp800_53_mappings": [
+        "SI-4",
+        "SC-40",
+        "SC-41"
+      ],
+      "x_applicable_techniques": [
+        "EX-0016",
+        "EX-0014",
+        "IA-0008",
+        "RD-0001"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0007"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-4",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/4"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-40",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/40"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-41",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/41"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0008",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Fault-Tolerant Design",
+      "description": "Implement triple modular redundancy, error detection and correction, and watchdog timers to maintain operations through single event upsets and hardware failures.",
+      "x_sparta_id": "CM-0008",
+      "x_nist_sp800_53_mappings": [
+        "CP-10",
+        "SC-36",
+        "SI-13",
+        "SI-17"
+      ],
+      "x_applicable_techniques": [
+        "EX-0005",
+        "EX-0007",
+        "EX-0018",
+        "IMP-0004"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0008"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "CP-10",
+          "url": "https://csf.tools/reference/sp800-53/r5/cp/10"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-36",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/36"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-13",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/13"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-17",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/17"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0009",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Ground System Hardening",
+      "description": "Apply defense-in-depth security to ground segment infrastructure including network segmentation, endpoint protection, intrusion detection, and security monitoring.",
+      "x_sparta_id": "CM-0009",
+      "x_nist_sp800_53_mappings": [
+        "SC-7",
+        "SI-3",
+        "SI-4",
+        "AC-4",
+        "CM-7"
+      ],
+      "x_applicable_techniques": [
+        "IA-0007",
+        "PER-0003",
+        "EXF-0007",
+        "LM-0007"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0009"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/7"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/3"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-4",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/4"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AC-4",
+          "url": "https://csf.tools/reference/sp800-53/r5/ac/4"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "CM-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/cm/7"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0010",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Key Management",
+      "description": "Implement robust cryptographic key management using hardware security modules, key rotation, multi-party key generation, and emergency key recovery procedures.",
+      "x_sparta_id": "CM-0010",
+      "x_nist_sp800_53_mappings": [
+        "SC-12",
+        "SC-17",
+        "IA-5"
+      ],
+      "x_applicable_techniques": [
+        "PER-0004",
+        "EX-0006",
+        "EX-0003"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0010"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-12",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/12"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-17",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/17"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "IA-5",
+          "url": "https://csf.tools/reference/sp800-53/r5/ia/5"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0011",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Anti-Jamming Communications",
+      "description": "Implement spread-spectrum, frequency hopping, and adaptive power control techniques to maintain communication links under intentional interference conditions.",
+      "x_sparta_id": "CM-0011",
+      "x_nist_sp800_53_mappings": [
+        "SC-40",
+        "SC-41",
+        "CP-8"
+      ],
+      "x_applicable_techniques": [
+        "EX-0016",
+        "IMP-0002",
+        "IMP-0003"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0011"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-40",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/40"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-41",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/41"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "CP-8",
+          "url": "https://csf.tools/reference/sp800-53/r5/cp/8"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0012",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Memory Integrity Monitoring",
+      "description": "Implement periodic integrity verification of onboard memory using cryptographic hashes and checksums compared against known-good baselines.",
+      "x_sparta_id": "CM-0012",
+      "x_nist_sp800_53_mappings": [
+        "SI-7",
+        "SI-16",
+        "CM-3"
+      ],
+      "x_applicable_techniques": [
+        "PER-0001",
+        "EX-0004",
+        "EX-0012",
+        "DE-0003"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0012"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/7"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-16",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/16"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "CM-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/cm/3"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0013",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Multi-Factor Authentication",
+      "description": "Require multi-factor authentication for all ground system operator access, commanding sessions, and critical configuration changes.",
+      "x_sparta_id": "CM-0013",
+      "x_nist_sp800_53_mappings": [
+        "IA-2",
+        "IA-5",
+        "IA-12"
+      ],
+      "x_applicable_techniques": [
+        "DE-0011",
+        "PER-0005",
+        "LM-0007",
+        "IA-0009"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0013"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "IA-2",
+          "url": "https://csf.tools/reference/sp800-53/r5/ia/2"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "IA-5",
+          "url": "https://csf.tools/reference/sp800-53/r5/ia/5"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "IA-12",
+          "url": "https://csf.tools/reference/sp800-53/r5/ia/12"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0014",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Safe-Mode Security",
+      "description": "Design safe-mode protocols that maintain minimum authentication, logging, and access control requirements even during degraded operations and anomaly recovery.",
+      "x_sparta_id": "CM-0014",
+      "x_nist_sp800_53_mappings": [
+        "AC-3",
+        "AU-2",
+        "IA-3",
+        "SI-17"
+      ],
+      "x_applicable_techniques": [
+        "IA-0010",
+        "EX-0011",
+        "DE-0005",
+        "REC-0007"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0014"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AC-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/ac/3"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AU-2",
+          "url": "https://csf.tools/reference/sp800-53/r5/au/2"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "IA-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/ia/3"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-17",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/17"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0015",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Crosslink Authentication",
+      "description": "Implement mutual authentication, encryption, and access control on all inter-satellite crosslinks to prevent unauthorized constellation access and lateral movement.",
+      "x_sparta_id": "CM-0015",
+      "x_nist_sp800_53_mappings": [
+        "IA-3",
+        "SC-8",
+        "AC-17"
+      ],
+      "x_applicable_techniques": [
+        "IA-0003",
+        "LM-0003",
+        "EXF-0010"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0015"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "IA-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/ia/3"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-8",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/8"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AC-17",
+          "url": "https://csf.tools/reference/sp800-53/r5/ac/17"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0016",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Code Signing and Verification",
+      "description": "Apply digital signatures to all flight software, firmware updates, and ground system applications with verification before execution or installation.",
+      "x_sparta_id": "CM-0016",
+      "x_nist_sp800_53_mappings": [
+        "SI-7",
+        "CM-14",
+        "SA-12"
+      ],
+      "x_applicable_techniques": [
+        "EX-0010",
+        "PER-0002",
+        "IA-0001",
+        "EX-0009"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0016"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/7"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "CM-14",
+          "url": "https://csf.tools/reference/sp800-53/r5/cm/14"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SA-12",
+          "url": "https://csf.tools/reference/sp800-53/r5/sa/12"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0017",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Data Loss Prevention",
+      "description": "Implement data classification, access controls, monitoring, and encryption for mission data at rest and in transit to prevent unauthorized exfiltration.",
+      "x_sparta_id": "CM-0017",
+      "x_nist_sp800_53_mappings": [
+        "AC-3",
+        "AC-4",
+        "SC-8",
+        "SC-28"
+      ],
+      "x_applicable_techniques": [
+        "EXF-0003",
+        "EXF-0007",
+        "EXF-0008",
+        "EXF-0009",
+        "IMP-0006"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0017"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AC-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/ac/3"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AC-4",
+          "url": "https://csf.tools/reference/sp800-53/r5/ac/4"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-8",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/8"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-28",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/28"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0018",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Telemetry Authentication",
+      "description": "Implement end-to-end authentication and integrity protection for telemetry data from spacecraft sensor to ground display to prevent deception attacks.",
+      "x_sparta_id": "CM-0018",
+      "x_nist_sp800_53_mappings": [
+        "SC-8",
+        "SI-7",
+        "AU-10"
+      ],
+      "x_applicable_techniques": [
+        "DE-0002",
+        "IMP-0001",
+        "EX-0014"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0018"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-8",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/8"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/7"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AU-10",
+          "url": "https://csf.tools/reference/sp800-53/r5/au/10"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0019",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "FDIR Protection",
+      "description": "Implement tamper-resistant fault detection, isolation, and recovery systems with hardware-enforced configuration protection and independent monitoring.",
+      "x_sparta_id": "CM-0019",
+      "x_nist_sp800_53_mappings": [
+        "SI-17",
+        "CP-10",
+        "SI-7"
+      ],
+      "x_applicable_techniques": [
+        "DE-0001",
+        "IMP-0002",
+        "IMP-0004"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0019"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-17",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/17"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "CP-10",
+          "url": "https://csf.tools/reference/sp800-53/r5/cp/10"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/7"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0020",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Audit Log Protection",
+      "description": "Implement protected audit logging with offload to ground storage, log integrity verification, and event prioritization to resist log overflow attacks.",
+      "x_sparta_id": "CM-0020",
+      "x_nist_sp800_53_mappings": [
+        "AU-4",
+        "AU-5",
+        "AU-9",
+        "AU-11"
+      ],
+      "x_applicable_techniques": [
+        "DE-0010",
+        "DE-0003"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0020"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AU-4",
+          "url": "https://csf.tools/reference/sp800-53/r5/au/4"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AU-5",
+          "url": "https://csf.tools/reference/sp800-53/r5/au/5"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AU-9",
+          "url": "https://csf.tools/reference/sp800-53/r5/au/9"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AU-11",
+          "url": "https://csf.tools/reference/sp800-53/r5/au/11"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0021",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Access Control for Whitelists",
+      "description": "Apply multi-party authorization and tamper protection for all whitelist, access control list, and authorization configuration modifications.",
+      "x_sparta_id": "CM-0021",
+      "x_nist_sp800_53_mappings": [
+        "AC-3",
+        "AC-6",
+        "CM-5"
+      ],
+      "x_applicable_techniques": [
+        "DE-0006",
+        "EX-0003"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0021"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AC-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/ac/3"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AC-6",
+          "url": "https://csf.tools/reference/sp800-53/r5/ac/6"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "CM-5",
+          "url": "https://csf.tools/reference/sp800-53/r5/cm/5"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0022",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Redundant Ground Station Network",
+      "description": "Deploy geographically diverse ground stations to provide redundant communication paths that resist regional jamming, weather disruption, and facility compromise.",
+      "x_sparta_id": "CM-0022",
+      "x_nist_sp800_53_mappings": [
+        "CP-7",
+        "CP-8",
+        "SC-36"
+      ],
+      "x_applicable_techniques": [
+        "EX-0016",
+        "IMP-0003",
+        "IMP-0002"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0022"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "CP-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/cp/7"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "CP-8",
+          "url": "https://csf.tools/reference/sp800-53/r5/cp/8"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-36",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/36"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0023",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "PNT Integrity Validation",
+      "description": "Implement multi-source position, navigation, and timing validation using independent references to detect GPS spoofing and geofencing attacks.",
+      "x_sparta_id": "CM-0023",
+      "x_nist_sp800_53_mappings": [
+        "SC-45",
+        "SI-4",
+        "SI-7"
+      ],
+      "x_applicable_techniques": [
+        "EX-0002",
+        "EX-0014"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0023"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-45",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/45"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-4",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/4"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/7"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0024",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Visiting Vehicle Security",
+      "description": "Implement authentication, authorization, and network isolation for all visiting vehicle interfaces including docking ports and proximity communication links.",
+      "x_sparta_id": "CM-0024",
+      "x_nist_sp800_53_mappings": [
+        "AC-17",
+        "IA-3",
+        "SC-7"
+      ],
+      "x_applicable_techniques": [
+        "LM-0004",
+        "IA-0005"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0024"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AC-17",
+          "url": "https://csf.tools/reference/sp800-53/r5/ac/17"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "IA-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/ia/3"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/7"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0025",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Command Safeguards",
+      "description": "Implement commanding safeguards including parameter range checks, dual-authorization for critical operations, and hardware interlocks that prevent destructive commands.",
+      "x_sparta_id": "CM-0025",
+      "x_nist_sp800_53_mappings": [
+        "AC-3",
+        "CM-5",
+        "SI-10"
+      ],
+      "x_applicable_techniques": [
+        "EX-0012",
+        "IMP-0005",
+        "IMP-0004"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0025"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AC-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/ac/3"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "CM-5",
+          "url": "https://csf.tools/reference/sp800-53/r5/cm/5"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-10",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/10"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0026",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Information Classification",
+      "description": "Apply information classification policies to spacecraft design, mission planning, and operational data to restrict adversary reconnaissance capabilities.",
+      "x_sparta_id": "CM-0026",
+      "x_nist_sp800_53_mappings": [
+        "RA-5",
+        "PM-5",
+        "SC-16"
+      ],
+      "x_applicable_techniques": [
+        "REC-0001",
+        "REC-0002",
+        "REC-0003",
+        "REC-0004",
+        "REC-0006",
+        "REC-0009"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0026"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "RA-5",
+          "url": "https://csf.tools/reference/sp800-53/r5/ra/5"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "PM-5",
+          "url": "https://csf.tools/reference/sp800-53/r5/pm/5"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-16",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/16"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0027",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Virtualization Security",
+      "description": "Apply security patches and hardening to hypervisor and partitioning software, with hardware-enforced memory isolation between virtual machines.",
+      "x_sparta_id": "CM-0027",
+      "x_nist_sp800_53_mappings": [
+        "SC-3",
+        "SC-39",
+        "SI-7"
+      ],
+      "x_applicable_techniques": [
+        "LM-0005",
+        "DE-0007"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0027"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-3",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/3"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-39",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/39"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/7"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0028",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Electromagnetic Shielding",
+      "description": "Apply TEMPEST countermeasures and electromagnetic shielding to ground processing facilities and spacecraft subsystems to prevent side-channel attacks.",
+      "x_sparta_id": "CM-0028",
+      "x_nist_sp800_53_mappings": [
+        "PE-19",
+        "PE-21",
+        "SC-8"
+      ],
+      "x_applicable_techniques": [
+        "EX-0015",
+        "EXF-0002"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0028"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "PE-19",
+          "url": "https://csf.tools/reference/sp800-53/r5/pe/19"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "PE-21",
+          "url": "https://csf.tools/reference/sp800-53/r5/pe/21"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-8",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/8"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0029",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Auxiliary Device Controls",
+      "description": "Implement strict access controls, device whitelisting, and security scanning for all auxiliary devices connecting to spacecraft or ground systems.",
+      "x_sparta_id": "CM-0029",
+      "x_nist_sp800_53_mappings": [
+        "AC-19",
+        "AC-20",
+        "MP-7",
+        "SC-41"
+      ],
+      "x_applicable_techniques": [
+        "IA-0011",
+        "IA-0012"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0029"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AC-19",
+          "url": "https://csf.tools/reference/sp800-53/r5/ac/19"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "AC-20",
+          "url": "https://csf.tools/reference/sp800-53/r5/ac/20"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "MP-7",
+          "url": "https://csf.tools/reference/sp800-53/r5/mp/7"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SC-41",
+          "url": "https://csf.tools/reference/sp800-53/r5/sc/41"
+        }
+      ]
+    },
+    {
+      "type": "course-of-action",
+      "spec_version": "2.1",
+      "id": "course-of-action--sparta-cm-0030",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Secure Development Practices",
+      "description": "Apply secure coding standards, static analysis, fuzzing, and code review throughout the flight software development lifecycle.",
+      "x_sparta_id": "CM-0030",
+      "x_nist_sp800_53_mappings": [
+        "SA-11",
+        "SA-15",
+        "SA-17",
+        "SI-10"
+      ],
+      "x_applicable_techniques": [
+        "EX-0009",
+        "REC-0006",
+        "PER-0002"
+      ],
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "CM-0030"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SA-11",
+          "url": "https://csf.tools/reference/sp800-53/r5/sa/11"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SA-15",
+          "url": "https://csf.tools/reference/sp800-53/r5/sa/15"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SA-17",
+          "url": "https://csf.tools/reference/sp800-53/r5/sa/17"
+        },
+        {
+          "source_name": "NIST SP 800-53 Rev. 5",
+          "external_id": "SI-10",
+          "url": "https://csf.tools/reference/sp800-53/r5/si/10"
+        }
+      ]
+    }
+  ]
+}

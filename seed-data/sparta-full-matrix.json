@@ -1,0 +1,2651 @@
+{
+  "version": "3.2",
+  "generated": "2026-03-25",
+  "source": "SPARTA - Space Attack Research & Tactic Analysis (The Aerospace Corporation)",
+  "url": "https://sparta.aerospace.org",
+  "stix_spec_version": "2.1",
+  "tactics": [
+    {
+      "id": "x-sparta-tactic--ST0001",
+      "type": "x-sparta-tactic",
+      "name": "Reconnaissance",
+      "short_name": "reconnaissance",
+      "description": "The adversary is trying to gather information they can use to plan future operations targeting space systems.",
+      "technique_ids": [
+        "REC-0001",
+        "REC-0002",
+        "REC-0003",
+        "REC-0004",
+        "REC-0005",
+        "REC-0006",
+        "REC-0007",
+        "REC-0008",
+        "REC-0009"
+      ],
+      "technique_count": 9
+    },
+    {
+      "id": "x-sparta-tactic--ST0002",
+      "type": "x-sparta-tactic",
+      "name": "Resource Development",
+      "short_name": "resource-development",
+      "description": "The adversary is trying to establish resources they can use to support operations against space systems.",
+      "technique_ids": [
+        "RD-0001",
+        "RD-0002",
+        "RD-0003",
+        "RD-0004",
+        "RD-0005"
+      ],
+      "technique_count": 5
+    },
+    {
+      "id": "x-sparta-tactic--ST0003",
+      "type": "x-sparta-tactic",
+      "name": "Initial Access",
+      "short_name": "initial-access",
+      "description": "The adversary is trying to get into the space system or its supporting infrastructure.",
+      "technique_ids": [
+        "IA-0001",
+        "IA-0002",
+        "IA-0003",
+        "IA-0004",
+        "IA-0005",
+        "IA-0006",
+        "IA-0007",
+        "IA-0008",
+        "IA-0009",
+        "IA-0010",
+        "IA-0011",
+        "IA-0012",
+        "IA-0013"
+      ],
+      "technique_count": 13
+    },
+    {
+      "id": "x-sparta-tactic--ST0004",
+      "type": "x-sparta-tactic",
+      "name": "Execution",
+      "short_name": "execution",
+      "description": "The adversary is trying to run malicious code or commands on a space system.",
+      "technique_ids": [
+        "EX-0001",
+        "EX-0002",
+        "EX-0003",
+        "EX-0004",
+        "EX-0005",
+        "EX-0006",
+        "EX-0007",
+        "EX-0008",
+        "EX-0009",
+        "EX-0010",
+        "EX-0011",
+        "EX-0012",
+        "EX-0013",
+        "EX-0014",
+        "EX-0015",
+        "EX-0016",
+        "EX-0017",
+        "EX-0018"
+      ],
+      "technique_count": 18
+    },
+    {
+      "id": "x-sparta-tactic--ST0005",
+      "type": "x-sparta-tactic",
+      "name": "Persistence",
+      "short_name": "persistence",
+      "description": "The adversary is trying to maintain their foothold in the space system.",
+      "technique_ids": [
+        "PER-0001",
+        "PER-0002",
+        "PER-0003",
+        "PER-0004",
+        "PER-0005"
+      ],
+      "technique_count": 5
+    },
+    {
+      "id": "x-sparta-tactic--ST0006",
+      "type": "x-sparta-tactic",
+      "name": "Defense Evasion",
+      "short_name": "defense-evasion",
+      "description": "The adversary is trying to avoid being detected within the space system.",
+      "technique_ids": [
+        "DE-0001",
+        "DE-0002",
+        "DE-0003",
+        "DE-0004",
+        "DE-0005",
+        "DE-0006",
+        "DE-0007",
+        "DE-0008",
+        "DE-0009",
+        "DE-0010",
+        "DE-0011",
+        "DE-0012"
+      ],
+      "technique_count": 12
+    },
+    {
+      "id": "x-sparta-tactic--ST0007",
+      "type": "x-sparta-tactic",
+      "name": "Lateral Movement",
+      "short_name": "lateral-movement",
+      "description": "The adversary is trying to move through the space system environment.",
+      "technique_ids": [
+        "LM-0001",
+        "LM-0002",
+        "LM-0003",
+        "LM-0004",
+        "LM-0005",
+        "LM-0006",
+        "LM-0007"
+      ],
+      "technique_count": 7
+    },
+    {
+      "id": "x-sparta-tactic--ST0008",
+      "type": "x-sparta-tactic",
+      "name": "Exfiltration",
+      "short_name": "exfiltration",
+      "description": "The adversary is trying to steal data from the space system.",
+      "technique_ids": [
+        "EXF-0001",
+        "EXF-0002",
+        "EXF-0003",
+        "EXF-0004",
+        "EXF-0005",
+        "EXF-0006",
+        "EXF-0007",
+        "EXF-0008",
+        "EXF-0009",
+        "EXF-0010"
+      ],
+      "technique_count": 10
+    },
+    {
+      "id": "x-sparta-tactic--ST0009",
+      "type": "x-sparta-tactic",
+      "name": "Impact",
+      "short_name": "impact",
+      "description": "The adversary is trying to manipulate, interrupt, or destroy space systems and data.",
+      "technique_ids": [
+        "IMP-0001",
+        "IMP-0002",
+        "IMP-0003",
+        "IMP-0004",
+        "IMP-0005",
+        "IMP-0006"
+      ],
+      "technique_count": 6
+    }
+  ],
+  "techniques": [
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rec-0001",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Gather Spacecraft Design Information",
+      "description": "An adversary collects information about spacecraft bus design, subsystem architecture, power budgets, and hardware component specifications. This information may be obtained from public filings, procurement records, conference papers, or regulatory submissions and is used to identify exploitable interfaces.",
+      "x_sparta_id": "REC-0001",
+      "x_sparta_tactic": "Reconnaissance",
+      "x_sparta_tactic_id": "ST0001",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/REC-0001/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "reconnaissance"
+        }
+      ],
+      "x_mitigation_guidance": "Apply information classification to spacecraft design documents. Limit disclosure of bus architecture details in public regulatory filings. Conduct periodic reviews of publicly available technical content for inadvertent disclosures.",
+      "x_detection_guidance": "Monitor access to internal design repositories for unusual download patterns. Track citations of proprietary design elements in external publications. Alert on bulk access to technical document management systems.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "REC-0001",
+          "url": "https://sparta.aerospace.org/technique/REC-0001/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rec-0002",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Gather Spacecraft Descriptors",
+      "description": "An adversary collects identifying descriptors such as NORAD catalog numbers, international designators, orbital parameters (TLE/ephemeris), and frequency allocations. These descriptors enable tracking and targeting of specific spacecraft.",
+      "x_sparta_id": "REC-0002",
+      "x_sparta_tactic": "Reconnaissance",
+      "x_sparta_tactic_id": "ST0001",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/REC-0002/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "reconnaissance"
+        }
+      ],
+      "x_mitigation_guidance": "Restrict publication of detailed orbital parameters where operationally feasible. Use selective availability for non-public ephemeris data. Coordinate with space surveillance networks to limit unauthorized TLE distribution.",
+      "x_detection_guidance": "Monitor for bulk queries against space-track.org or similar catalog services that target your constellation. Detect scraping of ITU frequency filing databases for your allocated bands.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "REC-0002",
+          "url": "https://sparta.aerospace.org/technique/REC-0002/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rec-0003",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Gather Spacecraft Communications Information",
+      "description": "An adversary gathers details about spacecraft communication links including frequencies, modulation schemes, protocol stacks, encryption status, and ground station locations. This enables planning of interception, jamming, or spoofing attacks against RF links.",
+      "x_sparta_id": "REC-0003",
+      "x_sparta_tactic": "Reconnaissance",
+      "x_sparta_tactic_id": "ST0001",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/REC-0003/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "reconnaissance"
+        }
+      ],
+      "x_mitigation_guidance": "Encrypt all command and telemetry links. Classify communication architecture details and restrict access to link budgets. Use frequency hopping or spread-spectrum techniques where mission constraints allow.",
+      "x_detection_guidance": "Deploy RF spectrum monitoring at ground stations to detect unauthorized signal analysis. Monitor for reconnaissance probes against ground station network infrastructure. Alert on anomalous queries to frequency coordination databases.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "REC-0003",
+          "url": "https://sparta.aerospace.org/technique/REC-0003/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rec-0004",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Gather Launch Information",
+      "description": "An adversary collects information about launch schedules, launch vehicle integration procedures, pre-launch testing timelines, and payload delivery logistics. This knowledge can be used to time attacks during vulnerable pre-operational phases.",
+      "x_sparta_id": "REC-0004",
+      "x_sparta_tactic": "Reconnaissance",
+      "x_sparta_tactic_id": "ST0001",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/REC-0004/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "reconnaissance"
+        }
+      ],
+      "x_mitigation_guidance": "Limit public disclosure of detailed launch integration schedules. Apply need-to-know access controls to launch facility network credentials. Conduct security reviews of launch provider information sharing agreements.",
+      "x_detection_guidance": "Monitor for unusual interest in launch facility access schedules. Track anomalous queries to launch service provider portals. Alert on social engineering attempts targeting launch integration personnel.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "REC-0004",
+          "url": "https://sparta.aerospace.org/technique/REC-0004/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rec-0005",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Eavesdropping",
+      "description": "An adversary intercepts and records downlink, uplink, or crosslink radio-frequency transmissions from a spacecraft to gather mission data, telemetry parameters, or command acknowledgement patterns. Unencrypted or weakly-encrypted RF links are particularly vulnerable.",
+      "x_sparta_id": "REC-0005",
+      "x_sparta_tactic": "Reconnaissance",
+      "x_sparta_tactic_id": "ST0001",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/REC-0005/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "reconnaissance"
+        }
+      ],
+      "x_mitigation_guidance": "Encrypt all downlink and uplink communications using AES-256 or equivalent. Implement Perfect Forward Secrecy for session keys. Apply spread-spectrum techniques and minimize transmission power to reduce intercept probability.",
+      "x_detection_guidance": "Deploy RF spectrum monitoring at ground stations to detect unexpected receivers in the footprint. Alert on anomalous SNR degradation that could indicate a nearby intercept platform. Correlate downlink traffic volume with known scheduled contacts.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "REC-0005",
+          "url": "https://sparta.aerospace.org/technique/REC-0005/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rec-0006",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Gather FSW Development Information",
+      "description": "An adversary collects information about flight software (FSW) development practices, toolchains, version control systems, coding standards, and update mechanisms. Knowledge of the FSW build pipeline enables targeted supply chain or code injection attacks.",
+      "x_sparta_id": "REC-0006",
+      "x_sparta_tactic": "Reconnaissance",
+      "x_sparta_tactic_id": "ST0001",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/REC-0006/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "reconnaissance"
+        }
+      ],
+      "x_mitigation_guidance": "Restrict access to FSW development environments and repositories. Apply multi-factor authentication to all development infrastructure. Conduct regular security audits of the software build and delivery pipeline.",
+      "x_detection_guidance": "Monitor FSW repositories for unauthorized access attempts or cloning. Track anomalous CI/CD pipeline activity. Alert on external network connections from development environments.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "REC-0006",
+          "url": "https://sparta.aerospace.org/technique/REC-0006/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rec-0007",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Monitor for Safe-Mode Indicators",
+      "description": "An adversary monitors spacecraft telemetry or public status announcements to detect when a spacecraft enters safe mode, a minimal-functionality state with reduced security protections. Safe mode often disables authentication, encryption, or access controls to prioritize recovery.",
+      "x_sparta_id": "REC-0007",
+      "x_sparta_tactic": "Reconnaissance",
+      "x_sparta_tactic_id": "ST0001",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/REC-0007/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "reconnaissance"
+        }
+      ],
+      "x_mitigation_guidance": "Implement authentication even in safe-mode operations. Avoid broadcasting safe-mode status on unencrypted channels. Design safe-mode protocols that maintain minimum security guarantees.",
+      "x_detection_guidance": "Monitor for unusual interest in spacecraft health status from external parties. Detect anomalous telemetry monitoring patterns that correlate with spacecraft anomaly events. Alert on queries targeting spacecraft operations status pages.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "REC-0007",
+          "url": "https://sparta.aerospace.org/technique/REC-0007/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rec-0008",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Hardware Recon",
+      "description": "An adversary identifies specific hardware components, FPGA configurations, processor types, and radiation-hardened chip models used in a spacecraft or ground system. This information enables identification of known hardware vulnerabilities, side-channel attack vectors, or counterfeit component injection opportunities.",
+      "x_sparta_id": "REC-0008",
+      "x_sparta_tactic": "Reconnaissance",
+      "x_sparta_tactic_id": "ST0001",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/REC-0008/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "reconnaissance"
+        }
+      ],
+      "x_mitigation_guidance": "Classify hardware bills of materials and restrict distribution. Use trusted supplier programs and component provenance tracking. Apply tamper-evident seals to critical hardware assemblies.",
+      "x_detection_guidance": "Monitor procurement portals for unauthorized queries about space-grade components. Track attempts to acquire identical hardware for reverse engineering. Alert on suspicious component sourcing requests.",
+      "confidence": 75,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "REC-0008",
+          "url": "https://sparta.aerospace.org/technique/REC-0008/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rec-0009",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Gather Mission Information",
+      "description": "An adversary collects high-level mission information including operational objectives, coverage areas, revisit rates, data products, and customer relationships. This intelligence enables planning of attacks timed to maximum operational impact.",
+      "x_sparta_id": "REC-0009",
+      "x_sparta_tactic": "Reconnaissance",
+      "x_sparta_tactic_id": "ST0001",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/REC-0009/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "reconnaissance"
+        }
+      ],
+      "x_mitigation_guidance": "Restrict publication of detailed mission timelines and operational schedules. Apply classification to customer contract details and data delivery agreements. Limit public disclosure of constellation coverage gaps.",
+      "x_detection_guidance": "Monitor for unusual interest in mission planning documents. Detect social engineering attempts targeting mission operations personnel. Alert on anomalous access patterns to mission scheduling systems.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "REC-0009",
+          "url": "https://sparta.aerospace.org/technique/REC-0009/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rd-0001",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Acquire Infrastructure",
+      "description": "An adversary acquires ground station infrastructure, RF transmission equipment, computing resources, or network infrastructure to support space system attacks. This may include purchasing or leasing antenna systems capable of transmitting on spacecraft command frequencies.",
+      "x_sparta_id": "RD-0001",
+      "x_sparta_tactic": "Resource Development",
+      "x_sparta_tactic_id": "ST0002",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/RD-0001/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "resource-development"
+        }
+      ],
+      "x_mitigation_guidance": "Monitor spectrum usage near ground stations for unauthorized transmitters. Coordinate with regulatory bodies to track antenna license applications near your frequencies. Implement RF fingerprinting to detect unauthorized command sources.",
+      "x_detection_guidance": "Detect new ground-based transmitters operating on spacecraft command frequencies. Monitor for procurement of space-grade RF equipment by unknown entities. Alert on new facility construction near ground station locations.",
+      "confidence": 75,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "RD-0001",
+          "url": "https://sparta.aerospace.org/technique/RD-0001/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rd-0002",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Compromise Infrastructure",
+      "description": "An adversary compromises existing ground stations, cloud infrastructure, or partner networks that interact with the space system. Compromised legitimate infrastructure provides a trusted pathway into space system operations.",
+      "x_sparta_id": "RD-0002",
+      "x_sparta_tactic": "Resource Development",
+      "x_sparta_tactic_id": "ST0002",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/RD-0002/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "resource-development"
+        }
+      ],
+      "x_mitigation_guidance": "Conduct regular security assessments of third-party ground infrastructure. Implement network segmentation between partner systems and core mission networks. Apply zero-trust principles to all inter-facility communications.",
+      "x_detection_guidance": "Monitor ground station networks for indicators of compromise. Detect anomalous command patterns originating from partner facilities. Alert on unexpected network traffic between ground segments.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "RD-0002",
+          "url": "https://sparta.aerospace.org/technique/RD-0002/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rd-0003",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Obtain Cyber Capabilities",
+      "description": "An adversary develops or acquires cyber tools specifically designed for space system exploitation, including custom RF signal generators, protocol fuzzers for CCSDS or SpaceWire, and flight software exploitation frameworks.",
+      "x_sparta_id": "RD-0003",
+      "x_sparta_tactic": "Resource Development",
+      "x_sparta_tactic_id": "ST0002",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/RD-0003/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "resource-development"
+        }
+      ],
+      "x_mitigation_guidance": "Track publication of space-specific exploitation tools and techniques. Monitor dark web forums for space system attack capability development. Maintain awareness of publicly available space protocol analysis tools.",
+      "x_detection_guidance": "Detect use of known space protocol fuzzing tools against ground infrastructure. Monitor for scanning activity targeting CCSDS protocol implementations. Alert on attempts to probe spacecraft simulator endpoints.",
+      "confidence": 75,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "RD-0003",
+          "url": "https://sparta.aerospace.org/technique/RD-0003/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rd-0004",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Stage Capabilities",
+      "description": "An adversary pre-positions attack tools, command sequences, or malicious payloads within ground systems, partner networks, or supply chain touchpoints in preparation for an attack. Staging may occur weeks or months before the actual attack.",
+      "x_sparta_id": "RD-0004",
+      "x_sparta_tactic": "Resource Development",
+      "x_sparta_tactic_id": "ST0002",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/RD-0004/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "resource-development"
+        }
+      ],
+      "x_mitigation_guidance": "Implement integrity monitoring on all ground system file systems. Conduct regular audits of command databases for unauthorized entries. Apply application whitelisting to mission-critical systems.",
+      "x_detection_guidance": "Detect unauthorized files or tools on ground system workstations. Monitor command databases for unexpected entries or modifications. Alert on staging of unknown executables in mission operations environments.",
+      "confidence": 75,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "RD-0004",
+          "url": "https://sparta.aerospace.org/technique/RD-0004/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-rd-0005",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Obtain Non-Cyber Capabilities",
+      "description": "An adversary acquires physical or kinetic capabilities to complement cyber attacks against space systems. This includes RF jamming equipment, directed energy weapons, anti-satellite kinetic interceptors, or co-orbital inspection and proximity maneuvering spacecraft.",
+      "x_sparta_id": "RD-0005",
+      "x_sparta_tactic": "Resource Development",
+      "x_sparta_tactic_id": "ST0002",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/RD-0005/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "resource-development"
+        }
+      ],
+      "x_mitigation_guidance": "Maintain space situational awareness to detect co-orbital threats. Coordinate with national space defense agencies for threat intelligence. Implement orbital maneuvering capabilities for collision avoidance.",
+      "x_detection_guidance": "Track launches of potential co-orbital threat objects. Monitor RF spectrum for high-power jamming signals. Detect proximity approaches through space surveillance networks.",
+      "confidence": 70,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "RD-0005",
+          "url": "https://sparta.aerospace.org/technique/RD-0005/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0001",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Compromise Supply Chain",
+      "description": "An adversary introduces malicious hardware, firmware, or software during the spacecraft manufacturing, integration, or testing phases. Supply chain compromises may target component vendors, subsystem integrators, or software libraries used in flight or ground systems.",
+      "x_sparta_id": "IA-0001",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0001/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Implement hardware and software provenance tracking throughout the supply chain. Apply code signing and integrity verification for all flight software deliveries. Conduct security audits of critical component suppliers.",
+      "x_detection_guidance": "Verify firmware and software checksums against known-good baselines during integration. Monitor for unauthorized modifications to component firmware during assembly. Alert on supply chain anomalies such as unexpected component substitutions.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0001",
+          "url": "https://sparta.aerospace.org/technique/IA-0001/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0002",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Compromise Software Defined Radio",
+      "description": "An adversary exploits vulnerabilities in software defined radio (SDR) equipment used in ground stations or spacecraft to gain access to communications processing. SDR platforms running general-purpose operating systems present a larger attack surface than traditional hardware radios.",
+      "x_sparta_id": "IA-0002",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0002/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Harden SDR operating systems and minimize installed software. Apply firmware signing and secure boot for SDR platforms. Isolate SDR processing from mission-critical networks.",
+      "x_detection_guidance": "Monitor SDR firmware integrity on a continuous basis. Detect unauthorized configuration changes to SDR parameters. Alert on anomalous signal processing behavior or unexpected frequency tuning.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0002",
+          "url": "https://sparta.aerospace.org/technique/IA-0002/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0003",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Crosslink via Compromised Neighbor",
+      "description": "An adversary uses a compromised spacecraft in the same constellation or orbital regime to access a target spacecraft through inter-satellite links (crosslinks). Crosslinks often operate with implicit trust between constellation members.",
+      "x_sparta_id": "IA-0003",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0003/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Implement mutual authentication on all inter-satellite links. Apply encryption and integrity checking to crosslink communications. Design crosslink protocols with per-node authorization controls.",
+      "x_detection_guidance": "Monitor crosslink traffic for anomalous command patterns. Detect unexpected inter-satellite communication sessions. Alert on crosslink message authentication failures or protocol violations.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0003",
+          "url": "https://sparta.aerospace.org/technique/IA-0003/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0004",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Secondary/Backup Communication Channel",
+      "description": "An adversary exploits backup or emergency communication channels that may have reduced security controls. Backup links are often designed for reliability over security and may lack encryption or strong authentication.",
+      "x_sparta_id": "IA-0004",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0004/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Apply authentication to all communication channels including backup and emergency links. Design backup channels with equivalent security to primary links. Regularly test backup channel security configurations.",
+      "x_detection_guidance": "Monitor backup communication channels for unauthorized activation. Detect command traffic on emergency frequencies during non-emergency conditions. Alert on authentication bypass attempts via secondary channels.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0004",
+          "url": "https://sparta.aerospace.org/technique/IA-0004/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0005",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Rendezvous & Proximity Operations",
+      "description": "An adversary maneuvers a spacecraft into close proximity with the target to conduct RF interception, signal injection, visual inspection, or physical interference. Proximity operations enable attacks that require line-of-sight or close-range RF access.",
+      "x_sparta_id": "IA-0005",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0005/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Maintain comprehensive space situational awareness for all operational assets. Implement conjunction warning and collision avoidance procedures. Develop proximity exclusion zones and response protocols.",
+      "x_detection_guidance": "Track all objects approaching within defined keep-out zones. Monitor for unexpected orbital maneuvers by nearby objects. Alert on co-orbital objects matching similar orbital elements.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0005",
+          "url": "https://sparta.aerospace.org/technique/IA-0005/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0006",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Compromise Hosted Payload",
+      "description": "An adversary gains access to the primary spacecraft through a compromised hosted payload that shares the spacecraft bus. Hosted payloads may have independent communication links and software that, if compromised, can be used to pivot to bus-level systems.",
+      "x_sparta_id": "IA-0006",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0006/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Implement strict bus isolation between hosted payloads and core spacecraft systems. Apply hardware-enforced memory protection between payload and bus processors. Audit hosted payload interfaces for privilege escalation vectors.",
+      "x_detection_guidance": "Monitor hosted payload resource usage for anomalous patterns. Detect unauthorized access attempts from payload processors to bus subsystems. Alert on unexpected data transfers between payload and bus interfaces.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0006",
+          "url": "https://sparta.aerospace.org/technique/IA-0006/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0007",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Compromise Ground System",
+      "description": "An adversary targets ground segment infrastructure including mission operations centers, ground stations, network operations centers, and data processing facilities. Ground systems run conventional IT infrastructure and are susceptible to standard cyber attack vectors.",
+      "x_sparta_id": "IA-0007",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0007/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Apply defense-in-depth security architecture to ground systems. Implement network segmentation between IT and operational technology networks. Conduct regular penetration testing of ground segment infrastructure.",
+      "x_detection_guidance": "Monitor ground system networks with intrusion detection systems. Detect unauthorized access to mission planning and commanding workstations. Alert on anomalous network traffic between ground system segments.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0007",
+          "url": "https://sparta.aerospace.org/technique/IA-0007/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0008",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Rogue External Entity",
+      "description": "An adversary establishes a rogue ground station or relay that impersonates legitimate infrastructure to intercept, modify, or inject spacecraft commands. The rogue entity may operate on authorized frequencies to appear legitimate to the spacecraft.",
+      "x_sparta_id": "IA-0008",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0008/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Implement cryptographic authentication for all ground-to-space commands. Use RF fingerprinting to validate ground station identity. Apply command counter and sequence validation to reject replayed or injected commands.",
+      "x_detection_guidance": "Monitor for unauthorized transmissions on spacecraft command frequencies. Detect command signals originating from unexpected geographic locations. Alert on command authentication failures that may indicate rogue transmitter activity.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0008",
+          "url": "https://sparta.aerospace.org/technique/IA-0008/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0009",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Trusted Relationship",
+      "description": "An adversary exploits trusted relationships between organizations such as launch providers, payload operators, data relay services, or spectrum sharing partners to gain access to the target space system. Trust relationships often grant network access or shared credentials.",
+      "x_sparta_id": "IA-0009",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0009/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Apply zero-trust principles to all partner interconnections. Implement dedicated security monitoring for partner access points. Conduct regular security assessments of trusted partner interfaces.",
+      "x_detection_guidance": "Monitor partner access for anomalous usage patterns. Detect lateral movement originating from trusted partner connections. Alert on partner credential usage outside normal operational windows.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0009",
+          "url": "https://sparta.aerospace.org/technique/IA-0009/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0010",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Unauthorized Access During Safe-Mode",
+      "description": "An adversary exploits the reduced security posture of a spacecraft operating in safe mode to gain unauthorized access. Safe mode typically disables or weakens authentication, encryption, and access control mechanisms to prioritize system recovery.",
+      "x_sparta_id": "IA-0010",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0010/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Design safe-mode protocols that maintain minimum authentication requirements. Implement rate limiting and command validation even in degraded modes. Restrict safe-mode commanding to pre-authenticated ground stations.",
+      "x_detection_guidance": "Monitor for command activity targeting spacecraft during safe-mode transitions. Detect unauthorized commanding attempts during anomaly recovery. Alert on safe-mode entry that correlates with external attack indicators.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0010",
+          "url": "https://sparta.aerospace.org/technique/IA-0010/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0011",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Auxiliary Device Compromise",
+      "description": "An adversary compromises auxiliary devices connected to the spacecraft or ground system such as test equipment, diagnostic ports, maintenance laptops, or removable media used during integration or on-orbit operations.",
+      "x_sparta_id": "IA-0011",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0011/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Implement strict access controls for auxiliary device connections. Apply USB and removable media policies to ground segment workstations. Conduct security scanning of all devices before connecting to mission systems.",
+      "x_detection_guidance": "Monitor for unauthorized device connections to ground system networks. Detect anomalous USB or serial port activity on mission-critical workstations. Alert on new device enumeration events on spacecraft integration equipment.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0011",
+          "url": "https://sparta.aerospace.org/technique/IA-0011/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0012",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Assembly, Test, and Launch Operation Compromise",
+      "description": "An adversary exploits the assembly, integration, test, and launch operations (AITLO) phase to introduce malicious modifications. The AITLO phase involves multiple organizations, facilities, and personnel with physical and network access to the spacecraft.",
+      "x_sparta_id": "IA-0012",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0012/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Implement access controls and monitoring throughout AITLO facilities. Apply configuration management and integrity verification at each integration milestone. Conduct background checks on all personnel with spacecraft access.",
+      "x_detection_guidance": "Monitor for unauthorized physical access to spacecraft during integration. Detect configuration changes that deviate from approved build procedures. Alert on software or firmware modifications outside planned update windows.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0012",
+          "url": "https://sparta.aerospace.org/technique/IA-0012/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ia-0013",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Compromise Host Spacecraft",
+      "description": "An adversary targets a host spacecraft platform to gain access to a ride-share or hosted payload customer's systems. In hosted payload arrangements, the host spacecraft operator controls bus-level systems that the payload depends on for power, communications, and attitude control.",
+      "x_sparta_id": "IA-0013",
+      "x_sparta_tactic": "Initial Access",
+      "x_sparta_tactic_id": "ST0003",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IA-0013/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "initial-access"
+        }
+      ],
+      "x_mitigation_guidance": "Negotiate strong security requirements in hosted payload agreements. Implement independent communication links for critical payload functions. Apply hardware isolation between host bus and payload subsystems.",
+      "x_detection_guidance": "Monitor host spacecraft telemetry for anomalous bus behavior that could indicate compromise. Detect unauthorized changes to payload resource allocations. Alert on unexpected commands from the host bus to payload interfaces.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IA-0013",
+          "url": "https://sparta.aerospace.org/technique/IA-0013/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0001",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Replay",
+      "description": "An adversary captures and retransmits previously valid command sequences to a spacecraft or ground system. Replayed commands can cause unintended operations if the system lacks anti-replay protections such as sequence counters, timestamps, or nonces.",
+      "x_sparta_id": "EX-0001",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0001/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement command sequence counters and cryptographic nonces. Apply timestamp validation with bounded acceptance windows. Use authenticated encryption that binds commands to specific sessions.",
+      "x_detection_guidance": "Monitor for duplicate command sequence numbers. Detect commands with stale timestamps or expired session tokens. Alert on command authentication failures that indicate replay attempts.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0001",
+          "url": "https://sparta.aerospace.org/technique/EX-0001/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0002",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Position, Navigation, and Timing (PNT) Geofencing",
+      "description": "An adversary manipulates GPS or other PNT signals to cause a spacecraft or ground system to believe it is in a different location, triggering geofenced behaviors such as payload shutdowns, frequency changes, or data deletion in restricted zones.",
+      "x_sparta_id": "EX-0002",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0002/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement multi-source PNT validation using independent navigation references. Apply anomaly detection to navigation solutions for sudden position jumps. Use authenticated GNSS signals where available.",
+      "x_detection_guidance": "Monitor navigation solutions for sudden discontinuities or drift. Detect PNT spoofing by comparing onboard navigation with ground-computed ephemeris. Alert on unexpected geofence-triggered actions.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0002",
+          "url": "https://sparta.aerospace.org/technique/EX-0002/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0003",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Modify Authentication Process",
+      "description": "An adversary modifies the authentication mechanisms on a spacecraft or ground system to bypass access controls. This may involve altering cryptographic key storage, disabling certificate validation, or modifying authentication firmware.",
+      "x_sparta_id": "EX-0003",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0003/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement hardware-rooted trust for authentication key storage. Apply integrity monitoring to authentication subsystem firmware. Use multi-factor authentication for ground system commanding.",
+      "x_detection_guidance": "Monitor authentication subsystem configuration for unauthorized changes. Detect modifications to key storage or certificate chains. Alert on authentication bypass indicators such as unsigned commands being accepted.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0003",
+          "url": "https://sparta.aerospace.org/technique/EX-0003/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0004",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Compromise Boot Memory",
+      "description": "An adversary modifies the boot memory (PROM, EEPROM, or flash) of a spacecraft processor to execute malicious code during startup. Boot memory compromises persist across power cycles and system resets, making them difficult to remediate on orbit.",
+      "x_sparta_id": "EX-0004",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0004/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement secure boot with cryptographic verification of boot images. Apply hardware write protection to boot memory where possible. Maintain verified boot image checksums for on-orbit comparison.",
+      "x_detection_guidance": "Verify boot memory integrity through periodic hash comparisons. Detect unauthorized write operations to boot memory regions. Alert on boot sequence anomalies such as unexpected execution paths or timing deviations.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0004",
+          "url": "https://sparta.aerospace.org/technique/EX-0004/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0005",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Exploit Hardware/Firmware Corruption",
+      "description": "An adversary exploits hardware or firmware vulnerabilities including radiation-induced bit flips, manufacturing defects, or known chip-level vulnerabilities. In the space radiation environment, single-event effects can corrupt memory or processor state in exploitable ways.",
+      "x_sparta_id": "EX-0005",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0005/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Apply radiation-hardened components for critical subsystems. Implement error detection and correction (EDAC) for memory and data paths. Use watchdog timers and redundant voting for critical processing.",
+      "x_detection_guidance": "Monitor error correction rates for anomalous increases indicating targeted attacks. Detect firmware integrity failures through periodic verification. Alert on processor behavior inconsistent with known radiation environment conditions.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0005",
+          "url": "https://sparta.aerospace.org/technique/EX-0005/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0006",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Disable/Bypass Encryption",
+      "description": "An adversary disables or bypasses encryption on spacecraft communication links or onboard data storage. This may be achieved by exploiting key management weaknesses, forcing fallback to unencrypted modes, or corrupting encryption hardware.",
+      "x_sparta_id": "EX-0006",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0006/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement hardware-backed encryption that cannot be disabled by software commands. Apply dual-authorization for encryption configuration changes. Design link encryption with no unencrypted fallback mode.",
+      "x_detection_guidance": "Monitor encryption status telemetry for unauthorized state changes. Detect fallback to unencrypted communication modes. Alert on cryptographic module error conditions that may indicate tampering.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0006",
+          "url": "https://sparta.aerospace.org/technique/EX-0006/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0007",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Trigger Single Event Upset",
+      "description": "An adversary deliberately induces single event upsets (SEUs) in spacecraft electronics using directed energy weapons or by maneuvering the spacecraft into high-radiation regions. SEUs can corrupt memory, alter processor execution, or disable subsystems.",
+      "x_sparta_id": "EX-0007",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0007/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement triple modular redundancy for critical processing. Apply EDAC on all memory systems. Design fault-tolerant architectures that can recover from SEU-induced state corruption.",
+      "x_detection_guidance": "Monitor SEU rates and correlate with orbital position and space weather conditions. Detect SEU patterns inconsistent with natural radiation environment. Alert on simultaneous upsets across multiple subsystems.",
+      "confidence": 75,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0007",
+          "url": "https://sparta.aerospace.org/technique/EX-0007/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0008",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Time Synchronized Execution",
+      "description": "An adversary schedules malicious commands or code to execute at a specific time, such as during an eclipse period, ground station pass, or orbital maneuver. Time-delayed execution can coordinate attacks across multiple space system components.",
+      "x_sparta_id": "EX-0008",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0008/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement monitoring of scheduled command queues for unauthorized entries. Apply authorization controls to time-tagged command uploads. Review pending command buffers during routine operations.",
+      "x_detection_guidance": "Audit time-tagged command queues for unexpected entries. Detect unauthorized additions to spacecraft scheduling tables. Alert on command execution at unexpected times relative to mission timeline.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0008",
+          "url": "https://sparta.aerospace.org/technique/EX-0008/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0009",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Exploit Code Flaws",
+      "description": "An adversary exploits software vulnerabilities such as buffer overflows, integer overflows, format string bugs, or logic errors in flight software, ground system software, or protocol implementations. Space system software often runs with limited memory protection.",
+      "x_sparta_id": "EX-0009",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0009/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Apply secure coding practices to all flight and ground software. Conduct static analysis, fuzzing, and code review of critical software components. Implement memory protection where processor architecture supports it.",
+      "x_detection_guidance": "Monitor flight software for unexpected crashes, resets, or anomalous behavior. Detect memory access violations or stack corruption indicators. Alert on software watchdog triggers that may indicate exploitation attempts.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0009",
+          "url": "https://sparta.aerospace.org/technique/EX-0009/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0010",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Malicious Code",
+      "description": "An adversary introduces malicious code such as malware, ransomware, wipers, or rootkits into spacecraft flight software or ground system computers. Malicious code may be delivered through supply chain compromise, software updates, or ground network intrusions.",
+      "x_sparta_id": "EX-0010",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0010/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement code signing and integrity verification for all software deliveries. Apply application whitelisting to ground system workstations. Conduct malware scanning of all software before upload to spacecraft.",
+      "x_detection_guidance": "Monitor for unexpected processes or code execution on ground systems. Detect unauthorized modifications to flight software images. Alert on behavioral anomalies consistent with malware execution.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0010",
+          "url": "https://sparta.aerospace.org/technique/EX-0010/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0011",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Exploit Reduced Protections During Safe-Mode",
+      "description": "An adversary exploits the reduced security posture of a spacecraft in safe mode to execute unauthorized commands. Safe mode typically weakens or disables security mechanisms to ensure the spacecraft remains commandable during anomaly resolution.",
+      "x_sparta_id": "EX-0011",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0011/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Design safe-mode security requirements that maintain core authentication. Implement command rate limiting during safe mode. Restrict safe-mode commanding to pre-authorized ground stations and operators.",
+      "x_detection_guidance": "Monitor for unauthorized commanding during safe-mode periods. Detect exploitation attempts coinciding with spacecraft anomaly events. Alert on command authentication failures during safe-mode operations.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0011",
+          "url": "https://sparta.aerospace.org/technique/EX-0011/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0012",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Modify On-Board Values",
+      "description": "An adversary modifies critical on-board parameter values such as attitude control limits, thermal set points, power management thresholds, or communication configuration parameters to degrade spacecraft operations or enable further attacks.",
+      "x_sparta_id": "EX-0012",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0012/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement parameter range checking and validation for all commanded values. Apply dual-authorization for critical parameter changes. Maintain ground-based mirrors of on-board parameter tables for comparison.",
+      "x_detection_guidance": "Monitor on-board parameter values for unauthorized changes. Detect parameter modifications outside approved operational ranges. Alert on commanded values that deviate significantly from mission planning baselines.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0012",
+          "url": "https://sparta.aerospace.org/technique/EX-0012/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0013",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Flooding",
+      "description": "An adversary overwhelms spacecraft or ground system communication links, processors, or memory with excessive data to cause denial of service. Flooding attacks can exhaust limited onboard resources, fill command buffers, or saturate downlink bandwidth.",
+      "x_sparta_id": "EX-0013",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0013/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement rate limiting and traffic shaping on all communication interfaces. Apply input validation and buffer size limits. Design systems to gracefully degrade under overload conditions.",
+      "x_detection_guidance": "Monitor communication link utilization for abnormal traffic volumes. Detect command buffer overflows or memory exhaustion conditions. Alert on sustained high-rate commanding from unexpected sources.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0013",
+          "url": "https://sparta.aerospace.org/technique/EX-0013/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0014",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Spoofing",
+      "description": "An adversary generates falsified signals, commands, or data that impersonate a legitimate source. Spoofing attacks can target RF command uplinks, GPS signals, inter-satellite communications, or ground system authentication tokens.",
+      "x_sparta_id": "EX-0014",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0014/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement cryptographic authentication on all command channels. Apply spread-spectrum and frequency hopping to resist RF spoofing. Use multi-source validation for navigation and timing signals.",
+      "x_detection_guidance": "Monitor for authentication failures that may indicate spoofing attempts. Detect anomalous RF signal characteristics inconsistent with known transmitters. Alert on conflicting data from redundant navigation or communication sources.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0014",
+          "url": "https://sparta.aerospace.org/technique/EX-0014/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0015",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Side-Channel Attack",
+      "description": "An adversary exploits physical side channels such as electromagnetic emissions, power consumption patterns, timing variations, or acoustic emanations to extract cryptographic keys, command sequences, or other sensitive data from spacecraft or ground system hardware.",
+      "x_sparta_id": "EX-0015",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0015/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Apply side-channel resistant implementations for cryptographic operations. Use electromagnetic shielding on sensitive processing equipment. Implement constant-time algorithms for security-critical computations.",
+      "x_detection_guidance": "Monitor electromagnetic emission profiles for anomalous patterns. Detect unauthorized RF measurement equipment near ground facilities. Alert on proximity operations by potential intelligence collection platforms.",
+      "confidence": 75,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0015",
+          "url": "https://sparta.aerospace.org/technique/EX-0015/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0016",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Jamming",
+      "description": "An adversary transmits high-power RF interference to disrupt spacecraft command uplinks, telemetry downlinks, or inter-satellite crosslinks. Jamming can prevent ground operators from commanding the spacecraft and block telemetry reception.",
+      "x_sparta_id": "EX-0016",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0016/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement spread-spectrum and frequency hopping for resilient communications. Design link budgets with anti-jam margins. Deploy geographically diverse ground stations for redundant communication paths.",
+      "x_detection_guidance": "Monitor received signal quality metrics for jamming indicators. Detect sudden SNR degradation or increased bit error rates. Alert on jamming conditions by correlating multiple ground station observations.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0016",
+          "url": "https://sparta.aerospace.org/technique/EX-0016/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0017",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Kinetic Physical Attack",
+      "description": "An adversary uses kinetic means such as anti-satellite missiles, co-orbital interceptors, or deliberate debris generation to physically damage or destroy a spacecraft. Kinetic attacks create persistent debris fields that threaten other space assets.",
+      "x_sparta_id": "EX-0017",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0017/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Maintain space situational awareness and conjunction assessment capabilities. Implement orbital maneuvering for collision avoidance. Develop constellation resilience through distributed architectures.",
+      "x_detection_guidance": "Track potential kinetic threat objects through space surveillance networks. Detect threat object maneuvers toward operational spacecraft. Alert on conjunction predictions that indicate potential kinetic engagement.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0017",
+          "url": "https://sparta.aerospace.org/technique/EX-0017/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-ex-0018",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Non-Kinetic Physical Attack",
+      "description": "An adversary uses non-kinetic physical means such as directed energy weapons (lasers, high-power microwaves), electromagnetic pulses, or nuclear detonation-induced radiation to damage, degrade, or temporarily disable spacecraft systems without physical contact.",
+      "x_sparta_id": "EX-0018",
+      "x_sparta_tactic": "Execution",
+      "x_sparta_tactic_id": "ST0004",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EX-0018/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "execution"
+        }
+      ],
+      "x_mitigation_guidance": "Implement radiation hardening for critical subsystems. Apply optical filtering and shuttering for sensitive sensors. Design fault-tolerant architectures that can recover from transient physical effects.",
+      "x_detection_guidance": "Monitor subsystem health telemetry for patterns consistent with directed energy effects. Detect anomalous sensor saturation or electronics upsets. Alert on geospatial intelligence indicating ground-based directed energy operations.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EX-0018",
+          "url": "https://sparta.aerospace.org/technique/EX-0018/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-per-0001",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Memory Compromise",
+      "description": "An adversary modifies spacecraft onboard memory (RAM, flash, EEPROM) to establish persistent malicious code that survives mode transitions and partial resets. Memory-resident persistence may target application memory, parameter tables, or operating system data structures.",
+      "x_sparta_id": "PER-0001",
+      "x_sparta_tactic": "Persistence",
+      "x_sparta_tactic_id": "ST0005",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/PER-0001/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "persistence"
+        }
+      ],
+      "x_mitigation_guidance": "Implement periodic memory integrity verification using checksums. Apply hardware-enforced memory protection boundaries. Maintain known-good memory images on the ground for comparison and recovery.",
+      "x_detection_guidance": "Monitor memory regions for unauthorized modifications through periodic hash checks. Detect unexpected memory write patterns during nominal operations. Alert on memory integrity failures or checksum mismatches.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "PER-0001",
+          "url": "https://sparta.aerospace.org/technique/PER-0001/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-per-0002",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Backdoor",
+      "description": "An adversary installs a backdoor in spacecraft flight software, ground system applications, or firmware that provides persistent unauthorized access. Backdoors may be introduced during development, integration, or through compromised software updates.",
+      "x_sparta_id": "PER-0002",
+      "x_sparta_tactic": "Persistence",
+      "x_sparta_tactic_id": "ST0005",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/PER-0002/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "persistence"
+        }
+      ],
+      "x_mitigation_guidance": "Implement code signing and integrity verification for all software components. Conduct thorough code review and security testing of flight software. Apply binary analysis to detect unauthorized code in firmware images.",
+      "x_detection_guidance": "Monitor for unexpected network connections or command channels in ground systems. Detect unauthorized functionality in flight software through behavioral analysis. Alert on software components that communicate on undocumented interfaces.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "PER-0002",
+          "url": "https://sparta.aerospace.org/technique/PER-0002/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-per-0003",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Ground System Presence",
+      "description": "An adversary maintains persistent access to ground segment infrastructure including mission operations centers, ground stations, or network operations centers. Ground system persistence enables ongoing spacecraft commanding and data exfiltration.",
+      "x_sparta_id": "PER-0003",
+      "x_sparta_tactic": "Persistence",
+      "x_sparta_tactic_id": "ST0005",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/PER-0003/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "persistence"
+        }
+      ],
+      "x_mitigation_guidance": "Implement endpoint detection and response on all ground system workstations. Apply network segmentation to limit lateral movement. Conduct regular threat hunting across ground segment infrastructure.",
+      "x_detection_guidance": "Monitor ground system endpoints for indicators of persistent access. Detect unauthorized remote access tools or scheduled tasks. Alert on anomalous user account activity in mission operations systems.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "PER-0003",
+          "url": "https://sparta.aerospace.org/technique/PER-0003/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-per-0004",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Replace Cryptographic Keys",
+      "description": "An adversary replaces cryptographic keys used for command authentication, telemetry encryption, or inter-satellite link security. Key replacement grants the adversary ongoing authenticated access while potentially locking out legitimate operators.",
+      "x_sparta_id": "PER-0004",
+      "x_sparta_tactic": "Persistence",
+      "x_sparta_tactic_id": "ST0005",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/PER-0004/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "persistence"
+        }
+      ],
+      "x_mitigation_guidance": "Implement hardware security modules for key storage with tamper protection. Apply multi-party authorization for key change operations. Maintain emergency key recovery procedures separate from primary key management.",
+      "x_detection_guidance": "Monitor key management systems for unauthorized key generation or replacement. Detect authentication anomalies following key change windows. Alert on key material that does not match expected generation parameters.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "PER-0004",
+          "url": "https://sparta.aerospace.org/technique/PER-0004/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-per-0005",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Credentialed Persistence",
+      "description": "An adversary uses compromised or created credentials to maintain persistent access to ground systems, satellite operations, or network infrastructure. Valid credentials allow the adversary to blend in with normal operator activity.",
+      "x_sparta_id": "PER-0005",
+      "x_sparta_tactic": "Persistence",
+      "x_sparta_tactic_id": "ST0005",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/PER-0005/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "persistence"
+        }
+      ],
+      "x_mitigation_guidance": "Implement multi-factor authentication for all operator access. Apply credential rotation policies and monitor for credential reuse. Use privileged access management solutions for mission-critical systems.",
+      "x_detection_guidance": "Monitor authentication logs for anomalous login patterns or geographic impossible travel. Detect credential usage outside normal working hours. Alert on newly created accounts or privilege escalation in mission systems.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "PER-0005",
+          "url": "https://sparta.aerospace.org/technique/PER-0005/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-de-0001",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Disable Fault Management",
+      "description": "An adversary disables or modifies the spacecraft fault detection, isolation, and recovery (FDIR) system to prevent the spacecraft from detecting and responding to malicious actions. Disabled fault management allows subsequent attacks to proceed without triggering automated protective responses.",
+      "x_sparta_id": "DE-0001",
+      "x_sparta_tactic": "Defense Evasion",
+      "x_sparta_tactic_id": "ST0006",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/DE-0001/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "defense-evasion"
+        }
+      ],
+      "x_mitigation_guidance": "Implement tamper-resistant FDIR configurations with hardware-enforced protection. Apply dual-authorization for FDIR parameter changes. Maintain independent watchdog systems that cannot be disabled from the main processor.",
+      "x_detection_guidance": "Monitor FDIR system status and configuration for unauthorized changes. Detect modifications to fault thresholds or response actions. Alert on FDIR disable commands that deviate from approved procedures.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "DE-0001",
+          "url": "https://sparta.aerospace.org/technique/DE-0001/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-de-0002",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Disrupt or Deceive Downlink",
+      "description": "An adversary manipulates telemetry downlink data to hide evidence of compromise from ground operators. This may involve modifying telemetry values, suppressing anomaly indicators, or injecting false nominal data into the downlink stream.",
+      "x_sparta_id": "DE-0002",
+      "x_sparta_tactic": "Defense Evasion",
+      "x_sparta_tactic_id": "ST0006",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/DE-0002/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "defense-evasion"
+        }
+      ],
+      "x_mitigation_guidance": "Implement end-to-end telemetry authentication from spacecraft to ground display. Apply redundant telemetry paths that cannot be simultaneously compromised. Cross-check telemetry values against independent measurement sources.",
+      "x_detection_guidance": "Compare telemetry from multiple independent collection points. Detect telemetry discontinuities or statistically improbable value sequences. Alert on telemetry frame integrity failures or unexpected data patterns.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "DE-0002",
+          "url": "https://sparta.aerospace.org/technique/DE-0002/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-de-0003",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "On-Board Values Obfuscation",
+      "description": "An adversary modifies on-board parameter values or telemetry storage to hide evidence of malicious activity. Obfuscated values may conceal altered spacecraft configurations, unauthorized commands, or resource consumption from malicious processes.",
+      "x_sparta_id": "DE-0003",
+      "x_sparta_tactic": "Defense Evasion",
+      "x_sparta_tactic_id": "ST0006",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/DE-0003/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "defense-evasion"
+        }
+      ],
+      "x_mitigation_guidance": "Implement tamper-evident logging of all parameter changes. Maintain ground-based mirrors of on-board configuration for cross-reference. Apply cryptographic authentication to parameter table entries.",
+      "x_detection_guidance": "Detect discrepancies between commanded values and reported telemetry. Monitor parameter change logs for unusual modification patterns. Alert on on-board values that are inconsistent with current mission phase or orbital conditions.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "DE-0003",
+          "url": "https://sparta.aerospace.org/technique/DE-0003/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-de-0004",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Masquerading",
+      "description": "An adversary disguises malicious commands, processes, or data as legitimate spacecraft operations to avoid detection. This may include mimicking routine housekeeping commands, using valid command formats with malicious parameters, or impersonating authorized operators.",
+      "x_sparta_id": "DE-0004",
+      "x_sparta_tactic": "Defense Evasion",
+      "x_sparta_tactic_id": "ST0006",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/DE-0004/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "defense-evasion"
+        }
+      ],
+      "x_mitigation_guidance": "Implement command verification against expected mission timeline. Apply behavioral analysis to detect anomalous command patterns. Use operator authentication tokens bound to specific command sessions.",
+      "x_detection_guidance": "Monitor for commands that match legitimate formats but contain unusual parameters. Detect operator session anomalies such as unexpected commanding rates. Alert on commands that deviate from approved mission procedures.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "DE-0004",
+          "url": "https://sparta.aerospace.org/technique/DE-0004/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-de-0005",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Exploit Reduced Protections During Safe-Mode",
+      "description": "An adversary leverages the weakened security posture of a spacecraft in safe mode to perform malicious activities while evading normal security monitoring. Safe-mode operation often reduces logging, disables anomaly detection, and weakens authentication requirements.",
+      "x_sparta_id": "DE-0005",
+      "x_sparta_tactic": "Defense Evasion",
+      "x_sparta_tactic_id": "ST0006",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/DE-0005/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "defense-evasion"
+        }
+      ],
+      "x_mitigation_guidance": "Design safe-mode with maintained security logging and monitoring. Implement minimum authentication requirements that persist through mode transitions. Apply additional ground-based monitoring during safe-mode recovery periods.",
+      "x_detection_guidance": "Increase ground monitoring during spacecraft safe-mode periods. Detect unauthorized activity that coincides with safe-mode transitions. Alert on command patterns that appear to deliberately trigger safe-mode entry.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "DE-0005",
+          "url": "https://sparta.aerospace.org/technique/DE-0005/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-de-0006",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Modify Whitelist",
+      "description": "An adversary modifies command whitelists, approved sender lists, or access control lists on the spacecraft or ground system to allow unauthorized operations. Whitelist modification enables the adversary to issue commands that would normally be rejected.",
+      "x_sparta_id": "DE-0006",
+      "x_sparta_tactic": "Defense Evasion",
+      "x_sparta_tactic_id": "ST0006",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/DE-0006/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "defense-evasion"
+        }
+      ],
+      "x_mitigation_guidance": "Implement hardware-enforced protection for whitelist configurations. Apply multi-party authorization for whitelist changes. Maintain audit trails of all access control list modifications with ground-based verification.",
+      "x_detection_guidance": "Monitor whitelist configurations for unauthorized additions or modifications. Detect new entries in command authorization lists. Alert on whitelist changes that do not correspond to approved change requests.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "DE-0006",
+          "url": "https://sparta.aerospace.org/technique/DE-0006/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-de-0007",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Rootkit",
+      "description": "An adversary installs a rootkit on spacecraft or ground system processors that hides malicious processes, files, or network connections from monitoring tools. Space system rootkits may operate at the operating system, hypervisor, or firmware level.",
+      "x_sparta_id": "DE-0007",
+      "x_sparta_tactic": "Defense Evasion",
+      "x_sparta_tactic_id": "ST0006",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/DE-0007/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "defense-evasion"
+        }
+      ],
+      "x_mitigation_guidance": "Implement secure boot with hardware root of trust. Apply runtime integrity monitoring independent of the main operating system. Use hardware-based attestation to verify system integrity.",
+      "x_detection_guidance": "Compare system state against known-good baselines using independent verification tools. Detect hidden processes through resource accounting discrepancies. Alert on memory or processing anomalies that indicate concealed execution.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "DE-0007",
+          "url": "https://sparta.aerospace.org/technique/DE-0007/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-de-0008",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Bootkit",
+      "description": "An adversary modifies boot-level code to execute malicious functionality before the operating system or flight software loads. Bootkits persist across reboots and are extremely difficult to detect or remove, especially on spacecraft with limited servicing options.",
+      "x_sparta_id": "DE-0008",
+      "x_sparta_tactic": "Defense Evasion",
+      "x_sparta_tactic_id": "ST0006",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/DE-0008/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "defense-evasion"
+        }
+      ],
+      "x_mitigation_guidance": "Implement hardware-enforced secure boot with cryptographic verification. Apply write protection to boot memory regions. Maintain verified boot image hashes for on-orbit comparison.",
+      "x_detection_guidance": "Verify boot image integrity through periodic hash comparisons. Detect boot sequence timing anomalies that may indicate additional code execution. Alert on boot memory write operations outside authorized update windows.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "DE-0008",
+          "url": "https://sparta.aerospace.org/technique/DE-0008/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-de-0009",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Camouflage, Concealment, and Decoys (CCD)",
+      "description": "An adversary uses physical camouflage, optical concealment, decoy objects, or signature management techniques to hide a spacecraft's true identity, capability, or intent from space surveillance systems. CCD enables undetected proximity operations or disguised attack platforms.",
+      "x_sparta_id": "DE-0009",
+      "x_sparta_tactic": "Defense Evasion",
+      "x_sparta_tactic_id": "ST0006",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/DE-0009/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "defense-evasion"
+        }
+      ],
+      "x_mitigation_guidance": "Maintain comprehensive space object catalogs with signature databases. Implement multi-phenomenology tracking combining radar, optical, and RF observations. Develop satellite characterization capabilities to detect anomalous physical properties.",
+      "x_detection_guidance": "Cross-reference space surveillance observations across multiple sensor types. Detect orbital behavior inconsistent with declared mission profiles. Alert on objects that exhibit signature management or deceptive orbital maneuvering.",
+      "confidence": 75,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "DE-0009",
+          "url": "https://sparta.aerospace.org/technique/DE-0009/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-de-0010",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Overflow Audit Log",
+      "description": "An adversary deliberately generates excessive events to overflow spacecraft or ground system audit logs, causing older entries that record malicious activity to be overwritten. Space systems have limited log storage, making them vulnerable to log exhaustion attacks.",
+      "x_sparta_id": "DE-0010",
+      "x_sparta_tactic": "Defense Evasion",
+      "x_sparta_tactic_id": "ST0006",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/DE-0010/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "defense-evasion"
+        }
+      ],
+      "x_mitigation_guidance": "Implement circular logging with offload to ground-based long-term storage. Apply log entry prioritization to preserve security-relevant events. Design log systems with dedicated storage that resists deliberate overflow.",
+      "x_detection_guidance": "Monitor log generation rates for anomalous increases. Detect audit log storage nearing capacity. Alert on event patterns consistent with deliberate log flooding.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "DE-0010",
+          "url": "https://sparta.aerospace.org/technique/DE-0010/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-de-0011",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Valid Credentials",
+      "description": "An adversary uses compromised but valid operator credentials to access spacecraft or ground systems while appearing as a legitimate user. Valid credential usage evades detection by matching normal access patterns and passing authentication checks.",
+      "x_sparta_id": "DE-0011",
+      "x_sparta_tactic": "Defense Evasion",
+      "x_sparta_tactic_id": "ST0006",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/DE-0011/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "defense-evasion"
+        }
+      ],
+      "x_mitigation_guidance": "Implement multi-factor authentication and behavioral analytics for operator access. Apply credential rotation and monitoring for credential compromise indicators. Use session binding and anomaly detection for authenticated sessions.",
+      "x_detection_guidance": "Monitor for authentication from unusual locations or at unusual times. Detect concurrent sessions or impossible travel scenarios. Alert on credential usage patterns that deviate from established operator baselines.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "DE-0011",
+          "url": "https://sparta.aerospace.org/technique/DE-0011/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-de-0012",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Component Collusion",
+      "description": "An adversary orchestrates multiple compromised components within the space system to cooperate in evading detection. Colluding components can suppress each other's anomalies, provide false attestation, or coordinate activities to appear normal individually while conducting an attack collectively.",
+      "x_sparta_id": "DE-0012",
+      "x_sparta_tactic": "Defense Evasion",
+      "x_sparta_tactic_id": "ST0006",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/DE-0012/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "defense-evasion"
+        }
+      ],
+      "x_mitigation_guidance": "Implement independent monitoring systems that cannot be compromised through the same attack vector. Apply diversity in redundant components to prevent common-mode compromise. Conduct system-level behavioral analysis that correlates multiple subsystem states.",
+      "x_detection_guidance": "Monitor for correlated anomalies across multiple subsystems. Detect coordinated parameter changes that individually appear normal. Alert on system-level behavioral patterns inconsistent with expected cross-subsystem relationships.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "DE-0012",
+          "url": "https://sparta.aerospace.org/technique/DE-0012/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-lm-0001",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Hosted Payload",
+      "description": "An adversary uses a compromised hosted payload to pivot to the host spacecraft bus or other co-hosted payloads. Hosted payload arrangements often share power buses, data interfaces, and communication links with the host platform.",
+      "x_sparta_id": "LM-0001",
+      "x_sparta_tactic": "Lateral Movement",
+      "x_sparta_tactic_id": "ST0007",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/LM-0001/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "lateral-movement"
+        }
+      ],
+      "x_mitigation_guidance": "Implement hardware-enforced isolation between hosted payloads and bus systems. Apply strict interface gatekeeping for all payload-to-bus communications. Audit payload data interfaces for unauthorized access patterns.",
+      "x_detection_guidance": "Monitor payload-to-bus interface traffic for unauthorized command or data patterns. Detect resource access from payload that exceeds allocated boundaries. Alert on unexpected data flows between co-hosted payload partitions.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "LM-0001",
+          "url": "https://sparta.aerospace.org/technique/LM-0001/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-lm-0002",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Exploit Lack of Bus Segregation",
+      "description": "An adversary moves between spacecraft subsystems by exploiting insufficient bus-level segregation. Many spacecraft use shared data buses (MIL-STD-1553, SpaceWire, CAN) where any connected subsystem can potentially access or influence other subsystems on the same bus.",
+      "x_sparta_id": "LM-0002",
+      "x_sparta_tactic": "Lateral Movement",
+      "x_sparta_tactic_id": "ST0007",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/LM-0002/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "lateral-movement"
+        }
+      ],
+      "x_mitigation_guidance": "Implement bus-level access controls and message filtering. Apply hardware partitioning between critical and non-critical subsystems. Design bus architectures with dedicated channels for security-critical communications.",
+      "x_detection_guidance": "Monitor bus traffic for messages from unauthorized sources. Detect subsystem communication patterns that deviate from expected bus topology. Alert on bus-level access violations or message addressing anomalies.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "LM-0002",
+          "url": "https://sparta.aerospace.org/technique/LM-0002/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-lm-0003",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Constellation Hopping via Crosslink",
+      "description": "An adversary uses inter-satellite crosslinks to move from a compromised spacecraft to other members of the constellation. Crosslinks often operate with high trust between constellation members and may lack per-link authentication.",
+      "x_sparta_id": "LM-0003",
+      "x_sparta_tactic": "Lateral Movement",
+      "x_sparta_tactic_id": "ST0007",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/LM-0003/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "lateral-movement"
+        }
+      ],
+      "x_mitigation_guidance": "Implement per-link authentication and encryption for all crosslinks. Apply network segmentation within the constellation mesh. Design crosslink protocols with least-privilege access controls.",
+      "x_detection_guidance": "Monitor crosslink traffic patterns for anomalous routing or commanding. Detect unauthorized configuration changes propagating through the constellation. Alert on crosslink sessions that deviate from expected topology.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "LM-0003",
+          "url": "https://sparta.aerospace.org/technique/LM-0003/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-lm-0004",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Visiting Vehicle Interface(s)",
+      "description": "An adversary uses visiting vehicle interfaces such as docking ports, berthing mechanisms, or proximity communication links to pivot between spacecraft. Visiting vehicle interfaces are designed for interoperability and may have reduced security controls.",
+      "x_sparta_id": "LM-0004",
+      "x_sparta_tactic": "Lateral Movement",
+      "x_sparta_tactic_id": "ST0007",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/LM-0004/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "lateral-movement"
+        }
+      ],
+      "x_mitigation_guidance": "Implement authentication and authorization for all visiting vehicle interfaces. Apply network isolation between visiting vehicle connections and core spacecraft systems. Conduct security assessments of visiting vehicle interface protocols.",
+      "x_detection_guidance": "Monitor visiting vehicle interfaces for unauthorized data transfers. Detect command injections through docking or proximity communication channels. Alert on visiting vehicle interface activation outside scheduled rendezvous windows.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "LM-0004",
+          "url": "https://sparta.aerospace.org/technique/LM-0004/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-lm-0005",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Virtualization Escape",
+      "description": "An adversary exploits vulnerabilities in virtualization or partitioning technology used on spacecraft or ground system processors to escape from a confined environment and access other virtual machines or the host system.",
+      "x_sparta_id": "LM-0005",
+      "x_sparta_tactic": "Lateral Movement",
+      "x_sparta_tactic_id": "ST0007",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/LM-0005/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "lateral-movement"
+        }
+      ],
+      "x_mitigation_guidance": "Apply security patches to hypervisor and partitioning software. Implement hardware-enforced memory isolation between partitions. Conduct security testing of virtualization boundaries under space system workloads.",
+      "x_detection_guidance": "Monitor for unexpected inter-partition communications. Detect memory access violations at partition boundaries. Alert on hypervisor integrity failures or unexpected privilege escalation.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "LM-0005",
+          "url": "https://sparta.aerospace.org/technique/LM-0005/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-lm-0006",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Launch Vehicle Interface",
+      "description": "An adversary exploits the interface between the launch vehicle and the spacecraft payload to move between systems during the launch phase. Launch vehicle interfaces provide power, telemetry, and command connections that may persist until spacecraft separation.",
+      "x_sparta_id": "LM-0006",
+      "x_sparta_tactic": "Lateral Movement",
+      "x_sparta_tactic_id": "ST0007",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/LM-0006/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "lateral-movement"
+        }
+      ],
+      "x_mitigation_guidance": "Implement strict interface definitions with minimum necessary connectivity. Apply hardware disconnects for launch vehicle interfaces after separation. Conduct security reviews of launch vehicle-to-spacecraft interface protocols.",
+      "x_detection_guidance": "Monitor launch vehicle interface activity for unauthorized data transfers. Detect command injections through launch vehicle connections during integration. Alert on interface activity that persists beyond expected separation timeline.",
+      "confidence": 75,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "LM-0006",
+          "url": "https://sparta.aerospace.org/technique/LM-0006/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-lm-0007",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Credentialed Traversal",
+      "description": "An adversary uses compromised credentials to move between ground system components, mission operations networks, or spacecraft command channels. Valid credentials allow lateral movement that blends with normal operator activity.",
+      "x_sparta_id": "LM-0007",
+      "x_sparta_tactic": "Lateral Movement",
+      "x_sparta_tactic_id": "ST0007",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/LM-0007/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "lateral-movement"
+        }
+      ],
+      "x_mitigation_guidance": "Implement network segmentation with per-segment authentication requirements. Apply least-privilege access controls for operator accounts. Use privileged access management to restrict credential scope.",
+      "x_detection_guidance": "Monitor for credential reuse across multiple systems. Detect unusual access patterns suggesting lateral traversal. Alert on sequential authentication to multiple systems within short time windows.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "LM-0007",
+          "url": "https://sparta.aerospace.org/technique/LM-0007/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-exf-0001",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Replay",
+      "description": "An adversary captures and replays previously recorded telemetry downlinks or data transmissions to extract mission data, imagery, or sensor information. Replayed signals may contain sensitive mission data that was originally encrypted with compromised keys.",
+      "x_sparta_id": "EXF-0001",
+      "x_sparta_tactic": "Exfiltration",
+      "x_sparta_tactic_id": "ST0008",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EXF-0001/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "exfiltration"
+        }
+      ],
+      "x_mitigation_guidance": "Implement session-unique encryption keys for all data transmissions. Apply ephemeral key agreement protocols that prevent retrospective decryption. Design link layer protocols with anti-replay protections.",
+      "x_detection_guidance": "Monitor for duplicate telemetry frames with identical sequence counters. Detect signal retransmission from unauthorized locations. Alert on data access patterns consistent with retrospective decryption attacks.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EXF-0001",
+          "url": "https://sparta.aerospace.org/technique/EXF-0001/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-exf-0002",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Side-Channel Exfiltration",
+      "description": "An adversary exfiltrates data from a spacecraft or ground system through side channels such as electromagnetic emissions, power consumption variations, RF signal modulation, or timing covert channels that are not part of the normal communication architecture.",
+      "x_sparta_id": "EXF-0002",
+      "x_sparta_tactic": "Exfiltration",
+      "x_sparta_tactic_id": "ST0008",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EXF-0002/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "exfiltration"
+        }
+      ],
+      "x_mitigation_guidance": "Apply electromagnetic shielding to ground processing facilities. Implement TEMPEST countermeasures for sensitive data handling. Design spacecraft subsystems with constant-power execution profiles for critical operations.",
+      "x_detection_guidance": "Monitor for anomalous electromagnetic emissions from ground facilities. Detect unexplained RF emissions from spacecraft outside normal communication bands. Alert on power consumption patterns inconsistent with declared operational modes.",
+      "confidence": 75,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EXF-0002",
+          "url": "https://sparta.aerospace.org/technique/EXF-0002/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-exf-0003",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Signal Interception",
+      "description": "An adversary intercepts spacecraft downlink signals to capture mission data, telemetry, or payload information during transmission. Downlink signals propagate over wide areas and can be received by any suitably equipped ground station within the beam footprint.",
+      "x_sparta_id": "EXF-0003",
+      "x_sparta_tactic": "Exfiltration",
+      "x_sparta_tactic_id": "ST0008",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EXF-0003/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "exfiltration"
+        }
+      ],
+      "x_mitigation_guidance": "Encrypt all downlink transmissions with authenticated encryption. Implement narrow-beam antennas to reduce signal footprint. Apply frequency hopping and spread-spectrum techniques to reduce intercept probability.",
+      "x_detection_guidance": "Deploy RF monitoring to detect unauthorized receivers in the ground track. Detect anomalous signal reception reports from spectrum monitoring authorities. Alert on downlink signal characteristics that suggest interception activity.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EXF-0003",
+          "url": "https://sparta.aerospace.org/technique/EXF-0003/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-exf-0004",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Out-of-Band Communications Link",
+      "description": "An adversary uses an unauthorized communication channel, separate from the primary mission links, to exfiltrate data from the spacecraft or ground system. Out-of-band links may use different frequencies, protocols, or physical paths.",
+      "x_sparta_id": "EXF-0004",
+      "x_sparta_tactic": "Exfiltration",
+      "x_sparta_tactic_id": "ST0008",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EXF-0004/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "exfiltration"
+        }
+      ],
+      "x_mitigation_guidance": "Monitor all RF emissions from spacecraft for unauthorized transmissions. Implement strict frequency management and emission controls. Apply network monitoring to ground systems for unauthorized outbound connections.",
+      "x_detection_guidance": "Detect RF emissions from spacecraft on unexpected frequencies. Monitor ground system networks for unauthorized outbound data transfers. Alert on network traffic to unexpected external destinations.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EXF-0004",
+          "url": "https://sparta.aerospace.org/technique/EXF-0004/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-exf-0005",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Proximity Operations",
+      "description": "An adversary uses a spacecraft in close proximity to the target to intercept data through short-range RF links, optical channels, or direct signal interception at close range where signal levels are higher and more easily captured.",
+      "x_sparta_id": "EXF-0005",
+      "x_sparta_tactic": "Exfiltration",
+      "x_sparta_tactic_id": "ST0008",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EXF-0005/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "exfiltration"
+        }
+      ],
+      "x_mitigation_guidance": "Maintain space situational awareness for all operational assets. Implement directional antennas to minimize signal leakage. Apply encryption to all data transmissions regardless of perceived link security.",
+      "x_detection_guidance": "Track objects approaching within defined proximity zones. Monitor for close-approach scenarios that could enable signal interception. Alert on unexpected orbital maneuvers by nearby objects.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EXF-0005",
+          "url": "https://sparta.aerospace.org/technique/EXF-0005/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-exf-0006",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Modify Communications Configuration",
+      "description": "An adversary modifies spacecraft communication system configuration to redirect data transmissions to unauthorized receivers. This may include changing antenna pointing, modifying routing tables, or altering downlink scheduling to include unauthorized ground stations.",
+      "x_sparta_id": "EXF-0006",
+      "x_sparta_tactic": "Exfiltration",
+      "x_sparta_tactic_id": "ST0008",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EXF-0006/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "exfiltration"
+        }
+      ],
+      "x_mitigation_guidance": "Implement dual-authorization for communication configuration changes. Apply ground-based verification of all antenna pointing and routing updates. Maintain audit trails of communication configuration modifications.",
+      "x_detection_guidance": "Monitor communication configuration parameters for unauthorized changes. Detect antenna pointing deviations from planned schedules. Alert on data transmissions to unscheduled ground stations.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EXF-0006",
+          "url": "https://sparta.aerospace.org/technique/EXF-0006/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-exf-0007",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Compromised Ground System",
+      "description": "An adversary uses a compromised ground system to access and exfiltrate spacecraft data, telemetry archives, mission imagery, or operational documents stored in ground segment infrastructure.",
+      "x_sparta_id": "EXF-0007",
+      "x_sparta_tactic": "Exfiltration",
+      "x_sparta_tactic_id": "ST0008",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EXF-0007/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "exfiltration"
+        }
+      ],
+      "x_mitigation_guidance": "Implement data loss prevention controls on ground system networks. Apply encryption to stored mission data. Conduct regular security assessments of ground system data handling practices.",
+      "x_detection_guidance": "Monitor ground system data access patterns for anomalous bulk transfers. Detect unauthorized access to mission data archives. Alert on data exfiltration indicators such as unusual outbound traffic volumes.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EXF-0007",
+          "url": "https://sparta.aerospace.org/technique/EXF-0007/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-exf-0008",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Compromised Developer Site",
+      "description": "An adversary compromises development facilities, test environments, or engineering workstations to exfiltrate flight software source code, spacecraft design data, or cryptographic material used in space system operations.",
+      "x_sparta_id": "EXF-0008",
+      "x_sparta_tactic": "Exfiltration",
+      "x_sparta_tactic_id": "ST0008",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EXF-0008/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "exfiltration"
+        }
+      ],
+      "x_mitigation_guidance": "Implement network segmentation between development and operational environments. Apply data classification and access controls to development artifacts. Conduct regular security audits of development infrastructure.",
+      "x_detection_guidance": "Monitor developer network traffic for unauthorized outbound data transfers. Detect bulk access to source code repositories or design databases. Alert on developer workstation compromise indicators.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EXF-0008",
+          "url": "https://sparta.aerospace.org/technique/EXF-0008/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-exf-0009",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Compromised Partner Site",
+      "description": "An adversary compromises a partner organization's infrastructure to exfiltrate shared mission data, jointly developed technology, or interconnection credentials. Partner organizations may have weaker security postures than the primary operator.",
+      "x_sparta_id": "EXF-0009",
+      "x_sparta_tactic": "Exfiltration",
+      "x_sparta_tactic_id": "ST0008",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EXF-0009/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "exfiltration"
+        }
+      ],
+      "x_mitigation_guidance": "Implement data sharing agreements with security requirements. Apply encryption to data shared with partner organizations. Conduct periodic security assessments of partner data handling practices.",
+      "x_detection_guidance": "Monitor partner data access for anomalous patterns. Detect unauthorized data transfers from partner-accessible systems. Alert on partner credential compromise indicators.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EXF-0009",
+          "url": "https://sparta.aerospace.org/technique/EXF-0009/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-exf-0010",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Payload Communication Channel",
+      "description": "An adversary uses a payload's independent communication channel to exfiltrate data from the spacecraft or ground system. Payload channels may bypass the host spacecraft's security monitoring if they operate on separate frequencies or networks.",
+      "x_sparta_id": "EXF-0010",
+      "x_sparta_tactic": "Exfiltration",
+      "x_sparta_tactic_id": "ST0008",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/EXF-0010/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "exfiltration"
+        }
+      ],
+      "x_mitigation_guidance": "Monitor all payload communication channels for unauthorized data transmissions. Implement traffic analysis on payload links. Apply data diode or one-way communication architectures where appropriate.",
+      "x_detection_guidance": "Detect payload communication activity outside scheduled windows. Monitor payload downlink data volumes for anomalous increases. Alert on payload transmissions that do not correspond to commanded data collection activities.",
+      "confidence": 80,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "EXF-0010",
+          "url": "https://sparta.aerospace.org/technique/EXF-0010/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-imp-0001",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Deception",
+      "description": "An adversary manipulates spacecraft telemetry, sensor data, or mission products to provide false information to operators or downstream consumers. Deception can lead to incorrect operational decisions, compromised intelligence, or loss of trust in space system data products.",
+      "x_sparta_id": "IMP-0001",
+      "x_sparta_tactic": "Impact",
+      "x_sparta_tactic_id": "ST0009",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IMP-0001/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "impact"
+        }
+      ],
+      "x_mitigation_guidance": "Implement end-to-end data authentication for all mission products. Apply cross-reference validation against independent data sources. Maintain data provenance tracking from sensor to end user.",
+      "x_detection_guidance": "Detect statistical anomalies in sensor data or telemetry patterns. Monitor for inconsistencies between redundant data sources. Alert on data products that conflict with independent ground truth.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IMP-0001",
+          "url": "https://sparta.aerospace.org/technique/IMP-0001/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-imp-0002",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Disruption",
+      "description": "An adversary temporarily interrupts spacecraft operations, ground system functionality, or communication links. Disruption may target specific mission phases such as data collection windows, ground station contacts, or orbital maneuvers for maximum operational impact.",
+      "x_sparta_id": "IMP-0002",
+      "x_sparta_tactic": "Impact",
+      "x_sparta_tactic_id": "ST0009",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IMP-0002/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "impact"
+        }
+      ],
+      "x_mitigation_guidance": "Implement redundant communication paths and ground station diversity. Design systems for graceful degradation and rapid recovery. Maintain offline commanding capability for critical operations.",
+      "x_detection_guidance": "Monitor system availability metrics for unexpected outages. Detect coordinated disruption across multiple subsystems. Alert on disruption events that correlate with critical mission operations.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IMP-0002",
+          "url": "https://sparta.aerospace.org/technique/IMP-0002/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-imp-0003",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Denial",
+      "description": "An adversary prevents authorized operators from accessing or controlling the spacecraft or ground system. Denial attacks may lock out operators by changing authentication credentials, jamming command uplinks, or disabling ground system access.",
+      "x_sparta_id": "IMP-0003",
+      "x_sparta_tactic": "Impact",
+      "x_sparta_tactic_id": "ST0009",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IMP-0003/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "impact"
+        }
+      ],
+      "x_mitigation_guidance": "Implement emergency access recovery procedures independent of primary systems. Apply diverse communication paths that cannot be simultaneously denied. Maintain hardware override capabilities for critical spacecraft functions.",
+      "x_detection_guidance": "Detect loss of commanding capability across communication links. Monitor for authentication failures affecting multiple operators simultaneously. Alert on systematic access denial patterns indicating coordinated attack.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IMP-0003",
+          "url": "https://sparta.aerospace.org/technique/IMP-0003/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-imp-0004",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Degradation",
+      "description": "An adversary reduces the performance or capability of spacecraft systems below operational requirements. Degradation may target power generation, thermal management, attitude control accuracy, or communication link margins to slowly reduce mission effectiveness.",
+      "x_sparta_id": "IMP-0004",
+      "x_sparta_tactic": "Impact",
+      "x_sparta_tactic_id": "ST0009",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IMP-0004/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "impact"
+        }
+      ],
+      "x_mitigation_guidance": "Implement performance trending and anomaly detection for all subsystems. Apply redundant capabilities with independent failure modes. Design systems with sufficient margins to detect and accommodate degradation.",
+      "x_detection_guidance": "Monitor subsystem performance metrics for gradual degradation trends. Detect performance reductions that do not correlate with expected environmental factors. Alert on correlated degradation across multiple subsystems.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IMP-0004",
+          "url": "https://sparta.aerospace.org/technique/IMP-0004/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-imp-0005",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Destruction",
+      "description": "An adversary permanently damages or destroys spacecraft hardware or software, rendering the asset non-functional. Destruction may be achieved through kinetic attack, directed energy, malicious commanding that depletes consumables, or firmware corruption that bricks onboard processors.",
+      "x_sparta_id": "IMP-0005",
+      "x_sparta_tactic": "Impact",
+      "x_sparta_tactic_id": "ST0009",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IMP-0005/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "impact"
+        }
+      ],
+      "x_mitigation_guidance": "Implement commanding safeguards that prevent destructive operations. Apply hardware interlocks for irreversible actions. Design systems with sufficient redundancy to survive component-level destruction.",
+      "x_detection_guidance": "Detect command sequences that could lead to irreversible damage. Monitor for rapid consumable depletion or subsystem stress conditions. Alert on operational parameters approaching hardware survival limits.",
+      "confidence": 90,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IMP-0005",
+          "url": "https://sparta.aerospace.org/technique/IMP-0005/"
+        }
+      ]
+    },
+    {
+      "type": "attack-pattern",
+      "spec_version": "2.1",
+      "id": "attack-pattern--sparta-imp-0006",
+      "created": "2026-03-25T00:00:00.000Z",
+      "modified": "2026-03-25T00:00:00.000Z",
+      "name": "Theft",
+      "description": "An adversary steals proprietary data, intellectual property, mission products, or classified information from space systems or supporting ground infrastructure. Theft targets high-value data such as imagery, signals intelligence, or technology designs.",
+      "x_sparta_id": "IMP-0006",
+      "x_sparta_tactic": "Impact",
+      "x_sparta_tactic_id": "ST0009",
+      "x_sparta_url": "https://sparta.aerospace.org/technique/IMP-0006/",
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "sparta",
+          "phase_name": "impact"
+        }
+      ],
+      "x_mitigation_guidance": "Implement data classification and access controls for all mission products. Apply encryption to data at rest and in transit. Conduct regular data access audits and monitor for unauthorized bulk transfers.",
+      "x_detection_guidance": "Monitor data access patterns for anomalous download volumes. Detect unauthorized access to classified or proprietary data stores. Alert on data transfers to unauthorized destinations or storage media.",
+      "confidence": 85,
+      "external_references": [
+        {
+          "source_name": "SPARTA",
+          "external_id": "IMP-0006",
+          "url": "https://sparta.aerospace.org/technique/IMP-0006/"
+        }
+      ]
+    }
+  ]
+}
