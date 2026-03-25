@@ -4,7 +4,7 @@ import { Regulation, ComplianceStatus } from "../enums";
 export const complianceRequirementSchema = z.object({
   id: z.string().uuid(),
   regulation: z.nativeEnum(Regulation),
-  articleReference: z.string(),
+  articleReference: z.string().max(50),
   title: z.string(),
   description: z.string(),
   evidenceGuidance: z.string(),

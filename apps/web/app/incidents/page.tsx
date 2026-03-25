@@ -449,7 +449,7 @@ export default function IncidentsPage() {
     if (!orgId) return;
     getAssets({ organizationId: orgId, perPage: 100 })
       .then((r) => { if (mountedRef.current) setAssets(r.data); })
-      .catch(() => {});
+      .catch((err) => { console.warn("Failed to load assets for incident form:", err); });
   }, [orgId]);
 
   useEffect(() => {

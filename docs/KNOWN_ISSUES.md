@@ -86,6 +86,22 @@ The `AlertStats` interface is defined only in the frontend (`api.ts`) and
 the backend (`alert.service.ts`). It should be added to
 `packages/shared/src/schemas/alert.ts` for consistency.
 
+### Linter strips newly-added exports and imports
+
+**Status**: Recurring issue
+**Impact**: High (causes runtime crashes)
+
+An automatic linter runs on save and removes exports/imports it considers
+"unused". This has repeatedly broken the app by stripping:
+- `export * from "./schemas/sparta"` from `packages/shared/src/index.ts`
+- Admin sidebar items and icon imports from `Sidebar.tsx`
+- SPARTA API functions from `apps/web/lib/api.ts`
+
+**Resolution path**: Configure ESLint to not flag re-exports from barrel
+files (index.ts). Consider adding `// eslint-disable-next-line` guards on
+critical re-export lines, or switch to explicit named exports that the
+linter can trace.
+
 ## Data
 
 ### No automated end-to-end test suite
