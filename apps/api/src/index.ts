@@ -16,7 +16,9 @@ import { intelRoutes } from "./routes/intel";
 import { adminSpartaRoutes } from "./routes/admin-sparta";
 import { supplyChainRoutes } from "./routes/supply-chain";
 import { auditRoutes } from "./routes/audit";
+import { authRoutes } from "./routes/auth";
 import { auditMiddleware } from "./middleware/audit";
+import { authMiddleware } from "./middleware/auth-guard";
 
 const app = new Hono();
 
@@ -53,6 +55,28 @@ app.use("/api/v1/*", auditMiddleware);
 app.get("/health", (c) => {
   return c.json({ status: "healthy", version: "0.1.0" });
 });
+
+// Auth routes (login/register/setup-status are public; they handle their own auth)
+app.route("/api/v1", authRoutes);
+
+// All routes below require authentication
+app.use("/api/v1/organizations/*", authMiddleware);
+app.use("/api/v1/assets/*", authMiddleware);
+app.use("/api/v1/assets", authMiddleware);
+app.use("/api/v1/compliance/*", authMiddleware);
+app.use("/api/v1/reports/*", authMiddleware);
+app.use("/api/v1/telemetry/*", authMiddleware);
+app.use("/api/v1/alerts/*", authMiddleware);
+app.use("/api/v1/alerts", authMiddleware);
+app.use("/api/v1/incidents/*", authMiddleware);
+app.use("/api/v1/incidents", authMiddleware);
+app.use("/api/v1/intel/*", authMiddleware);
+app.use("/api/v1/intel", authMiddleware);
+app.use("/api/v1/supply-chain/*", authMiddleware);
+app.use("/api/v1/supply-chain", authMiddleware);
+app.use("/api/v1/audit/*", authMiddleware);
+app.use("/api/v1/audit", authMiddleware);
+app.use("/api/v1/admin/*", authMiddleware);
 
 // Module 1 routes
 app.route("/api/v1", organizationRoutes);
