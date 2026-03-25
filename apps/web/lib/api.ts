@@ -156,6 +156,54 @@ export const getDashboard = (organizationId: string) => {
   return api.get<DashboardResponse>(`/api/v1/compliance/dashboard?${params.toString()}`);
 };
 
+// ---------------------------------------------------------------------------
+// Incident Summary Report
+// ---------------------------------------------------------------------------
+
+export interface IncidentSummaryStats {
+  total: number;
+  bySeverity: Record<string, number>;
+  byStatus: Record<string, number>;
+  openCount: number;
+  closedCount: number;
+  mttdMinutes: number | null;
+  mttrMinutes: number | null;
+  topTechniques: { name: string; count: number }[];
+}
+
+export const getIncidentSummaryStats = (query: {
+  organizationId: string;
+  from?: string;
+  to?: string;
+}) => {
+  const params = new URLSearchParams({ organizationId: query.organizationId });
+  if (query.from) params.set("from", query.from);
+  if (query.to)   params.set("to", query.to);
+  return api.get<IncidentSummaryStats>(
+    `/api/v1/reports/incident-summary/stats?${params.toString()}`
+  );
+};
+
+export const getIncidentSummaryPdf = async (query: {
+  organizationId: string;
+  from?: string;
+  to?: string;
+}): Promise<Blob> => {
+  const params = new URLSearchParams({ organizationId: query.organizationId });
+  if (query.from) params.set("from", query.from);
+  if (query.to)   params.set("to", query.to);
+  const res = await fetch(
+    `${API_URL}/api/v1/reports/incident-summary/pdf?${params.toString()}`,
+    { method: "GET" }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const msg = typeof body.error === "string" ? body.error : (body.message ?? res.statusText);
+    throw new ApiError(res.status, msg);
+  }
+  return res.blob();
+};
+
 // PDF report - returns a Blob for direct download in the browser
 export const getCompliancePdf = async (organizationId: string): Promise<Blob> => {
   const params = new URLSearchParams({ organizationId });

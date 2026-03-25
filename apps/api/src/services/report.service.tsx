@@ -7,7 +7,7 @@ import {
   StyleSheet,
   renderToBuffer,
 } from "@react-pdf/renderer";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, gte, lte, avg, isNotNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db/client";
 import {
@@ -16,6 +16,8 @@ import {
   complianceMappings,
   spaceAssets,
 } from "../db/schema/index";
+import { incidents, incidentAlerts } from "../db/schema/incidents";
+import { alerts } from "../db/schema/alerts";
 import type { DashboardResponse } from "@spaceguard/shared";
 import { getDashboard } from "./compliance.service";
 
@@ -509,6 +511,20 @@ const s = StyleSheet.create({
     left: 40,
     fontSize: 8,
     color: C.slate,
+  },
+  // Shared: navy card section box
+  navyBox: {
+    backgroundColor: C.navyLight,
+    borderRadius: 6,
+    padding: 14,
+    marginBottom: 0,
+  },
+  navyBoxTitle: {
+    fontSize: 8,
+    color: C.slate,
+    letterSpacing: 1.5,
+    marginBottom: 10,
+    fontFamily: "Helvetica-Bold",
   },
 });
 
@@ -1287,5 +1303,756 @@ export async function generateCompliancePdf(
 
   // 5. Render PDF to buffer
   const buffer = await renderToBuffer(<ComplianceReport data={reportData} />);
+  return buffer;
+}
+
+// =============================================================================
+// INCIDENT SUMMARY REPORT
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Internal types
+// ---------------------------------------------------------------------------
+
+interface IncidentSummaryRow {
+  id: string;
+  title: string;
+  severity: string;
+  status: string;
+  detectedAt: string | null;
+  resolvedAt: string | null;
+  affectedAssetCount: number;
+  spartaTechniqueNames: string[];
+  description: string;
+}
+
+interface MonthlyBucket {
+  label: string; // e.g. "Jan 2026"
+  count: number;
+}
+
+interface IncidentSummaryData {
+  org: OrgDetails;
+  dateRange: { from: string; to: string };
+  generatedAt: string;
+  stats: {
+    total: number;
+    bySeverity: Record<string, number>;
+    byStatus: Record<string, number>;
+    openCount: number;
+    closedCount: number;
+    mttdMinutes: number | null;
+    mttrMinutes: number | null;
+  };
+  incidents: IncidentSummaryRow[];
+  trend: MonthlyBucket[];
+  topTechniques: { name: string; count: number }[];
+  topAssetTypes: { type: string; label: string; count: number }[];
+  alertStats: {
+    totalLinkedAlerts: number;
+    topRules: { ruleId: string; count: number }[];
+  };
+  recommendations: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const SEVERITY_COLORS: Record<string, string> = {
+  CRITICAL: "#ef4444",
+  HIGH:     "#f97316",
+  MEDIUM:   "#f59e0b",
+  LOW:      "#6b7280",
+};
+
+const STATUS_BADGE: Record<string, string> = {
+  CLOSED:       "#10b981",
+  FALSE_POSITIVE: "#6b7280",
+  DETECTED:     "#3b82f6",
+  TRIAGING:     "#8b5cf6",
+  INVESTIGATING: "#f59e0b",
+  CONTAINING:   "#f97316",
+  ERADICATING:  "#ef4444",
+  RECOVERING:   "#06b6d4",
+};
+
+function fmtMinutes(minutes: number | null): string {
+  if (minutes === null) return "N/A";
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function fmtDateShort(iso: string | null): string {
+  if (!iso) return "—";
+  return iso.slice(0, 10);
+}
+
+function isOpen(status: string): boolean {
+  return !["CLOSED", "FALSE_POSITIVE"].includes(status);
+}
+
+function buildRecommendations(data: IncidentSummaryData): string[] {
+  const recs: string[] = [];
+  const { stats, topTechniques, topAssetTypes } = data;
+
+  // MTTD-based recommendation
+  if (stats.mttdMinutes !== null && stats.mttdMinutes > 120) {
+    recs.push(
+      `Mean time to detect is ${fmtMinutes(stats.mttdMinutes)}, which exceeds the recommended 2-hour threshold. ` +
+      `Review telemetry polling intervals and consider enabling automated anomaly detection rules for faster triage.`
+    );
+  }
+
+  // MTTR-based recommendation
+  if (stats.mttrMinutes !== null && stats.mttrMinutes > 480) {
+    recs.push(
+      `Mean time to respond is ${fmtMinutes(stats.mttrMinutes)}. Establish documented incident response runbooks for your ` +
+      `most common threat categories to accelerate containment and eradication steps.`
+    );
+  }
+
+  // Repeated SPARTA technique
+  if (topTechniques.length > 0 && topTechniques[0].count >= 2) {
+    const t = topTechniques[0];
+    recs.push(
+      `"${t.name}" was the most frequently observed attack technique (${t.count} incidents). ` +
+      `Review the SPARTA countermeasures mapped to this technique in the Threat Intelligence module and ` +
+      `prioritise their implementation to reduce re-occurrence.`
+    );
+  }
+
+  // Repeatedly affected asset type
+  if (topAssetTypes.length > 0 && topAssetTypes[0].count >= 2) {
+    const a = topAssetTypes[0];
+    recs.push(
+      `${a.label} assets were involved in ${a.count} incidents - more than any other asset category. ` +
+      `Flag these assets for an enhanced security review and consider additional monitoring or segmentation controls.`
+    );
+  }
+
+  // High CRITICAL/HIGH ratio
+  const critHigh = (stats.bySeverity["CRITICAL"] ?? 0) + (stats.bySeverity["HIGH"] ?? 0);
+  if (stats.total > 0 && critHigh / stats.total >= 0.5) {
+    recs.push(
+      `${critHigh} of ${stats.total} incidents were rated HIGH or CRITICAL severity. ` +
+      `Ensure NIS2 Article 23 notifications were filed within the required 24/72-hour windows for all significant incidents.`
+    );
+  }
+
+  // Open incidents still unresolved
+  if (stats.openCount > 0) {
+    recs.push(
+      `${stats.openCount} incident${stats.openCount > 1 ? "s remain" : " remains"} unresolved. ` +
+      `Prioritise closure or escalation of open incidents to maintain accurate NIS2 reporting status.`
+    );
+  }
+
+  if (recs.length === 0) {
+    recs.push(
+      `No significant patterns identified in this period. Continue regular NIS2 Article 21 control reviews ` +
+      `and ensure detection rules are kept current with the latest SPARTA matrix updates.`
+    );
+  }
+
+  return recs;
+}
+
+// ---------------------------------------------------------------------------
+// PDF component
+// ---------------------------------------------------------------------------
+
+function IncidentSummaryReport({ data }: { data: IncidentSummaryData }) {
+  const { org, dateRange, generatedAt, stats, incidents: incList, trend, topTechniques, topAssetTypes, alertStats, recommendations } = data;
+
+  const pageStyle = { ...s.contentPage };
+
+  // Title page
+  const TitlePage = () => (
+    <Page size="A4" style={s.titlePage}>
+      {/* Top banner */}
+      <View style={s.titleBanner}>
+        <View>
+          <Text style={s.titleBrandName}>SPACEGUARD</Text>
+          <Text style={s.titleBrandSub}>CYBERSECURITY PLATFORM</Text>
+        </View>
+        <View>
+          <Text style={[s.titleBannerRight, { textAlign: "right" }]}>
+            INCIDENT SUMMARY REPORT
+          </Text>
+          <Text style={[s.titleBannerRight, { marginTop: 3 }]}>
+            {dateRange.from} to {dateRange.to}
+          </Text>
+        </View>
+      </View>
+
+      {/* Body */}
+      <View style={s.titleBody}>
+        <Text style={s.titleHeading}>Incident{"\n"}Summary Report</Text>
+        <Text style={s.titleSubheading}>
+          Operational Cybersecurity Platform for European Space Infrastructure
+        </Text>
+
+        {/* Org box */}
+        <View style={s.titleOrgBox}>
+          <Text style={s.titleOrgLabel}>ORGANISATION</Text>
+          <Text style={s.titleOrgName}>{org.name}</Text>
+          <Text style={s.titleOrgMeta}>
+            {org.country.toUpperCase()} · {org.nis2Classification} Entity · {org.sector.toUpperCase()}
+          </Text>
+        </View>
+
+        {/* Score row - key stats */}
+        <View style={s.titleScoreRow}>
+          <View style={s.titleScoreCard}>
+            <Text style={s.titleScoreLabel}>TOTAL INCIDENTS</Text>
+            <Text style={[s.titleScoreValue, { color: stats.total > 0 ? C.nonCompliant : C.compliant }]}>
+              {stats.total}
+            </Text>
+            <Text style={s.titleScoreSub}>in period</Text>
+          </View>
+          <View style={s.titleScoreCard}>
+            <Text style={s.titleScoreLabel}>OPEN</Text>
+            <Text style={[s.titleScoreValue, { color: stats.openCount > 0 ? C.partial : C.compliant }]}>
+              {stats.openCount}
+            </Text>
+            <Text style={s.titleScoreSub}>unresolved</Text>
+          </View>
+          <View style={s.titleScoreCard}>
+            <Text style={s.titleScoreLabel}>AVG MTTD</Text>
+            <Text style={[s.titleScoreValue, { color: C.blue, fontSize: 28 }]}>
+              {fmtMinutes(stats.mttdMinutes)}
+            </Text>
+            <Text style={s.titleScoreSub}>mean detection time</Text>
+          </View>
+          <View style={s.titleScoreCard}>
+            <Text style={s.titleScoreLabel}>AVG MTTR</Text>
+            <Text style={[s.titleScoreValue, { color: C.blue, fontSize: 28 }]}>
+              {fmtMinutes(stats.mttrMinutes)}
+            </Text>
+            <Text style={s.titleScoreSub}>mean response time</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Footer */}
+      <View style={s.titleFooter}>
+        <Text style={s.titleFooterText}>Generated {generatedAt}</Text>
+        <Text style={s.titleFooterText}>CONFIDENTIAL - INTERNAL USE ONLY</Text>
+      </View>
+    </Page>
+  );
+
+  // Reusable page header
+  const PageHeader = ({ title }: { title: string }) => (
+    <View style={s.pageHeader}>
+      <Text style={s.sectionTitle}>{title}</Text>
+      <Text style={s.sectionBrand}>SPACEGUARD · INCIDENT REPORT</Text>
+    </View>
+  );
+
+  // Stat cell helper
+  const StatCell = ({ label, value, color }: { label: string; value: string | number; color?: string }) => (
+    <View style={[s.summaryCard, { borderRadius: 6, paddingHorizontal: 14, paddingVertical: 12 }]}>
+      <Text style={[s.summaryLabel, { fontSize: 7, letterSpacing: 1.5, marginBottom: 6 }]}>{label}</Text>
+      <Text style={[s.summaryValue, color ? { color } : {}]}>{String(value)}</Text>
+    </View>
+  );
+
+  // Severity bar (visual indicator)
+  const SeverityBar = ({ severity, count, total }: { severity: string; count: number; total: number }) => {
+    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+    const color = SEVERITY_COLORS[severity] ?? C.slate;
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 5 }}>
+        <View style={{ width: 56 }}>
+          <Text style={{ fontSize: 8, color: C.slateLight }}>{severity}</Text>
+        </View>
+        <View style={{ flex: 1, height: 8, backgroundColor: C.navyCard, borderRadius: 4, overflow: "hidden" }}>
+          <View style={{ width: `${pct}%`, height: "100%", backgroundColor: color, borderRadius: 4 }} />
+        </View>
+        <View style={{ width: 28, alignItems: "flex-end" }}>
+          <Text style={{ fontSize: 8, color: C.slateLight }}>{count}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  // Executive Summary page
+  const ExecSummaryPage = () => (
+    <Page size="A4" style={pageStyle}>
+      <PageHeader title="Executive Summary" />
+
+      {/* Key metrics row */}
+      <View style={s.summaryGrid}>
+        <StatCell label="TOTAL" value={stats.total} color={stats.total > 0 ? C.nonCompliant : C.compliant} />
+        <StatCell label="OPEN" value={stats.openCount} color={stats.openCount > 0 ? C.partial : C.compliant} />
+        <StatCell label="CLOSED" value={stats.closedCount} color={C.compliant} />
+        <StatCell label="AVG MTTD" value={fmtMinutes(stats.mttdMinutes)} color={C.blue} />
+        <StatCell label="AVG MTTR" value={fmtMinutes(stats.mttrMinutes)} color={C.blue} />
+      </View>
+
+      {/* Severity breakdown */}
+      <View style={[s.navyBox, { marginBottom: 16 }]}>
+        <Text style={s.navyBoxTitle}>Breakdown by Severity</Text>
+        {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map((sev) => (
+          <SeverityBar key={sev} severity={sev} count={stats.bySeverity[sev] ?? 0} total={stats.total} />
+        ))}
+      </View>
+
+      {/* Status breakdown */}
+      <View style={s.navyBox}>
+        <Text style={s.navyBoxTitle}>Breakdown by Status</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+          {Object.entries(stats.byStatus).map(([status, count]) => (
+            <View key={status} style={{
+              flexDirection: "row", alignItems: "center", gap: 5,
+              backgroundColor: C.navyCard, borderRadius: 4,
+              paddingHorizontal: 10, paddingVertical: 6,
+            }}>
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: STATUS_BADGE[status] ?? C.slate }} />
+              <Text style={{ fontSize: 8, color: C.slateLight }}>{status.replace(/_/g, " ")}</Text>
+              <Text style={{ fontSize: 8, color: C.white, fontFamily: "Helvetica-Bold" }}>{count as number}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </Page>
+  );
+
+  // Incident Timeline page(s)
+  const TimelinePage = () => (
+    <Page size="A4" style={pageStyle}>
+      <PageHeader title="Incident Timeline" />
+
+      {incList.length === 0 ? (
+        <View style={s.navyBox}>
+          <Text style={{ fontSize: 10, color: C.slate, textAlign: "center", paddingVertical: 20 }}>
+            No incidents recorded in this period.
+          </Text>
+        </View>
+      ) : (
+        incList.map((inc, idx) => {
+          const sevColor = SEVERITY_COLORS[inc.severity] ?? C.slate;
+          const statusColor = STATUS_BADGE[inc.status] ?? C.slate;
+          return (
+            <View key={inc.id} style={{
+              marginBottom: 8,
+              backgroundColor: C.navyLight,
+              borderRadius: 5,
+              padding: 12,
+              borderLeftWidth: 3,
+              borderLeftColor: sevColor,
+              borderLeftStyle: "solid",
+            }}>
+              {/* Row 1: date + severity + status */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <Text style={{ fontSize: 8, color: C.slate, width: 70 }}>{fmtDateShort(inc.detectedAt ?? null)}</Text>
+                <View style={{
+                  paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3,
+                  backgroundColor: sevColor + "33",
+                }}>
+                  <Text style={{ fontSize: 7, color: sevColor, fontFamily: "Helvetica-Bold" }}>{inc.severity}</Text>
+                </View>
+                <View style={{
+                  paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3,
+                  backgroundColor: statusColor + "22",
+                }}>
+                  <Text style={{ fontSize: 7, color: statusColor }}>{inc.status.replace(/_/g, " ")}</Text>
+                </View>
+                {inc.affectedAssetCount > 0 && (
+                  <Text style={{ fontSize: 7, color: C.slate }}>{inc.affectedAssetCount} asset{inc.affectedAssetCount > 1 ? "s" : ""}</Text>
+                )}
+              </View>
+              {/* Row 2: title */}
+              <Text style={{ fontSize: 10, color: C.white, fontFamily: "Helvetica-Bold", marginBottom: 3 }}>
+                {String(idx + 1).padStart(2, "0")}. {inc.title}
+              </Text>
+              {/* Row 3: description (truncated) */}
+              {inc.description && (
+                <Text style={{ fontSize: 8, color: C.slate, lineHeight: 1.4, marginBottom: 4 }}>
+                  {inc.description.slice(0, 200)}{inc.description.length > 200 ? "..." : ""}
+                </Text>
+              )}
+              {/* Row 4: SPARTA techniques */}
+              {inc.spartaTechniqueNames.length > 0 && (
+                <View style={{ flexDirection: "row", gap: 4, flexWrap: "wrap" }}>
+                  {inc.spartaTechniqueNames.map((tech) => (
+                    <View key={tech} style={{
+                      paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3,
+                      backgroundColor: C.blueDim,
+                    }}>
+                      <Text style={{ fontSize: 7, color: C.blueLight }}>{tech}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {/* Row 5: resolution date */}
+              {inc.resolvedAt && (
+                <Text style={{ fontSize: 7, color: C.slate, marginTop: 4 }}>
+                  Resolved: {fmtDateShort(inc.resolvedAt)}
+                </Text>
+              )}
+            </View>
+          );
+        })
+      )}
+    </Page>
+  );
+
+  // Trend Analysis page
+  const TrendPage = () => (
+    <Page size="A4" style={pageStyle}>
+      <PageHeader title="Trend Analysis" />
+
+      {/* Monthly trend */}
+      {trend.length > 1 && (
+        <View style={[s.navyBox, { marginBottom: 16 }]}>
+          <Text style={s.navyBoxTitle}>Incidents per Month</Text>
+          {trend.map((bucket) => {
+            const maxCount = Math.max(...trend.map((b) => b.count), 1);
+            const pct = Math.round((bucket.count / maxCount) * 100);
+            return (
+              <View key={bucket.label} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                <View style={{ width: 60 }}>
+                  <Text style={{ fontSize: 8, color: C.slateLight }}>{bucket.label}</Text>
+                </View>
+                <View style={{ flex: 1, height: 10, backgroundColor: C.navyCard, borderRadius: 4, overflow: "hidden" }}>
+                  <View style={{ width: `${pct}%`, height: "100%", backgroundColor: C.blue, borderRadius: 4 }} />
+                </View>
+                <View style={{ width: 20, alignItems: "flex-end" }}>
+                  <Text style={{ fontSize: 8, color: C.white }}>{bucket.count}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Top SPARTA techniques */}
+      <View style={[s.navyBox, { marginBottom: 16 }]}>
+        <Text style={s.navyBoxTitle}>Top SPARTA Techniques</Text>
+        {topTechniques.length === 0 ? (
+          <Text style={{ fontSize: 9, color: C.slate }}>No SPARTA techniques recorded in this period.</Text>
+        ) : (
+          topTechniques.slice(0, 5).map((t, i) => (
+            <View key={t.name} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <Text style={{ fontSize: 8, color: C.slate, width: 14 }}>{i + 1}.</Text>
+              <Text style={{ fontSize: 9, color: C.slateLight, flex: 1 }}>{t.name}</Text>
+              <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3, backgroundColor: C.blueDim }}>
+                <Text style={{ fontSize: 8, color: C.blueLight, fontFamily: "Helvetica-Bold" }}>{t.count}</Text>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+
+      {/* Top affected asset types */}
+      <View style={s.navyBox}>
+        <Text style={s.navyBoxTitle}>Top Affected Asset Types</Text>
+        {topAssetTypes.length === 0 ? (
+          <Text style={{ fontSize: 9, color: C.slate }}>No asset types recorded in this period.</Text>
+        ) : (
+          topAssetTypes.slice(0, 5).map((a, i) => (
+            <View key={a.type} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <Text style={{ fontSize: 8, color: C.slate, width: 14 }}>{i + 1}.</Text>
+              <Text style={{ fontSize: 9, color: C.slateLight, flex: 1 }}>{a.label}</Text>
+              <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3, backgroundColor: "#1e3a2f" }}>
+                <Text style={{ fontSize: 8, color: C.compliant, fontFamily: "Helvetica-Bold" }}>{a.count}</Text>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+    </Page>
+  );
+
+  // Alert Summary + Recommendations page
+  const AlertRecsPage = () => (
+    <Page size="A4" style={pageStyle}>
+      <PageHeader title="Alert Summary and Recommendations" />
+
+      {/* Alert stats */}
+      <View style={[s.navyBox, { marginBottom: 16 }]}>
+        <Text style={s.navyBoxTitle}>Alert Summary</Text>
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+          <View style={[s.titleScoreCard, { paddingHorizontal: 14, paddingVertical: 10 }]}>
+            <Text style={[s.titleScoreLabel, { marginBottom: 4 }]}>LINKED ALERTS</Text>
+            <Text style={[s.summaryValue, { color: C.partial }]}>{alertStats.totalLinkedAlerts}</Text>
+          </View>
+        </View>
+
+        {alertStats.topRules.length > 0 && (
+          <>
+            <Text style={[s.navyBoxTitle, { marginBottom: 6 }]}>Top Detection Rules</Text>
+            {alertStats.topRules.slice(0, 5).map((r, i) => (
+              <View key={r.ruleId} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                <Text style={{ fontSize: 8, color: C.slate, width: 14 }}>{i + 1}.</Text>
+                <Text style={{ fontSize: 9, color: C.slateLight, flex: 1, fontFamily: "Helvetica-Bold" }}>{r.ruleId}</Text>
+                <Text style={{ fontSize: 8, color: C.slateLight }}>{r.count} alert{r.count > 1 ? "s" : ""}</Text>
+              </View>
+            ))}
+          </>
+        )}
+      </View>
+
+      {/* Recommendations */}
+      <View style={s.navyBox}>
+        <Text style={s.navyBoxTitle}>Recommendations</Text>
+        {recommendations.map((rec, i) => (
+          <View key={i} style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+            <View style={{
+              width: 18, height: 18, borderRadius: 9,
+              backgroundColor: C.blue, alignItems: "center", justifyContent: "center",
+              marginTop: 1, flexShrink: 0,
+            }}>
+              <Text style={{ fontSize: 8, color: C.white, fontFamily: "Helvetica-Bold" }}>{i + 1}</Text>
+            </View>
+            <Text style={{ fontSize: 9, color: C.slateLight, flex: 1, lineHeight: 1.55 }}>{rec}</Text>
+          </View>
+        ))}
+      </View>
+    </Page>
+  );
+
+  return (
+    <Document
+      title={`SpaceGuard Incident Summary - ${org.name}`}
+      author="SpaceGuard"
+      subject={`Incident Summary ${dateRange.from} to ${dateRange.to}`}
+    >
+      <TitlePage />
+      <ExecSummaryPage />
+      <TimelinePage />
+      <TrendPage />
+      <AlertRecsPage />
+    </Document>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Data fetcher
+// ---------------------------------------------------------------------------
+
+async function buildIncidentSummaryData(
+  organizationId: string,
+  from: Date,
+  to: Date
+): Promise<IncidentSummaryData> {
+  // 1. Validate org
+  const [org] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, organizationId))
+    .limit(1);
+
+  if (!org) throw new HTTPException(404, { message: "Organization not found" });
+
+  // 2. Fetch incidents in range
+  const rawIncidents = await db
+    .select()
+    .from(incidents)
+    .where(
+      and(
+        eq(incidents.organizationId, organizationId),
+        gte(incidents.createdAt, from),
+        lte(incidents.createdAt, to)
+      )
+    )
+    .orderBy(incidents.createdAt);
+
+  const total = rawIncidents.length;
+
+  // 3. Aggregate severity + status
+  const bySeverity: Record<string, number> = {};
+  const byStatus: Record<string, number> = {};
+  let mttdSum = 0, mttdCount = 0, mttrSum = 0, mttrCount = 0;
+  let openCount = 0, closedCount = 0;
+
+  for (const inc of rawIncidents) {
+    bySeverity[inc.severity] = (bySeverity[inc.severity] ?? 0) + 1;
+    byStatus[inc.status] = (byStatus[inc.status] ?? 0) + 1;
+    if (isOpen(inc.status)) openCount++;
+    else closedCount++;
+    if (inc.timeToDetectMinutes !== null) { mttdSum += inc.timeToDetectMinutes; mttdCount++; }
+    if (inc.timeToRespondMinutes !== null) { mttrSum += inc.timeToRespondMinutes; mttrCount++; }
+  }
+
+  const mttdMinutes = mttdCount > 0 ? Math.round(mttdSum / mttdCount) : null;
+  const mttrMinutes = mttrCount > 0 ? Math.round(mttrSum / mttrCount) : null;
+
+  // 4. Build IncidentSummaryRow list
+  // Gather all unique asset IDs across incidents
+  const allAssetIds: string[] = [];
+  for (const inc of rawIncidents) {
+    const ids = Array.isArray(inc.affectedAssetIds) ? (inc.affectedAssetIds as string[]) : [];
+    allAssetIds.push(...ids);
+  }
+  const uniqueAssetIds = [...new Set(allAssetIds)];
+
+  // Fetch asset types for affected assets
+  const assetMap = new Map<string, string>(); // id -> assetType
+  if (uniqueAssetIds.length > 0) {
+    const assetRows = await db
+      .select({ id: spaceAssets.id, assetType: spaceAssets.assetType })
+      .from(spaceAssets)
+      .where(sql`${spaceAssets.id} = ANY(${uniqueAssetIds})`);
+    for (const row of assetRows) assetMap.set(row.id, row.assetType);
+  }
+
+  const incidentRows: IncidentSummaryRow[] = rawIncidents.map((inc) => {
+    const assetIds = Array.isArray(inc.affectedAssetIds) ? (inc.affectedAssetIds as string[]) : [];
+    const spartaTechs = Array.isArray(inc.spartaTechniques)
+      ? (inc.spartaTechniques as { tactic?: string; technique?: string }[]).map((t) => t.technique ?? "").filter(Boolean)
+      : [];
+    return {
+      id: inc.id,
+      title: inc.title,
+      severity: inc.severity,
+      status: inc.status,
+      detectedAt: inc.detectedAt?.toISOString() ?? null,
+      resolvedAt: inc.resolvedAt?.toISOString() ?? null,
+      affectedAssetCount: assetIds.length,
+      spartaTechniqueNames: spartaTechs,
+      description: inc.description,
+    };
+  });
+
+  // 5. Monthly trend
+  const monthMap = new Map<string, number>();
+  const rangeStart = new Date(from);
+  const rangeEnd = new Date(to);
+  // Enumerate months in range
+  const cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+  while (cur <= rangeEnd) {
+    const key = cur.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+    monthMap.set(key, 0);
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  for (const inc of rawIncidents) {
+    const key = inc.createdAt.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+    monthMap.set(key, (monthMap.get(key) ?? 0) + 1);
+  }
+  const trend: MonthlyBucket[] = Array.from(monthMap.entries()).map(([label, count]) => ({ label, count }));
+
+  // 6. Top SPARTA techniques
+  const techCount = new Map<string, number>();
+  for (const row of incidentRows) {
+    for (const t of row.spartaTechniqueNames) {
+      techCount.set(t, (techCount.get(t) ?? 0) + 1);
+    }
+  }
+  const topTechniques = [...techCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, count }));
+
+  // 7. Top affected asset types
+  const assetTypeCount = new Map<string, number>();
+  for (const inc of rawIncidents) {
+    const assetIds = Array.isArray(inc.affectedAssetIds) ? (inc.affectedAssetIds as string[]) : [];
+    const seen = new Set<string>();
+    for (const id of assetIds) {
+      const t = assetMap.get(id);
+      if (t && !seen.has(t)) { assetTypeCount.set(t, (assetTypeCount.get(t) ?? 0) + 1); seen.add(t); }
+    }
+  }
+  const topAssetTypes = [...assetTypeCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([type, count]) => ({ type, label: ASSET_TYPE_LABELS[type] ?? type, count }));
+
+  // 8. Alert stats
+  const incidentIds = rawIncidents.map((inc) => inc.id);
+  let totalLinkedAlerts = 0;
+  const ruleCount = new Map<string, number>();
+
+  if (incidentIds.length > 0) {
+    const linkedAlerts = await db
+      .select({ ruleId: alerts.ruleId })
+      .from(incidentAlerts)
+      .innerJoin(alerts, eq(incidentAlerts.alertId, alerts.id))
+      .where(sql`${incidentAlerts.incidentId} = ANY(${incidentIds})`);
+    totalLinkedAlerts = linkedAlerts.length;
+    for (const a of linkedAlerts) ruleCount.set(a.ruleId, (ruleCount.get(a.ruleId) ?? 0) + 1);
+  }
+
+  const topRules = [...ruleCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([ruleId, count]) => ({ ruleId, count }));
+
+  // 9. Assemble
+  const summaryData: IncidentSummaryData = {
+    org: {
+      id: org.id,
+      name: org.name,
+      country: org.country,
+      sector: org.sector,
+      nis2Classification: org.nis2Classification,
+      contactEmail: org.contactEmail,
+    },
+    dateRange: {
+      from: from.toISOString().slice(0, 10),
+      to: to.toISOString().slice(0, 10),
+    },
+    generatedAt: new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC",
+    stats: { total, bySeverity, byStatus, openCount, closedCount, mttdMinutes, mttrMinutes },
+    incidents: incidentRows,
+    trend,
+    topTechniques,
+    topAssetTypes,
+    alertStats: { totalLinkedAlerts, topRules },
+    recommendations: [],
+  };
+
+  summaryData.recommendations = buildRecommendations(summaryData);
+  return summaryData;
+}
+
+// ---------------------------------------------------------------------------
+// Exported: JSON stats (lightweight preview)
+// ---------------------------------------------------------------------------
+
+export async function getIncidentSummaryStats(
+  organizationId: string,
+  from: Date,
+  to: Date
+): Promise<{
+  total: number;
+  bySeverity: Record<string, number>;
+  byStatus: Record<string, number>;
+  openCount: number;
+  closedCount: number;
+  mttdMinutes: number | null;
+  mttrMinutes: number | null;
+  topTechniques: { name: string; count: number }[];
+}> {
+  const data = await buildIncidentSummaryData(organizationId, from, to);
+  return {
+    total: data.stats.total,
+    bySeverity: data.stats.bySeverity,
+    byStatus: data.stats.byStatus,
+    openCount: data.stats.openCount,
+    closedCount: data.stats.closedCount,
+    mttdMinutes: data.stats.mttdMinutes,
+    mttrMinutes: data.stats.mttrMinutes,
+    topTechniques: data.topTechniques,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Exported: PDF generator
+// ---------------------------------------------------------------------------
+
+export async function generateIncidentSummaryPdf(
+  organizationId: string,
+  from: Date,
+  to: Date
+): Promise<Buffer> {
+  const data = await buildIncidentSummaryData(organizationId, from, to);
+  const buffer = await renderToBuffer(<IncidentSummaryReport data={data} />);
   return buffer;
 }
