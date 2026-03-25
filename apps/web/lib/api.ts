@@ -593,6 +593,32 @@ export const getSpartaStatus = () =>
 export const fetchSpartaFromServer = () =>
   api.post<SpartaImportDiff>("/api/v1/admin/sparta/fetch", {});
 
+// -- SPARTA settings (configurable URL) --
+
+export interface SpartaSettingsResponse {
+  spartaUrl: string;
+}
+
+export const getSpartaSettings = () =>
+  api.get<SpartaSettingsResponse>("/api/v1/admin/sparta/settings");
+
+export const updateSpartaSettings = (spartaUrl: string) =>
+  api.put<SpartaSettingsResponse>("/api/v1/admin/sparta/settings", { spartaUrl });
+
+// -- SPARTA duplicate check --
+
+export interface DuplicateCheckResult {
+  totalRecords: number;
+  duplicateGroups: number;
+  duplicateRows: number;
+  details: Array<{ stixId: string; count: number }>;
+  cleaned: boolean;
+  deletedCount: number;
+}
+
+export const checkSpartaDuplicates = (autoClean = false) =>
+  api.post<DuplicateCheckResult>("/api/v1/admin/sparta/duplicates", { autoClean });
+
 /** Upload a STIX 2.1 JSON file via multipart form data */
 export async function uploadSpartaBundle(
   file: File

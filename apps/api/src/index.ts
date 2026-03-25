@@ -34,22 +34,15 @@ app.use(
     credentials: true,
   })
 );
-// SPARTA imports can be 10+ MB (full STIX bundles with 4800+ objects)
-app.use(
-  "/api/v1/admin/sparta/import",
-  bodyLimit({
-    maxSize: 20 * 1024 * 1024,
-    onError: (c) => c.json({ error: "STIX bundle too large (max 20 MB)" }, 413),
-  })
-);
-// Limit all other request bodies to 512 KB
-app.use(
-  "/api/v1/*",
-  bodyLimit({
-    maxSize: 512 * 1024,
-    onError: (c) => c.json({ error: "Request body too large" }, 413),
-  })
-);
+// Body size limits: SPARTA imports can be 20 MB, everything else 512 KB
+app.use("/api/v1/*", async (c, next) => {
+  const isSpartaImport = c.req.path === "/api/v1/admin/sparta/import";
+  const limit = isSpartaImport ? 20 * 1024 * 1024 : 512 * 1024;
+  const msg = isSpartaImport
+    ? "STIX bundle too large (max 20 MB)"
+    : "Request body too large";
+  return bodyLimit({ maxSize: limit, onError: (ctx) => ctx.json({ error: msg }, 413) })(c, next);
+});
 app.use("*", errorMiddleware);
 
 // Health check

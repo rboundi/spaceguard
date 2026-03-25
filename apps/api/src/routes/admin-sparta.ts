@@ -11,6 +11,9 @@ import {
   importSpartaBundle,
   fetchFromServer,
   getSpartaStatus,
+  getSpartaUrl,
+  setSpartaUrl,
+  checkDuplicates,
 } from "../services/sparta.service";
 import { spartaFetchRequestSchema } from "@spaceguard/shared";
 
@@ -93,4 +96,52 @@ adminSpartaRoutes.post("/admin/sparta/fetch", async (c) => {
 adminSpartaRoutes.get("/admin/sparta/status", async (c) => {
   const status = await getSpartaStatus();
   return c.json(status, 200);
+});
+
+// ---------------------------------------------------------------------------
+// GET /admin/sparta/settings
+// ---------------------------------------------------------------------------
+// Returns the current SPARTA fetch URL.
+
+adminSpartaRoutes.get("/admin/sparta/settings", async (c) => {
+  const url = await getSpartaUrl();
+  return c.json({ spartaUrl: url }, 200);
+});
+
+// ---------------------------------------------------------------------------
+// PUT /admin/sparta/settings
+// ---------------------------------------------------------------------------
+// Update the SPARTA fetch URL. Body: { spartaUrl: "https://..." }
+
+adminSpartaRoutes.put("/admin/sparta/settings", async (c) => {
+  const body = await c.req.json();
+  const url = typeof body.spartaUrl === "string" ? body.spartaUrl.trim() : "";
+  if (!url) {
+    return c.json({ error: "spartaUrl is required" }, 400);
+  }
+  try {
+    new URL(url);
+  } catch {
+    return c.json({ error: "spartaUrl must be a valid URL" }, 400);
+  }
+  const saved = await setSpartaUrl(url);
+  return c.json({ spartaUrl: saved }, 200);
+});
+
+// ---------------------------------------------------------------------------
+// POST /admin/sparta/duplicates
+// ---------------------------------------------------------------------------
+// Check (and optionally clean) duplicate stix_id values in threat_intel.
+// Body: { autoClean?: boolean }
+
+adminSpartaRoutes.post("/admin/sparta/duplicates", async (c) => {
+  let autoClean = false;
+  try {
+    const body = await c.req.json();
+    autoClean = body.autoClean === true;
+  } catch {
+    // No body is fine, just check without cleaning
+  }
+  const result = await checkDuplicates(autoClean);
+  return c.json(result, 200);
 });

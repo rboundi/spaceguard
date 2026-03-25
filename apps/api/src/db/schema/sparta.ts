@@ -68,3 +68,19 @@ export const spartaImportHistory = pgTable(
 
 export type SpartaImportHistoryRow = typeof spartaImportHistory.$inferSelect;
 export type NewSpartaImportHistory = typeof spartaImportHistory.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// admin_settings
+// ---------------------------------------------------------------------------
+// Simple key-value store for admin-configurable settings like the SPARTA
+// fetch URL. Avoids hard-coding values in source.
+
+export const adminSettings = pgTable("admin_settings", {
+  key: varchar("key", { length: 128 }).primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type AdminSettingsRow = typeof adminSettings.$inferSelect;

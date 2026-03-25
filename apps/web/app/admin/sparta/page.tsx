@@ -13,14 +13,25 @@ import {
   Shield,
   ChevronRight,
   ArrowLeft,
+  Link2,
+  Search,
+  Trash2,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import {
   getSpartaStatus,
   uploadSpartaBundle,
   fetchSpartaFromServer,
+  getSpartaSettings,
+  updateSpartaSettings,
+  checkSpartaDuplicates,
 } from "@/lib/api";
-import type { SpartaImportDiff, SpartaStatusResponse } from "@/lib/api";
+import type {
+  SpartaImportDiff,
+  SpartaStatusResponse,
+  DuplicateCheckResult,
+} from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // DiffSummary - shows import results per category
@@ -230,11 +241,27 @@ export default function SpartaAdminPage() {
   const [fetchResult, setFetchResult] = useState<SpartaImportDiff | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Load status on mount
+  // Settings state
+  const [spartaUrl, setSpartaUrl] = useState("");
+  const [spartaUrlDraft, setSpartaUrlDraft] = useState("");
+  const [savingUrl, setSavingUrl] = useState(false);
+  const [urlSaveMsg, setUrlSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Duplicate check state
+  const [checking, setChecking] = useState(false);
+  const [dupeResult, setDupeResult] = useState<DuplicateCheckResult | null>(null);
+  const [dupeError, setDupeError] = useState<string | null>(null);
+
+  // Load status + settings on mount
   const loadStatus = useCallback(async () => {
     try {
-      const s = await getSpartaStatus();
+      const [s, settings] = await Promise.all([
+        getSpartaStatus(),
+        getSpartaSettings(),
+      ]);
       setStatus(s);
+      setSpartaUrl(settings.spartaUrl);
+      setSpartaUrlDraft(settings.spartaUrl);
     } catch (err) {
       console.error("Failed to load SPARTA status:", err);
     } finally {
@@ -549,6 +576,226 @@ export default function SpartaAdminPage() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Settings */}
+      <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 bg-slate-800 rounded-lg flex items-center justify-center">
+            <Settings size={18} className="text-slate-400" />
+          </div>
+          <div>
+            <h2 className="text-slate-100 font-semibold">Settings</h2>
+            <p className="text-xs text-slate-500">
+              Configure the SPARTA data source URL
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <label className="block">
+            <span className="text-sm text-slate-400 mb-1.5 block">
+              SPARTA STIX Download URL
+            </span>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Link2
+                  size={15}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"
+                />
+                <input
+                  type="url"
+                  value={spartaUrlDraft}
+                  onChange={(e) => {
+                    setSpartaUrlDraft(e.target.value);
+                    setUrlSaveMsg(null);
+                  }}
+                  placeholder="https://sparta.aerospace.org/download/STIX?f=latest"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                onClick={async () => {
+                  setSavingUrl(true);
+                  setUrlSaveMsg(null);
+                  try {
+                    const result = await updateSpartaSettings(spartaUrlDraft.trim());
+                    setSpartaUrl(result.spartaUrl);
+                    setSpartaUrlDraft(result.spartaUrl);
+                    setUrlSaveMsg({ ok: true, text: "URL saved" });
+                  } catch (err) {
+                    setUrlSaveMsg({
+                      ok: false,
+                      text: err instanceof Error ? err.message : "Failed to save",
+                    });
+                  } finally {
+                    setSavingUrl(false);
+                  }
+                }}
+                disabled={savingUrl || spartaUrlDraft.trim() === spartaUrl}
+                className="px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+              >
+                {savingUrl ? "Saving..." : "Save"}
+              </button>
+              {spartaUrlDraft !== "https://sparta.aerospace.org/download/STIX?f=latest" && (
+                <button
+                  onClick={() => {
+                    setSpartaUrlDraft("https://sparta.aerospace.org/download/STIX?f=latest");
+                    setUrlSaveMsg(null);
+                  }}
+                  className="px-3 py-2.5 rounded-lg bg-slate-800 text-slate-400 text-sm hover:text-slate-200 hover:bg-slate-700 transition-colors shrink-0"
+                  title="Reset to default URL"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </label>
+          {urlSaveMsg && (
+            <p
+              className={`text-xs ${
+                urlSaveMsg.ok ? "text-emerald-400" : "text-red-400"
+              }`}
+            >
+              {urlSaveMsg.text}
+            </p>
+          )}
+          <p className="text-xs text-slate-600">
+            This URL is used when fetching data via the &quot;Fetch from Server&quot; button above.
+          </p>
+        </div>
+      </div>
+
+      {/* Maintenance - Duplicate Check */}
+      <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 bg-slate-800 rounded-lg flex items-center justify-center">
+            <Search size={18} className="text-slate-400" />
+          </div>
+          <div>
+            <h2 className="text-slate-100 font-semibold">Maintenance</h2>
+            <p className="text-xs text-slate-500">
+              Check for and clean up duplicate STIX records
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <button
+              onClick={async () => {
+                setChecking(true);
+                setDupeResult(null);
+                setDupeError(null);
+                try {
+                  const result = await checkSpartaDuplicates(false);
+                  setDupeResult(result);
+                } catch (err) {
+                  setDupeError(
+                    err instanceof Error ? err.message : "Check failed"
+                  );
+                } finally {
+                  setChecking(false);
+                }
+              }}
+              disabled={checking}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 text-slate-200 text-sm font-medium hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {checking ? (
+                <RefreshCw size={15} className="animate-spin" />
+              ) : (
+                <Search size={15} />
+              )}
+              Check for Duplicates
+            </button>
+
+            {dupeResult && dupeResult.duplicateGroups > 0 && !dupeResult.cleaned && (
+              <button
+                onClick={async () => {
+                  setChecking(true);
+                  setDupeError(null);
+                  try {
+                    const result = await checkSpartaDuplicates(true);
+                    setDupeResult(result);
+                    // Refresh status after cleanup
+                    loadStatus();
+                  } catch (err) {
+                    setDupeError(
+                      err instanceof Error ? err.message : "Cleanup failed"
+                    );
+                  } finally {
+                    setChecking(false);
+                  }
+                }}
+                disabled={checking}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <Trash2 size={15} />
+                Clean Up Duplicates
+              </button>
+            )}
+          </div>
+
+          {dupeResult && (
+            <div
+              className={`rounded-xl p-4 border ${
+                dupeResult.duplicateGroups === 0
+                  ? "bg-emerald-500/5 border-emerald-500/20"
+                  : dupeResult.cleaned
+                    ? "bg-blue-500/5 border-blue-500/20"
+                    : "bg-amber-500/5 border-amber-500/20"
+              }`}
+            >
+              {dupeResult.duplicateGroups === 0 && !dupeResult.cleaned && (
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-emerald-400" />
+                  <p className="text-sm text-emerald-400">
+                    No duplicates found. {dupeResult.totalRecords.toLocaleString()} records are clean.
+                  </p>
+                </div>
+              )}
+              {dupeResult.duplicateGroups > 0 && !dupeResult.cleaned && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle size={16} className="text-amber-400" />
+                    <p className="text-sm font-medium text-amber-400">
+                      Found {dupeResult.duplicateGroups} duplicate group{dupeResult.duplicateGroups !== 1 ? "s" : ""} ({dupeResult.duplicateRows} extra row{dupeResult.duplicateRows !== 1 ? "s" : ""})
+                    </p>
+                  </div>
+                  <div className="mt-3 space-y-1 max-h-40 overflow-y-auto">
+                    {dupeResult.details.map((d) => (
+                      <div
+                        key={d.stixId}
+                        className="flex items-center justify-between text-xs bg-slate-800/50 rounded px-3 py-1.5"
+                      >
+                        <code className="text-slate-400 truncate mr-3">{d.stixId}</code>
+                        <span className="text-amber-400 shrink-0">{d.count} copies</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-3">
+                    Click &quot;Clean Up Duplicates&quot; to remove extra rows, keeping the most recently updated copy of each.
+                  </p>
+                </div>
+              )}
+              {dupeResult.cleaned && (
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-blue-400" />
+                  <p className="text-sm text-blue-400">
+                    Cleaned up {dupeResult.deletedCount} duplicate row{dupeResult.deletedCount !== 1 ? "s" : ""}. Database is now clean.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {dupeError && (
+            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 flex items-start gap-2">
+              <AlertCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-400">{dupeError}</p>
             </div>
           )}
         </div>

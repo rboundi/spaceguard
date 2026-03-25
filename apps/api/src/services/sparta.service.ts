@@ -7,11 +7,11 @@
  *  - getSpartaStatus     - current SPARTA data stats + recent imports
  */
 
-import { eq, desc, count, sql } from "drizzle-orm";
+import { eq, desc, count, sql, inArray } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db/client";
 import { threatIntel } from "../db/schema/intel";
-import { spartaImportHistory } from "../db/schema/sparta";
+import { spartaImportHistory, adminSettings } from "../db/schema/sparta";
 import type { StixBundle, SpartaImportDiff, SpartaStatus } from "@spaceguard/shared";
 import { stixBundleSchema } from "@spaceguard/shared";
 import type { SpartaImportSource } from "@spaceguard/shared";
@@ -115,9 +115,7 @@ export async function importSpartaBundle(
     const existing = await db
       .select({ stixId: threatIntel.stixId, data: threatIntel.data })
       .from(threatIntel)
-      .where(
-        sql`${threatIntel.stixId} = ANY(${chunk})`
-      );
+      .where(inArray(threatIntel.stixId, chunk));
     for (const row of existing) {
       existingMap.set(row.stixId, {
         stixId: row.stixId,
@@ -265,16 +263,108 @@ export async function importSpartaBundle(
 }
 
 // ---------------------------------------------------------------------------
-// fetchFromServer
+// Admin Settings helpers
 // ---------------------------------------------------------------------------
 
-const DEFAULT_SPARTA_URL =
-  "https://sparta.aerospace.org/download/STIX?f=latest";
+const SPARTA_URL_KEY = "sparta_fetch_url";
+const DEFAULT_SPARTA_URL = "https://sparta.aerospace.org/download/STIX?f=latest";
+
+export async function getSpartaUrl(): Promise<string> {
+  const row = await db
+    .select({ value: adminSettings.value })
+    .from(adminSettings)
+    .where(eq(adminSettings.key, SPARTA_URL_KEY))
+    .limit(1);
+  return row[0]?.value ?? DEFAULT_SPARTA_URL;
+}
+
+export async function setSpartaUrl(url: string): Promise<string> {
+  await db
+    .insert(adminSettings)
+    .values({ key: SPARTA_URL_KEY, value: url, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: adminSettings.key,
+      set: { value: url, updatedAt: new Date() },
+    });
+  return url;
+}
+
+// ---------------------------------------------------------------------------
+// checkDuplicates
+// ---------------------------------------------------------------------------
+
+export interface DuplicateCheckResult {
+  totalRecords: number;
+  duplicateGroups: number;
+  duplicateRows: number;
+  details: Array<{ stixId: string; count: number }>;
+  cleaned: boolean;
+  deletedCount: number;
+}
+
+export async function checkDuplicates(
+  autoClean: boolean
+): Promise<DuplicateCheckResult> {
+  // Count total records
+  const totalResult = await db
+    .select({ cnt: count() })
+    .from(threatIntel);
+  const totalRecords = Number(totalResult[0]?.cnt ?? 0);
+
+  // Find duplicate stix_id values
+  const dupes = await db.execute<{ stix_id: string; cnt: number }>(
+    sql`SELECT stix_id, COUNT(*)::int AS cnt
+        FROM threat_intel
+        GROUP BY stix_id
+        HAVING COUNT(*) > 1
+        ORDER BY COUNT(*) DESC
+        LIMIT 50`
+  );
+
+  // postgres.js returns an array directly (no .rows wrapper)
+  const dupeRows = Array.isArray(dupes) ? dupes : (dupes as unknown as { rows: Array<{ stix_id: string; cnt: number }> }).rows ?? [];
+  const details = dupeRows.map(
+    (r) => ({ stixId: r.stix_id, count: Number(r.cnt) })
+  );
+
+  const duplicateGroups = details.length;
+  const duplicateRows = details.reduce((sum, d) => sum + (d.count - 1), 0);
+
+  let deletedCount = 0;
+
+  if (autoClean && duplicateGroups > 0) {
+    const result = await db.execute(
+      sql`DELETE FROM threat_intel
+          WHERE id NOT IN (
+            SELECT DISTINCT ON (stix_id) id
+            FROM threat_intel
+            ORDER BY stix_id, updated_at DESC
+          )`
+    );
+    // postgres.js: result is an array with a .count property
+    const raw = result as unknown as { count?: number; rowCount?: number };
+    deletedCount = Number(raw.count ?? raw.rowCount ?? 0);
+  }
+
+  return {
+    totalRecords,
+    duplicateGroups,
+    duplicateRows,
+    details,
+    cleaned: autoClean && duplicateGroups > 0,
+    deletedCount,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// fetchFromServer
+// ---------------------------------------------------------------------------
 
 export async function fetchFromServer(
   url?: string
 ): Promise<SpartaImportDiff> {
-  const targetUrl = url ?? DEFAULT_SPARTA_URL;
+  // Use explicit URL, or look up the saved URL, or fall back to default
+  const targetUrl = url ?? await getSpartaUrl();
 
   let response: Response;
   try {
