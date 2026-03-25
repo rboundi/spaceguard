@@ -4,6 +4,7 @@ import {
   generateIncidentSummaryPdf,
   getIncidentSummaryStats,
   generateThreatBriefingPdf,
+  generateSupplyChainPdf,
 } from "../services/report.service";
 
 export const reportRoutes = new Hono();
@@ -133,6 +134,32 @@ reportRoutes.get("/reports/threat-briefing/pdf", async (c) => {
 
   const dateStr = new Date().toISOString().slice(0, 10);
   const filename = `spaceguard-threat-briefing-${dateStr}.pdf`;
+
+  return new Response(buffer as unknown as BodyInit, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Length": buffer.byteLength.toString(),
+      "Cache-Control": "no-store",
+    },
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/reports/supply-chain/pdf?organizationId=xxx
+//
+// Returns a downloadable PDF Supply Chain Risk Assessment.
+// ---------------------------------------------------------------------------
+reportRoutes.get("/reports/supply-chain/pdf", async (c) => {
+  const organizationId = c.req.query("organizationId");
+  if (!organizationId) return c.json({ error: "organizationId is required" }, 400);
+  if (!UUID_RE.test(organizationId)) return c.json({ error: "organizationId must be a valid UUID" }, 400);
+
+  const buffer = await generateSupplyChainPdf(organizationId);
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const filename = `spaceguard-supply-chain-${dateStr}.pdf`;
 
   return new Response(buffer as unknown as BodyInit, {
     status: 200,

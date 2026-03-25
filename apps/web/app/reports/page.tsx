@@ -14,6 +14,7 @@ import {
   BarChart2,
   CheckCircle2,
   Target,
+  Link as LinkIcon,
 } from "lucide-react";
 import {
   getDashboard,
@@ -21,6 +22,7 @@ import {
   getIncidentSummaryStats,
   getIncidentSummaryPdf,
   getThreatBriefingPdf,
+  getSupplyChainPdf,
   type IncidentSummaryStats,
 } from "@/lib/api";
 import { useOrg } from "@/lib/context";
@@ -513,6 +515,124 @@ function ThreatBriefingCard({ orgId }: { orgId: string | null }) {
 }
 
 // ---------------------------------------------------------------------------
+// Supply Chain Risk Assessment card
+// ---------------------------------------------------------------------------
+
+function SupplyChainCard({ orgId }: { orgId: string | null }) {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  async function handleDownload() {
+    if (!orgId) return;
+    setDownloading(true);
+    setDownloadError(null);
+    let url: string | null = null;
+    const a = document.createElement("a");
+    try {
+      const blob = await getSupplyChainPdf(orgId);
+      url = URL.createObjectURL(blob);
+      a.href = url;
+      a.download = `spaceguard-supply-chain-${today()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "Failed to generate report");
+    } finally {
+      if (document.body.contains(a)) document.body.removeChild(a);
+      if (url) setTimeout(() => URL.revokeObjectURL(url!), 100);
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <Card className="border-slate-700 bg-slate-900">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-cyan-500/10 p-2 text-cyan-400">
+              <LinkIcon size={20} />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold text-slate-100">
+                Supply Chain Risk Assessment
+              </CardTitle>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Supplier inventory, certifications, NIS2 Art. 21(2)(d) status - PDF
+              </p>
+            </div>
+          </div>
+          <Badge variant="success" className="text-[10px] px-2 shrink-0">
+            Available
+          </Badge>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <p className="text-sm text-slate-400 leading-relaxed">
+          Analysis of third-party dependencies in your space systems, including
+          ground segment vendors, component suppliers, cloud providers, and
+          software integrations. Evaluates certification coverage, risk scores,
+          geographic concentration, and NIS2 Article 21(2)(d) compliance status.
+        </p>
+
+        <div className="rounded-lg border border-slate-700/30 bg-slate-800/20 px-4 py-3 space-y-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            Report Contents
+          </p>
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
+            {[
+              "Supplier inventory with risk scores",
+              "Criticality + type distribution",
+              "Country concentration analysis",
+              "ISO 27001, SOC 2, NIS2 cert gaps",
+              "Overdue assessment tracking",
+              "Recommendations + action items",
+            ].map((item) => (
+              <li key={item} className="text-xs text-slate-400 flex items-center gap-1.5">
+                <span className="text-cyan-500 text-[10px]">&#x25B8;</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {downloadError && (
+          <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            <AlertTriangle size={12} className="shrink-0" />
+            {downloadError}
+          </div>
+        )}
+
+        <Button
+          onClick={handleDownload}
+          disabled={!orgId || downloading}
+          suppressHydrationWarning
+          className="w-full bg-cyan-700 hover:bg-cyan-600 text-white font-medium disabled:opacity-50"
+        >
+          {downloading ? (
+            <>
+              <Loader2 size={16} className="mr-2 animate-spin" />
+              Generating PDF...
+            </>
+          ) : (
+            <>
+              <Download size={16} className="mr-2" />
+              Download Supply Chain PDF
+            </>
+          )}
+        </Button>
+
+        {!orgId && (
+          <p className="text-center text-xs text-slate-600">
+            Set up your organization to enable report generation.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -728,11 +848,7 @@ export default function ReportsPage() {
         {/* ---------------------------------------------------------------- */}
         {/* Placeholder cards */}
         {/* ---------------------------------------------------------------- */}
-        <PlaceholderCard
-          icon={<ShieldCheck size={18} />}
-          title="Supply Chain Risk Assessment"
-          description="Analysis of third-party dependencies in your space systems - ground segment vendors, component suppliers, and software integrations - against known vulnerability databases."
-        />
+        <SupplyChainCard orgId={orgId} />
 
         <PlaceholderCard
           icon={<Clock size={18} />}

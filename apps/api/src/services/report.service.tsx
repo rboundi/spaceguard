@@ -16,6 +16,7 @@ import {
   complianceMappings,
   spaceAssets,
   threatIntel,
+  suppliers,
 } from "../db/schema/index";
 import { incidents, incidentAlerts } from "../db/schema/incidents";
 import { alerts } from "../db/schema/alerts";
@@ -2926,5 +2927,569 @@ export async function generateThreatBriefingPdf(
 ): Promise<Buffer> {
   const data = await buildThreatBriefingData(organizationId);
   const buffer = await renderToBuffer(<ThreatBriefingReport data={data} />);
+  return buffer;
+}
+
+// ===========================================================================
+//
+//  SUPPLY CHAIN RISK ASSESSMENT REPORT
+//
+// ===========================================================================
+
+interface SupplierRow {
+  id: string;
+  name: string;
+  type: string;
+  country: string;
+  criticality: string;
+  description: string | null;
+  securityAssessment: {
+    lastAssessed?: string | null;
+    nextReview?: string | null;
+    iso27001Certified?: boolean;
+    soc2Certified?: boolean;
+    nis2Compliant?: boolean;
+    riskScore?: number;
+    notes?: string | null;
+  } | null;
+}
+
+interface SupplyChainReportData {
+  org: OrgDetails;
+  suppliers: SupplierRow[];
+  generatedAt: string;
+  // Pre-computed analytics
+  totalSuppliers: number;
+  byCriticality: Record<string, number>;
+  byType: Record<string, number>;
+  countryDistribution: Record<string, number>;
+  highRiskSuppliers: SupplierRow[];
+  overdueSuppliers: SupplierRow[];
+  certGaps: { noIso: SupplierRow[]; noSoc2: SupplierRow[]; noNis2: SupplierRow[] };
+  averageRiskScore: number;
+  nis2Article21dStatus: "compliant" | "partial" | "non_compliant";
+  recommendations: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Data builder
+// ---------------------------------------------------------------------------
+
+async function buildSupplyChainData(
+  organizationId: string
+): Promise<SupplyChainReportData> {
+  // Org
+  const [orgRow] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, organizationId))
+    .limit(1);
+
+  if (!orgRow) {
+    throw new HTTPException(404, {
+      message: `Organization ${organizationId} not found`,
+    });
+  }
+
+  const org: OrgDetails = {
+    id: orgRow.id,
+    name: orgRow.name,
+    country: orgRow.country,
+    sector: orgRow.sector,
+    nis2Classification: orgRow.nis2Classification,
+    contactEmail: orgRow.contactEmail,
+  };
+
+  // Suppliers
+  const rows = await db
+    .select()
+    .from(suppliers)
+    .where(eq(suppliers.organizationId, organizationId))
+    .orderBy(suppliers.criticality);
+
+  const supplierList: SupplierRow[] = rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    type: r.type,
+    country: r.country,
+    criticality: r.criticality,
+    description: r.description,
+    securityAssessment: r.securityAssessment as SupplierRow["securityAssessment"],
+  }));
+
+  // Analytics
+  const now = new Date();
+  const byCriticality: Record<string, number> = {};
+  const byType: Record<string, number> = {};
+  const countryDist: Record<string, number> = {};
+  const highRisk: SupplierRow[] = [];
+  const overdue: SupplierRow[] = [];
+  const noIso: SupplierRow[] = [];
+  const noSoc2: SupplierRow[] = [];
+  const noNis2: SupplierRow[] = [];
+  let totalScore = 0;
+  let scoreCount = 0;
+
+  for (const s of supplierList) {
+    byCriticality[s.criticality] = (byCriticality[s.criticality] ?? 0) + 1;
+    byType[s.type] = (byType[s.type] ?? 0) + 1;
+    countryDist[s.country] = (countryDist[s.country] ?? 0) + 1;
+
+    const sa = s.securityAssessment;
+    const isHighCrit = s.criticality === "CRITICAL" || s.criticality === "HIGH";
+    const isHighScore = (sa?.riskScore ?? 0) >= 7;
+    if (isHighCrit || isHighScore) highRisk.push(s);
+
+    if (sa?.nextReview && new Date(sa.nextReview) < now) overdue.push(s);
+    if (!sa?.iso27001Certified) noIso.push(s);
+    if (!sa?.soc2Certified) noSoc2.push(s);
+    if (!sa?.nis2Compliant) noNis2.push(s);
+
+    if (sa?.riskScore) {
+      totalScore += sa.riskScore;
+      scoreCount++;
+    }
+  }
+
+  const avgScore = scoreCount > 0 ? Math.round((totalScore / scoreCount) * 10) / 10 : 0;
+
+  // NIS2 Article 21(2)(d) status
+  let nis2Status: "compliant" | "partial" | "non_compliant" = "non_compliant";
+  if (supplierList.length > 0) {
+    const allAssessed = supplierList.every((s) => s.securityAssessment?.lastAssessed);
+    const criticalAssessed = supplierList
+      .filter((s) => s.criticality === "CRITICAL")
+      .every((s) => s.securityAssessment?.lastAssessed);
+    const noneOverdue = overdue.length === 0;
+
+    if (allAssessed && noneOverdue && avgScore <= 4) {
+      nis2Status = "compliant";
+    } else if (criticalAssessed) {
+      nis2Status = "partial";
+    }
+  }
+
+  // Recommendations
+  const recs: string[] = [];
+  if (overdue.length > 0) {
+    recs.push(
+      `${overdue.length} supplier${overdue.length > 1 ? "s have" : " has"} overdue security reviews. Prioritise reassessment of: ${overdue
+        .slice(0, 3)
+        .map((s) => s.name)
+        .join(", ")}.`
+    );
+  }
+  if (noIso.length > 0 && noIso.some((s) => s.criticality === "CRITICAL" || s.criticality === "HIGH")) {
+    const critNoIso = noIso.filter((s) => s.criticality === "CRITICAL" || s.criticality === "HIGH");
+    recs.push(
+      `${critNoIso.length} high/critical supplier${critNoIso.length > 1 ? "s lack" : " lacks"} ISO 27001 certification: ${critNoIso
+        .map((s) => s.name)
+        .join(", ")}. Require certification or conduct independent audits.`
+    );
+  }
+  if (noNis2.length > 0) {
+    recs.push(
+      `${noNis2.length} supplier${noNis2.length > 1 ? "s are" : " is"} not NIS2 compliant. Engage with these partners to establish compliance roadmaps.`
+    );
+  }
+  const concentrationCountries = Object.entries(countryDist).filter(
+    ([, cnt]) => cnt >= 2 && supplierList.length > 2
+  );
+  if (concentrationCountries.length > 0) {
+    recs.push(
+      `Potential geographic concentration risk: ${concentrationCountries
+        .map(([c, n]) => `${c} (${n} suppliers)`)
+        .join(", ")}. Consider diversifying to reduce single-country regulatory or geopolitical risk.`
+    );
+  }
+  const highScoreSuppliers = supplierList.filter((s) => (s.securityAssessment?.riskScore ?? 0) >= 7);
+  if (highScoreSuppliers.length > 0) {
+    recs.push(
+      `${highScoreSuppliers.length} supplier${highScoreSuppliers.length > 1 ? "s have" : " has"} a risk score of 7 or above: ${highScoreSuppliers
+        .map((s) => `${s.name} (${s.securityAssessment?.riskScore}/10)`)
+        .join(", ")}. Initiate risk mitigation plans.`
+    );
+  }
+  if (recs.length === 0) {
+    recs.push("Supply chain security posture is satisfactory. Continue regular assessments per the review schedule.");
+  }
+
+  return {
+    org,
+    suppliers: supplierList,
+    generatedAt: new Date().toISOString(),
+    totalSuppliers: supplierList.length,
+    byCriticality,
+    byType,
+    countryDistribution: countryDist,
+    highRiskSuppliers: highRisk,
+    overdueSuppliers: overdue,
+    certGaps: { noIso, noSoc2, noNis2 },
+    averageRiskScore: avgScore,
+    nis2Article21dStatus: nis2Status,
+    recommendations: recs,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// PDF Component: Supply Chain Risk Assessment
+// ---------------------------------------------------------------------------
+
+const SUPPLIER_TYPE_LABELS: Record<string, string> = {
+  COMPONENT_MANUFACTURER: "Component Mfr",
+  GROUND_STATION_OPERATOR: "Ground Station Op",
+  LAUNCH_PROVIDER: "Launch Provider",
+  CLOUD_PROVIDER: "Cloud Provider",
+  SOFTWARE_VENDOR: "Software Vendor",
+  INTEGRATION_PARTNER: "Integration Partner",
+  DATA_RELAY_PROVIDER: "Data Relay",
+};
+
+const CRIT_COLORS: Record<string, string> = {
+  CRITICAL: "#ef4444",
+  HIGH: "#f97316",
+  MEDIUM: "#f59e0b",
+  LOW: "#6b7280",
+};
+
+function SupplyChainReport({ data }: { data: SupplyChainReportData }) {
+  const { org, generatedAt } = data;
+  const genDate = new Date(generatedAt).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  // -- Title page --
+  const TitlePage = () => (
+    <Page size="A4" style={s.titlePage}>
+      <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 60 }}>
+        <Text style={{ fontSize: 10, color: C.blue, fontFamily: "Helvetica-Bold", letterSpacing: 4, marginBottom: 16 }}>
+          SPACEGUARD
+        </Text>
+        <Text style={{ fontSize: 28, color: C.white, fontFamily: "Helvetica-Bold", lineHeight: 1.2, marginBottom: 8 }}>
+          Supply Chain Risk{"\n"}Assessment
+        </Text>
+        <View style={{ width: 60, height: 3, backgroundColor: C.blue, marginBottom: 20 }} />
+
+        <View style={s.navyBox}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+            <Text style={{ fontSize: 9, color: C.slate }}>Organisation</Text>
+            <Text style={{ fontSize: 9, color: C.white, fontFamily: "Helvetica-Bold" }}>{org.name}</Text>
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+            <Text style={{ fontSize: 9, color: C.slate }}>NIS2 Classification</Text>
+            <Text style={{ fontSize: 9, color: C.blue, fontFamily: "Helvetica-Bold" }}>{org.nis2Classification}</Text>
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+            <Text style={{ fontSize: 9, color: C.slate }}>Country</Text>
+            <Text style={{ fontSize: 9, color: C.white }}>{org.country}</Text>
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <Text style={{ fontSize: 9, color: C.slate }}>Generated</Text>
+            <Text style={{ fontSize: 9, color: C.white }}>{genDate}</Text>
+          </View>
+        </View>
+
+        {/* KPI cards */}
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+          {[
+            { label: "Total Suppliers", value: String(data.totalSuppliers), color: C.blue },
+            { label: "High Risk", value: String(data.highRiskSuppliers.length), color: data.highRiskSuppliers.length > 0 ? "#ef4444" : C.compliant },
+            { label: "Overdue Reviews", value: String(data.overdueSuppliers.length), color: data.overdueSuppliers.length > 0 ? "#f59e0b" : C.compliant },
+            { label: "Avg Risk Score", value: String(data.averageRiskScore), color: data.averageRiskScore >= 7 ? "#ef4444" : data.averageRiskScore >= 4 ? "#f59e0b" : C.compliant },
+          ].map((kpi) => (
+            <View key={kpi.label} style={{ flex: 1, backgroundColor: C.navyCard, borderRadius: 6, padding: 10, alignItems: "center" }}>
+              <Text style={{ fontSize: 20, color: kpi.color, fontFamily: "Helvetica-Bold" }}>{kpi.value}</Text>
+              <Text style={{ fontSize: 7, color: C.slate, marginTop: 2, textTransform: "uppercase", letterSpacing: 1 }}>{kpi.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+      <View style={{ paddingHorizontal: 60, paddingBottom: 30 }}>
+        <Text style={{ fontSize: 7, color: C.slate, textAlign: "center" }}>
+          SpaceGuard Supply Chain Risk Assessment | Confidential | {genDate}
+        </Text>
+      </View>
+    </Page>
+  );
+
+  // -- Supplier Inventory page --
+  const InventoryPage = () => (
+    <Page size="A4" style={s.contentPage}>
+      <Text style={s.sectionTitle}>Supplier Inventory</Text>
+      <Text style={{ fontSize: 8, color: C.slate, marginBottom: 10 }}>
+        Complete list of registered supply chain partners with risk scores and certification status.
+      </Text>
+
+      {/* Table header */}
+      <View style={{ flexDirection: "row", backgroundColor: C.navyCard, borderRadius: 4, paddingVertical: 5, paddingHorizontal: 6, marginBottom: 4 }}>
+        <Text style={{ flex: 3, fontSize: 7, color: C.slate, fontFamily: "Helvetica-Bold" }}>SUPPLIER</Text>
+        <Text style={{ flex: 2, fontSize: 7, color: C.slate, fontFamily: "Helvetica-Bold" }}>TYPE</Text>
+        <Text style={{ flex: 1, fontSize: 7, color: C.slate, fontFamily: "Helvetica-Bold", textAlign: "center" }}>COUNTRY</Text>
+        <Text style={{ flex: 1, fontSize: 7, color: C.slate, fontFamily: "Helvetica-Bold", textAlign: "center" }}>CRIT</Text>
+        <Text style={{ flex: 1, fontSize: 7, color: C.slate, fontFamily: "Helvetica-Bold", textAlign: "center" }}>RISK</Text>
+        <Text style={{ flex: 1.5, fontSize: 7, color: C.slate, fontFamily: "Helvetica-Bold", textAlign: "center" }}>CERTS</Text>
+      </View>
+
+      {data.suppliers.map((sup, idx) => {
+        const sa = sup.securityAssessment;
+        const certs: string[] = [];
+        if (sa?.iso27001Certified) certs.push("ISO");
+        if (sa?.soc2Certified) certs.push("SOC2");
+        if (sa?.nis2Compliant) certs.push("NIS2");
+
+        return (
+          <View
+            key={sup.id}
+            style={{
+              flexDirection: "row",
+              paddingVertical: 5,
+              paddingHorizontal: 6,
+              backgroundColor: idx % 2 === 0 ? C.navyMid : "transparent",
+              borderRadius: 2,
+            }}
+          >
+            <Text style={{ flex: 3, fontSize: 8, color: C.white, fontFamily: "Helvetica-Bold" }}>{sup.name}</Text>
+            <Text style={{ flex: 2, fontSize: 7, color: C.slate }}>{SUPPLIER_TYPE_LABELS[sup.type] ?? sup.type}</Text>
+            <Text style={{ flex: 1, fontSize: 8, color: C.slateLight, textAlign: "center" }}>{sup.country}</Text>
+            <View style={{ flex: 1, alignItems: "center" }}>
+              <View style={{ paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3, backgroundColor: CRIT_COLORS[sup.criticality] ?? C.slate + "30" }}>
+                <Text style={{ fontSize: 6, color: C.white, fontFamily: "Helvetica-Bold" }}>{sup.criticality}</Text>
+              </View>
+            </View>
+            <Text style={{ flex: 1, fontSize: 9, color: (sa?.riskScore ?? 0) >= 7 ? "#ef4444" : (sa?.riskScore ?? 0) >= 4 ? "#f59e0b" : C.compliant, textAlign: "center", fontFamily: "Helvetica-Bold" }}>
+              {sa?.riskScore ?? "-"}
+            </Text>
+            <Text style={{ flex: 1.5, fontSize: 7, color: certs.length > 0 ? C.compliant : C.slate, textAlign: "center" }}>
+              {certs.length > 0 ? certs.join(", ") : "None"}
+            </Text>
+          </View>
+        );
+      })}
+
+      {data.suppliers.length === 0 && (
+        <View style={{ ...s.navyBox, marginTop: 10 }}>
+          <Text style={{ fontSize: 9, color: C.slate, textAlign: "center" }}>
+            No suppliers registered. Add suppliers via the Supply Chain management page.
+          </Text>
+        </View>
+      )}
+    </Page>
+  );
+
+  // -- Risk Analysis page --
+  const RiskPage = () => {
+    const critEntries = Object.entries(data.byCriticality).sort(
+      ([a], [b]) => ["CRITICAL", "HIGH", "MEDIUM", "LOW"].indexOf(a) - ["CRITICAL", "HIGH", "MEDIUM", "LOW"].indexOf(b)
+    );
+    const typeEntries = Object.entries(data.byType).sort(([, a], [, b]) => b - a);
+    const countryEntries = Object.entries(data.countryDistribution).sort(([, a], [, b]) => b - a);
+    const maxCountry = countryEntries.length > 0 ? countryEntries[0][1] : 1;
+
+    return (
+      <Page size="A4" style={s.contentPage}>
+        <Text style={s.sectionTitle}>Risk Analysis</Text>
+
+        {/* Criticality + Type distribution side by side */}
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 14 }}>
+          {/* By criticality */}
+          <View style={{ flex: 1, ...navyBoxStyle }}>
+            <Text style={navyBoxTitleStyle}>By Criticality</Text>
+            {critEntries.map(([crit, cnt]) => (
+              <View key={crit} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: CRIT_COLORS[crit] ?? C.slate }} />
+                <Text style={{ fontSize: 8, color: C.slateLight, flex: 1 }}>{crit}</Text>
+                <Text style={{ fontSize: 9, color: C.white, fontFamily: "Helvetica-Bold" }}>{cnt}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* By type */}
+          <View style={{ flex: 1, ...navyBoxStyle }}>
+            <Text style={navyBoxTitleStyle}>By Supplier Type</Text>
+            {typeEntries.map(([tp, cnt]) => (
+              <View key={tp} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                <Text style={{ fontSize: 7, color: C.slate, flex: 1 }}>{SUPPLIER_TYPE_LABELS[tp] ?? tp}</Text>
+                <Text style={{ fontSize: 9, color: C.white, fontFamily: "Helvetica-Bold" }}>{cnt}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Country risk */}
+        <View style={navyBoxStyle}>
+          <Text style={navyBoxTitleStyle}>Country Distribution</Text>
+          <Text style={{ fontSize: 8, color: C.slate, marginBottom: 8 }}>
+            Geographic distribution of supply chain partners. Concentration in a single country increases regulatory and geopolitical risk.
+          </Text>
+          {countryEntries.map(([code, cnt]) => (
+            <View key={code} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 5 }}>
+              <Text style={{ fontSize: 9, color: C.white, width: 24, fontFamily: "Helvetica-Bold" }}>{code}</Text>
+              <View style={{ flex: 1, height: 10, backgroundColor: C.navyDark, borderRadius: 3, overflow: "hidden" }}>
+                <View style={{ width: `${(cnt / maxCountry) * 100}%`, height: "100%", backgroundColor: C.blue, borderRadius: 3 }} />
+              </View>
+              <Text style={{ fontSize: 8, color: C.slateLight, width: 16, textAlign: "right" }}>{cnt}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Certification gaps */}
+        <View style={{ ...navyBoxStyle, marginTop: 14 }}>
+          <Text style={navyBoxTitleStyle}>Certification Gaps</Text>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            {[
+              { label: "No ISO 27001", list: data.certGaps.noIso },
+              { label: "No SOC 2", list: data.certGaps.noSoc2 },
+              { label: "Not NIS2 Compliant", list: data.certGaps.noNis2 },
+            ].map((gap) => (
+              <View key={gap.label} style={{ flex: 1 }}>
+                <Text style={{ fontSize: 7, color: C.slate, marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>{gap.label}</Text>
+                <Text style={{ fontSize: 16, color: gap.list.length > 0 ? "#ef4444" : C.compliant, fontFamily: "Helvetica-Bold", marginBottom: 4 }}>
+                  {gap.list.length}
+                </Text>
+                {gap.list.slice(0, 4).map((s) => (
+                  <Text key={s.id} style={{ fontSize: 7, color: C.slateLight, marginBottom: 1 }}>
+                    - {s.name} ({s.criticality})
+                  </Text>
+                ))}
+                {gap.list.length > 4 && (
+                  <Text style={{ fontSize: 7, color: C.slate, fontStyle: "italic" }}>
+                    +{gap.list.length - 4} more
+                  </Text>
+                )}
+              </View>
+            ))}
+          </View>
+        </View>
+      </Page>
+    );
+  };
+
+  // -- NIS2 Compliance + Recommendations page --
+  const RecsPage = () => {
+    const statusColor = data.nis2Article21dStatus === "compliant"
+      ? C.compliant
+      : data.nis2Article21dStatus === "partial"
+        ? C.partial
+        : C.nonCompliant;
+    const statusLabel = data.nis2Article21dStatus === "compliant"
+      ? "Compliant"
+      : data.nis2Article21dStatus === "partial"
+        ? "Partially Compliant"
+        : "Non-Compliant";
+
+    return (
+      <Page size="A4" style={s.contentPage}>
+        {/* NIS2 Article 21(2)(d) status */}
+        <Text style={s.sectionTitle}>NIS2 Article 21(2)(d) Status</Text>
+        <View style={{ ...navyBoxStyle, marginBottom: 14 }}>
+          <Text style={{ fontSize: 8, color: C.slate, marginBottom: 8 }}>
+            Article 21(2)(d) requires entities to implement supply chain security measures, including security-related aspects of relationships with direct suppliers and service providers.
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4, backgroundColor: statusColor + "30" }}>
+              <Text style={{ fontSize: 10, color: statusColor, fontFamily: "Helvetica-Bold" }}>{statusLabel}</Text>
+            </View>
+            <Text style={{ fontSize: 8, color: C.slateLight, flex: 1 }}>
+              {data.nis2Article21dStatus === "compliant"
+                ? "All suppliers assessed, no overdue reviews, average risk score within acceptable range."
+                : data.nis2Article21dStatus === "partial"
+                  ? "Critical suppliers assessed, but gaps remain in lower-tier supplier assessments or review schedules."
+                  : "Significant gaps in supply chain security assessment coverage."}
+            </Text>
+          </View>
+
+          {/* Quick metrics */}
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {[
+              { label: "Suppliers assessed", value: `${data.suppliers.filter((s) => s.securityAssessment?.lastAssessed).length}/${data.totalSuppliers}` },
+              { label: "Overdue reviews", value: String(data.overdueSuppliers.length) },
+              { label: "Avg risk score", value: `${data.averageRiskScore}/10` },
+            ].map((m) => (
+              <View key={m.label} style={{ flex: 1, backgroundColor: C.navyDark, borderRadius: 4, padding: 6, alignItems: "center" }}>
+                <Text style={{ fontSize: 11, color: C.white, fontFamily: "Helvetica-Bold" }}>{m.value}</Text>
+                <Text style={{ fontSize: 6, color: C.slate, marginTop: 2 }}>{m.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Overdue assessments */}
+        {data.overdueSuppliers.length > 0 && (
+          <View style={{ ...navyBoxStyle, marginBottom: 14 }}>
+            <Text style={navyBoxTitleStyle}>Overdue Assessments</Text>
+            {data.overdueSuppliers.map((s) => (
+              <View key={s.id} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: "#f59e0b" }} />
+                <Text style={{ fontSize: 8, color: C.white, flex: 1, fontFamily: "Helvetica-Bold" }}>{s.name}</Text>
+                <Text style={{ fontSize: 7, color: C.slate }}>
+                  Due: {s.securityAssessment?.nextReview ? new Date(s.securityAssessment.nextReview).toLocaleDateString("en-GB") : "Unknown"}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Recommendations */}
+        <Text style={s.sectionTitle}>Recommendations</Text>
+        {data.recommendations.map((rec, idx) => (
+          <View key={idx} style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+            <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: C.blue, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ fontSize: 9, color: C.white, fontFamily: "Helvetica-Bold" }}>{idx + 1}</Text>
+            </View>
+            <Text style={{ flex: 1, fontSize: 8, color: C.slateLight, lineHeight: 1.4 }}>{rec}</Text>
+          </View>
+        ))}
+
+        {/* Footer */}
+        <View style={{ marginTop: "auto", borderTop: `1px solid ${C.navyLight}`, paddingTop: 8 }}>
+          <Text style={{ fontSize: 7, color: C.slate, textAlign: "center" }}>
+            SpaceGuard Supply Chain Risk Assessment | {org.name} | Generated {genDate} | Confidential
+          </Text>
+        </View>
+      </Page>
+    );
+  };
+
+  return (
+    <Document
+      title={`SpaceGuard Supply Chain Risk Assessment - ${org.name}`}
+      author="SpaceGuard"
+      subject="Supply Chain Risk Assessment"
+    >
+      <TitlePage />
+      <InventoryPage />
+      <RiskPage />
+      <RecsPage />
+    </Document>
+  );
+}
+
+// Inline style helpers (avoid duplicating s.navyBox which may not have the right shape)
+const navyBoxStyle = {
+  backgroundColor: C.navyCard as string,
+  borderRadius: 6,
+  padding: 12,
+} as const;
+
+const navyBoxTitleStyle = {
+  fontSize: 9,
+  color: C.blue as string,
+  fontFamily: "Helvetica-Bold" as const,
+  textTransform: "uppercase" as const,
+  letterSpacing: 2,
+  marginBottom: 8,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Exported: Supply Chain PDF generator
+// ---------------------------------------------------------------------------
+
+export async function generateSupplyChainPdf(
+  organizationId: string
+): Promise<Buffer> {
+  const data = await buildSupplyChainData(organizationId);
+  const buffer = await renderToBuffer(<SupplyChainReport data={data} />);
   return buffer;
 }
