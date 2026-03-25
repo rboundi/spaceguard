@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
 import { zValidator } from "@hono/zod-validator";
 import { createOrganizationSchema, updateOrganizationSchema } from "@spaceguard/shared";
 import {
@@ -12,14 +11,7 @@ import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const organizationRoutes = new Hono();
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function assertUUID(value: string, label: string): void {
-  if (!UUID_RE.test(value)) {
-    throw new HTTPException(400, { message: `${label} must be a valid UUID` });
-  }
-}
+import { assertUUID } from "../middleware/validate";
 
 // POST /api/v1/organizations
 organizationRoutes.post(

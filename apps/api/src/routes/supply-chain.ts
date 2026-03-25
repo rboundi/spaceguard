@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
 import { zValidator } from "@hono/zod-validator";
 import {
   createSupplierSchema,
@@ -18,14 +17,7 @@ import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const supplyChainRoutes = new Hono();
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function assertUUID(value: string, label: string): void {
-  if (!UUID_RE.test(value)) {
-    throw new HTTPException(400, { message: `${label} must be a valid UUID` });
-  }
-}
+import { assertUUID, UUID_RE } from "../middleware/validate";
 
 // POST /api/v1/supply-chain/suppliers
 supplyChainRoutes.post(

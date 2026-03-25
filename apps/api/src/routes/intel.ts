@@ -22,14 +22,7 @@ import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const intelRoutes = new Hono();
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function assertUUID(value: string, label: string): void {
-  if (!UUID_RE.test(value)) {
-    throw new HTTPException(400, { message: `${label} must be a valid UUID` });
-  }
-}
+import { assertUUID } from "../middleware/validate";
 
 // ---------------------------------------------------------------------------
 // GET /api/v1/intel
@@ -90,7 +83,9 @@ intelRoutes.post(
   async (c) => {
     const data = c.req.valid("json");
     const intel = await createIntel(data);
+    const user = c.get("user");
     logAudit({
+      organizationId: user.organizationId,
       actor: extractActor(c),
       action: "CREATE",
       resourceType: "threat_intel",

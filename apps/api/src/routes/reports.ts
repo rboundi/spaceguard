@@ -11,8 +11,7 @@ import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const reportRoutes = new Hono();
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { UUID_RE } from "../middleware/validate";
 
 // ---------------------------------------------------------------------------
 // GET /api/v1/reports/compliance/pdf?organizationId=xxx

@@ -1,5 +1,7 @@
 # Known Issues and Intentional Limitations
 
+Last updated: 2026-03-25
+
 ## Architecture
 
 ### Frontend type definitions are duplicated from shared schemas
@@ -161,3 +163,57 @@ an indefinite loading skeleton.
 
 **Resolution path**: Add `error: string | null` to the context value and
 display a retry button in the Header component.
+
+## Fixed in Code Review (2026-03-25)
+
+### Missing organizationId in Audit Logs
+
+**Files**: `apps/api/src/routes/incidents.ts`, `apps/api/src/routes/intel.ts`
+
+Five `logAudit()` calls in incidents.ts (link alert, add note, generate report, submit report) and one in intel.ts (create intel) were missing the `organizationId` field, making those audit entries impossible to filter by organization. Added `organizationId: user.organizationId` to all affected calls.
+
+### Duplicate UUID Validation Logic
+
+**Files**: 8 route files each had their own copy of `UUID_RE` regex and `assertUUID()` function.
+
+Extracted to `apps/api/src/middleware/validate.ts` and updated all route files to import from the shared module. Removed now-unused `HTTPException` imports from files that only needed it for the duplicated assertUUID.
+
+## Open: Settings and Configuration
+
+### In-memory Rule Overrides
+
+Detection rule enable/disable state and threshold overrides are stored in an in-memory `Map` in `apps/api/src/routes/settings.ts`. All customizations are lost on server restart. Production should persist these in the database per organization.
+
+### In-memory Rate Limits
+
+Telemetry stream rate limits are acknowledged and audit-logged but not enforced. The PUT endpoint returns success without persisting the value.
+
+### Test Notification is a Stub
+
+`POST /settings/notifications/test` logs an audit entry and returns success but does not send an email. The notification service needs to be wired in.
+
+### Integration Tab Placeholders
+
+The Integrations tab (webhook, syslog, STIX/TAXII, Slack, Teams) is entirely UI. No backend endpoints exist.
+
+### API Keys Tab Uses Demo Data
+
+The API Keys tab displays hardcoded demo keys. Create/revoke functionality is not implemented.
+
+## Open: Type Safety
+
+### Unsafe Buffer-to-BodyInit Cast in PDF Routes
+
+PDF generation uses `buffer as unknown as BodyInit` in 5 places in `apps/api/src/routes/reports.ts`. Should construct a proper `Response` with the buffer as `Uint8Array` or use Hono streaming helpers.
+
+### Inconsistent Error Response Shapes
+
+Most routes return `{ error: string }`, some use `{ error: string, cause: unknown }` (telemetry), and settings uses `{ success: true, message: string }`. Should standardize across all endpoints.
+
+## Open: Frontend Gaps
+
+### Silent Error Handling in Compliance and Alerts
+
+- `apps/web/app/compliance/page.tsx`: `handleSave` catch reverts state silently with no toast or error message
+- `apps/web/app/compliance/page.tsx`: `MapAssetDialog` createMapping catch is empty
+- `apps/web/app/alerts/page.tsx`: IntelContextCard error state set but never rendered
