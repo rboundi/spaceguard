@@ -37,7 +37,9 @@ export type AuditAction =
   | "REPORT_GENERATED"
   | "ALERT_ACKNOWLEDGED"
   | "INCIDENT_CREATED"
-  | "MAPPING_CHANGED";
+  | "MAPPING_CHANGED"
+  | "TEST_NOTIFICATION"
+  | "KEY_REGENERATION";
 
 export interface AuditEntry {
   organizationId?: string | null;

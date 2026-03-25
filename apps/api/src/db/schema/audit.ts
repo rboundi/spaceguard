@@ -23,6 +23,8 @@ export const auditActionEnum = pgEnum("audit_action", [
   "ALERT_ACKNOWLEDGED",
   "INCIDENT_CREATED",
   "MAPPING_CHANGED",
+  "TEST_NOTIFICATION",
+  "KEY_REGENERATION",
 ]);
 
 export const auditLog = pgTable(

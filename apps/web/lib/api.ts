@@ -1056,3 +1056,61 @@ export async function exportStixBundle(options: StixExportOptions) {
   const blob = await res.blob();
   downloadBlob(blob, `spaceguard-stix-bundle-${options.organizationId.slice(0, 8)}.json`);
 }
+
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+
+export interface SettingsDetectionRule {
+  id: string;
+  name: string;
+  description: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  sparta: { tactic: string; technique: string } | null;
+  mitre: { techniqueId: string; techniqueName: string } | null;
+  nis2Articles: string[];
+  sourceFile: string | null;
+  conditionType: string;
+  conditionParameter: string | null;
+  conditionValue: number | null;
+  enabled: boolean;
+  thresholdOverride: number | null;
+}
+
+export const updateSettingsOrganization = (data: Partial<{
+  name: string;
+  contactEmail: string;
+  contactName: string;
+  nis2Classification: string;
+  country: string;
+}>) => api.put<OrganizationResponse>("/api/v1/settings/organization", data);
+
+export const updateSettingsNotifications = (data: {
+  notifyCriticalAlerts?: boolean;
+  notifyDeadlines?: boolean;
+  notifyWeeklyDigest?: boolean;
+}) => api.put<{ success: boolean }>("/api/v1/settings/notifications", data);
+
+export const sendTestNotification = () =>
+  api.post<{ success: boolean; message: string }>("/api/v1/settings/notifications/test", {});
+
+export const getSettingsDetectionRules = () =>
+  api.get<{ rules: SettingsDetectionRule[]; total: number }>("/api/v1/settings/detection/rules");
+
+export const updateDetectionRuleSettings = (ruleId: string, data: {
+  enabled?: boolean;
+  thresholdOverride?: number | null;
+}) => api.put<{ ruleId: string; enabled: boolean; thresholdOverride: number | null }>(
+  `/api/v1/settings/detection/rules/${ruleId}`, data
+);
+
+export const regenerateStreamKey = (streamId: string) =>
+  api.post<{ id: string; apiKey: string }>(
+    `/api/v1/settings/telemetry/streams/${streamId}/regenerate-key`, {}
+  );
+
+export const updateStreamRateLimit = (streamId: string, pointsPerMinute: number) =>
+  api.put<{ id: string; pointsPerMinute: number }>(
+    `/api/v1/settings/telemetry/streams/${streamId}/rate-limit`,
+    { pointsPerMinute }
+  );
