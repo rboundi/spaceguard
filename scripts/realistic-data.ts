@@ -1012,7 +1012,7 @@ async function run() {
     console.log(`Found ${reqRows.length} compliance requirements in database.`);
     const reqIds = reqRows.map((r) => r.id);
 
-    for (const { org, assets, mappings } of ORGS) {
+    for (const { org, assets, mappings, suppliers: orgSupplierDefs } of ORGS) {
       console.log(`\nProcessing: ${org.name}`);
 
       // Idempotent: delete existing org by name (cascades to assets + mappings)
@@ -1096,7 +1096,7 @@ async function run() {
       console.log(`  Created ${mappingCount} compliance mappings`);
 
       // Insert suppliers (if defined)
-      const orgSuppliers = entry.suppliers ?? [];
+      const orgSuppliers = orgSupplierDefs ?? [];
       let supplierCount = 0;
       for (const sup of orgSuppliers) {
         await sql`
