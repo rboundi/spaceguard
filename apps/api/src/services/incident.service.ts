@@ -27,6 +27,7 @@ import {
 } from "../db/schema/incidents";
 import { alerts } from "../db/schema/alerts";
 import { organizations } from "../db/schema/organizations";
+import { sendIncidentCreated } from "./notification.service";
 import { spaceAssets } from "../db/schema/assets";
 import type {
   Incident,
@@ -486,6 +487,18 @@ export async function createIncidentFromAlert(
 
   // Link the triggering alert
   await addAlertToIncident(incident.id, alertId);
+
+  // Email notification for auto-created incident (fire-and-forget)
+  sendIncidentCreated({
+    id: incident.id,
+    title: incident.title,
+    severity: incident.severity,
+    organizationId,
+    affectedAssetIds: incident.affectedAssetIds as string[],
+    detectedAt: incident.detectedAt,
+  }).catch((err: unknown) => {
+    console.error("[incident-service] Failed to send incident notification:", err);
+  });
 
   return incident;
 }

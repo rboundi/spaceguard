@@ -934,3 +934,19 @@ export async function uploadSpartaBundle(
 
   return res.json() as Promise<SpartaImportDiff>;
 }
+
+// ---------------------------------------------------------------------------
+// Auth / Profile
+// ---------------------------------------------------------------------------
+
+export interface ProfileUpdatePayload {
+  name?: string;
+  password?: string;
+  notifyCriticalAlerts?: boolean;
+  notifyDeadlines?: boolean;
+  notifyWeeklyDigest?: boolean;
+}
+
+export function updateProfile(data: ProfileUpdatePayload) {
+  return api.put<{ id: string; email: string; name: string; role: string }>("/api/v1/auth/me", data);
+}

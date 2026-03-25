@@ -35,6 +35,9 @@ const loginSchema = z.object({
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   password: z.string().min(8).optional(),
+  notifyCriticalAlerts: z.boolean().optional(),
+  notifyDeadlines: z.boolean().optional(),
+  notifyWeeklyDigest: z.boolean().optional(),
 });
 
 const updateUserSchema = z.object({

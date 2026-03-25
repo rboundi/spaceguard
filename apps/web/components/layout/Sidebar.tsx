@@ -18,6 +18,7 @@ import {
   Link as LinkIcon,
   ClipboardList,
   Settings,
+  UserCog,
 } from "lucide-react";
 import { useAlerts } from "@/lib/alerts-context";
 import { useIncidents } from "@/lib/incidents-context";
@@ -241,6 +242,31 @@ export function Sidebar() {
           })}
         </ul>
       </nav>
+
+      {/* Settings link */}
+      <div className="shrink-0 px-2 pb-1">
+        <Link
+          href="/settings"
+          title={collapsed ? "Settings" : undefined}
+          className={[
+            "flex items-center gap-3 mx-0 rounded-md text-sm font-medium",
+            "transition-colors duration-150 relative",
+            collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5",
+            pathname === "/settings"
+              ? "bg-slate-800 text-blue-400"
+              : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200",
+          ].join(" ")}
+        >
+          {pathname === "/settings" && (
+            <span
+              className="absolute left-0 top-1 bottom-1 w-0.5 bg-blue-400 rounded-r-full"
+              aria-hidden="true"
+            />
+          )}
+          <UserCog size={18} aria-hidden="true" />
+          {!collapsed && <span className="flex-1">Settings</span>}
+        </Link>
+      </div>
 
       {/* Collapse toggle */}
       <div className="shrink-0 p-3 border-t border-slate-800">

@@ -175,6 +175,9 @@ export async function getMe(userId: string): Promise<{
   isActive: boolean;
   lastLogin: Date | null;
   createdAt: Date;
+  notifyCriticalAlerts: boolean;
+  notifyDeadlines: boolean;
+  notifyWeeklyDigest: boolean;
 }> {
   const [user] = await db
     .select({
@@ -186,6 +189,9 @@ export async function getMe(userId: string): Promise<{
       isActive: users.isActive,
       lastLogin: users.lastLogin,
       createdAt: users.createdAt,
+      notifyCriticalAlerts: users.notifyCriticalAlerts,
+      notifyDeadlines: users.notifyDeadlines,
+      notifyWeeklyDigest: users.notifyWeeklyDigest,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -200,11 +206,20 @@ export async function getMe(userId: string): Promise<{
 
 export async function updateProfile(
   userId: string,
-  data: { name?: string; password?: string }
+  data: {
+    name?: string;
+    password?: string;
+    notifyCriticalAlerts?: boolean;
+    notifyDeadlines?: boolean;
+    notifyWeeklyDigest?: boolean;
+  }
 ): Promise<{ id: string; email: string; name: string; role: string }> {
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (data.name) updates.name = data.name;
   if (data.password) updates.passwordHash = hashPassword(data.password);
+  if (data.notifyCriticalAlerts !== undefined) updates.notifyCriticalAlerts = data.notifyCriticalAlerts;
+  if (data.notifyDeadlines !== undefined) updates.notifyDeadlines = data.notifyDeadlines;
+  if (data.notifyWeeklyDigest !== undefined) updates.notifyWeeklyDigest = data.notifyWeeklyDigest;
 
   const [user] = await db
     .update(users)

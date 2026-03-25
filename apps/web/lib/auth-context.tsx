@@ -22,6 +22,9 @@ export interface AuthUser {
   isActive?: boolean;
   lastLogin?: string | null;
   createdAt?: string;
+  notifyCriticalAlerts?: boolean;
+  notifyDeadlines?: boolean;
+  notifyWeeklyDigest?: boolean;
 }
 
 interface AuthContextValue {

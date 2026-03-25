@@ -27,6 +27,7 @@ import type {
   AlertQuery,
 } from "@spaceguard/shared";
 import { createIncidentFromAlert } from "../incident.service";
+import { sendAlertNotification } from "../notification.service";
 
 // ---------------------------------------------------------------------------
 // Redis client (lazily initialised, shared singleton)
@@ -149,6 +150,20 @@ export async function createAlert(data: CreateAlert): Promise<AlertResponse | nu
   if (row.severity === "HIGH" || row.severity === "CRITICAL") {
     createIncidentFromAlert(row.id, row.organizationId).catch((err: unknown) => {
       console.error("[alert-service] Failed to auto-create incident:", err);
+    });
+
+    // Email notification for CRITICAL/HIGH alerts (fire-and-forget)
+    sendAlertNotification({
+      id: row.id,
+      title: row.title,
+      severity: row.severity,
+      organizationId: row.organizationId,
+      affectedAssetId: row.affectedAssetId,
+      spartaTactics: row.spartaTactic ? [row.spartaTactic] : [],
+      spartaTechniques: row.spartaTechnique ? [row.spartaTechnique] : [],
+      triggeredAt: row.triggeredAt,
+    }).catch((err: unknown) => {
+      console.error("[alert-service] Failed to send alert notification:", err);
     });
   }
 

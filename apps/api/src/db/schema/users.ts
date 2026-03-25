@@ -33,6 +33,9 @@ export const users = pgTable("users", {
   name: varchar("name", { length: 255 }).notNull(),
   role: userRoleEnum("role").notNull().default("VIEWER"),
   isActive: boolean("is_active").notNull().default(true),
+  notifyCriticalAlerts: boolean("notify_critical_alerts").notNull().default(true),
+  notifyDeadlines: boolean("notify_deadlines").notNull().default(true),
+  notifyWeeklyDigest: boolean("notify_weekly_digest").notNull().default(true),
   lastLogin: timestamp("last_login", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
