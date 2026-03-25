@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
+import { assertUUID } from "../middleware/validate";
 import {
   register,
   login,
@@ -219,6 +220,7 @@ authRoutes.get("/users", adminOnly, async (c) => {
 // PUT /users/:id
 authRoutes.put("/users/:id", adminOnly, async (c) => {
   const id = c.req.param("id");
+  assertUUID(id, "id");
   let body: unknown;
   try {
     body = await c.req.json();

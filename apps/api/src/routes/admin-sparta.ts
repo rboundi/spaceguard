@@ -60,7 +60,9 @@ adminSpartaRoutes.post("/admin/sparta/import", async (c) => {
     fileName,
   });
 
+  const user = c.get("user");
   logAudit({
+    organizationId: user?.organizationId,
     actor: extractActor(c),
     action: "CREATE",
     resourceType: "threat_intel",
@@ -96,7 +98,9 @@ adminSpartaRoutes.post("/admin/sparta/fetch", async (c) => {
 
   const diff = await fetchFromServer(url);
 
+  const user = c.get("user");
   logAudit({
+    organizationId: user?.organizationId,
     actor: extractActor(c),
     action: "CREATE",
     resourceType: "threat_intel",
@@ -150,7 +154,9 @@ adminSpartaRoutes.put("/admin/sparta/settings", async (c) => {
   }
   const saved = await setSpartaUrl(url);
 
+  const user = c.get("user");
   logAudit({
+    organizationId: user?.organizationId,
     actor: extractActor(c),
     action: "UPDATE",
     resourceType: "threat_intel",
@@ -177,7 +183,9 @@ adminSpartaRoutes.post("/admin/sparta/duplicates", async (c) => {
   }
   const result = await checkDuplicates(autoClean);
 
+  const user = c.get("user");
   logAudit({
+    organizationId: user?.organizationId,
     actor: extractActor(c),
     action: autoClean ? "DELETE" : "VIEW",
     resourceType: "threat_intel",

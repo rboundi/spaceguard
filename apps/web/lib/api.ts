@@ -213,7 +213,7 @@ export const getIncidentSummaryPdf = async (query: {
   if (query.to)   params.set("to", query.to);
   const res = await fetch(
     `${API_URL}/api/v1/reports/incident-summary/pdf?${params.toString()}`,
-    { method: "GET" }
+    { method: "GET", headers: exportHeaders() }
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
@@ -228,7 +228,7 @@ export const getCompliancePdf = async (organizationId: string): Promise<Blob> =>
   const params = new URLSearchParams({ organizationId });
   const res = await fetch(
     `${API_URL}/api/v1/reports/compliance/pdf?${params.toString()}`,
-    { method: "GET" }
+    { method: "GET", headers: exportHeaders() }
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
@@ -749,7 +749,7 @@ export const getThreatBriefingPdf = async (
   const params = new URLSearchParams({ organizationId });
   const res = await fetch(
     `${API_URL}/api/v1/reports/threat-briefing/pdf?${params.toString()}`,
-    { method: "GET" }
+    { method: "GET", headers: exportHeaders() }
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
@@ -811,7 +811,7 @@ export const getAuditTrailPdf = async (
   const params = new URLSearchParams({ organizationId, from, to });
   const res = await fetch(
     `${API_URL}/api/v1/reports/audit-trail/pdf?${params.toString()}`,
-    { method: "GET" }
+    { method: "GET", headers: exportHeaders() }
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
@@ -913,7 +913,7 @@ export const getSupplyChainPdf = async (
   const params = new URLSearchParams({ organizationId });
   const res = await fetch(
     `${API_URL}/api/v1/reports/supply-chain/pdf?${params.toString()}`,
-    { method: "GET" }
+    { method: "GET", headers: exportHeaders() }
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
@@ -935,6 +935,7 @@ export async function uploadSpartaBundle(
 
   const res = await fetch(`${API_URL}/api/v1/admin/sparta/import`, {
     method: "POST",
+    headers: exportHeaders(),
     body: formData,
   });
 

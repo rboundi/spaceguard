@@ -780,10 +780,12 @@ function NotesSection({
   const [author, setAuthor]   = useState("");
   const [content, setContent] = useState("");
   const [saving, setSaving]   = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
 
   async function handleAdd() {
     if (!content.trim()) return;
     setSaving(true);
+    setNoteError(null);
     try {
       const note = await addIncidentNote(incidentId, {
         author: author.trim() || "analyst",
@@ -791,8 +793,8 @@ function NotesSection({
       });
       onNoteAdded(note);
       setContent(""); setAuthor("");
-    } catch {
-      // ignore
+    } catch (err) {
+      setNoteError(err instanceof Error ? err.message : "Failed to add note");
     } finally {
       setSaving(false);
     }
@@ -838,6 +840,9 @@ function NotesSection({
             placeholder="Add a note..."
             className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 resize-none"
           />
+          {noteError && (
+            <p className="text-xs text-red-400">{noteError}</p>
+          )}
           <Button
             size="sm"
             disabled={saving || !content.trim()}

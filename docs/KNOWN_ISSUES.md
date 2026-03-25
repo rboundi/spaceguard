@@ -164,7 +164,33 @@ an indefinite loading skeleton.
 **Resolution path**: Add `error: string | null` to the context value and
 display a retry button in the Header component.
 
-## Fixed in Code Review (2026-03-25)
+## Fixed in Code Review (2026-03-25, Part 4)
+
+### Missing auth headers on PDF downloads and SPARTA file upload
+
+**File**: `apps/web/lib/api.ts`
+
+Five PDF download functions and the SPARTA bundle upload used raw `fetch()` calls without Authorization headers, bypassing the centralized `request()` helper. All authenticated API calls would fail with 401. Added `headers: exportHeaders()` to all 6 functions.
+
+### Missing organizationId in admin-sparta audit logs
+
+**File**: `apps/api/src/routes/admin-sparta.ts`
+
+All 4 `logAudit()` calls (import, fetch, settings update, duplicates check) were missing `organizationId`. Added `user?.organizationId` (optional chaining since admin routes may not always have org context).
+
+### Missing UUID validation on PUT /users/:id
+
+**File**: `apps/api/src/routes/auth.ts`
+
+The user update endpoint did not validate the `:id` parameter, so an invalid ID would be passed directly to the database. Added `assertUUID(id, "id")`.
+
+### Silent error swallowing in incident note submission
+
+**File**: `apps/web/app/incidents/[id]/page.tsx`
+
+The note add form had an empty catch block. Errors were silently discarded, leaving users with no feedback on failure. Added `noteError` state and a red error message display.
+
+## Fixed in Code Review (2026-03-25, Part 3)
 
 ### Missing organizationId in Audit Logs
 
