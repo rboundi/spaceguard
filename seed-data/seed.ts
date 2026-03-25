@@ -243,6 +243,13 @@ async function seedSpartaFullMatrix(sql: postgres.Sql): Promise<void> {
     `${statistics.relationships} relationships`
   );
 
+  // Fix x_sparta_is_subtechnique in place: the field is unreliable in the data.
+  // Sub-techniques are definitively identified by a dot in x_mitre_id (e.g. "REC-0001.01").
+  for (const t of matrix.techniques) {
+    const isSubtechnique = typeof t.x_mitre_id === "string" && t.x_mitre_id.includes(".");
+    t.x_sparta_is_subtechnique = isSubtechnique;
+  }
+
   // Also load enriched countermeasures (has NIST/ISO mappings from the Excel)
   let enrichedCmMap: Map<string, SpartaCountermeasure> = new Map();
   try {
