@@ -725,6 +725,108 @@ export const getThreatBriefingPdf = async (
   return res.blob();
 };
 
+// ---------------------------------------------------------------------------
+// Supply Chain
+// ---------------------------------------------------------------------------
+
+export interface SupplierSecurityAssessment {
+  lastAssessed?: string | null;
+  nextReview?: string | null;
+  iso27001Certified?: boolean;
+  soc2Certified?: boolean;
+  nis2Compliant?: boolean;
+  riskScore?: number;
+  notes?: string | null;
+}
+
+export interface SupplierResponse {
+  id: string;
+  organizationId: string;
+  name: string;
+  type: string;
+  country: string;
+  criticality: string;
+  description?: string;
+  contactInfo?: Record<string, unknown>;
+  assetsSupplied?: string[];
+  securityAssessment?: SupplierSecurityAssessment;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupplierRiskSummary {
+  totalSuppliers: number;
+  highRiskCount: number;
+  overdueAssessments: number;
+  countryDistribution: Record<string, number>;
+  byType: Record<string, number>;
+  byCriticality: Record<string, number>;
+  certificationGaps: {
+    noIso27001: number;
+    noSoc2: number;
+    noNis2: number;
+  };
+  averageRiskScore: number;
+}
+
+export const getSuppliers = (query?: {
+  organizationId?: string;
+  type?: string;
+  criticality?: string;
+  page?: number;
+  perPage?: number;
+}) => {
+  const params = new URLSearchParams();
+  if (query?.organizationId) params.set("organizationId", query.organizationId);
+  if (query?.type) params.set("type", query.type);
+  if (query?.criticality) params.set("criticality", query.criticality);
+  if (query?.page) params.set("page", String(query.page));
+  if (query?.perPage) params.set("perPage", String(query.perPage));
+  const qs = params.toString();
+  return api.get<{
+    data: SupplierResponse[];
+    total: number;
+    page: number;
+    perPage: number;
+  }>(`/api/v1/supply-chain/suppliers${qs ? `?${qs}` : ""}`);
+};
+
+export const getSupplier = (id: string) =>
+  api.get<SupplierResponse>(`/api/v1/supply-chain/suppliers/${id}`);
+
+export const createSupplierApi = (data: Record<string, unknown>) =>
+  api.post<SupplierResponse>("/api/v1/supply-chain/suppliers", data);
+
+export const updateSupplierApi = (id: string, data: Record<string, unknown>) =>
+  api.put<SupplierResponse>(`/api/v1/supply-chain/suppliers/${id}`, data);
+
+export const deleteSupplierApi = (id: string) =>
+  api.delete(`/api/v1/supply-chain/suppliers/${id}`);
+
+export const getSupplierRiskSummary = (organizationId: string) =>
+  api.get<SupplierRiskSummary>(
+    `/api/v1/supply-chain/risk-summary?organizationId=${organizationId}`
+  );
+
+export const getSupplyChainPdf = async (
+  organizationId: string
+): Promise<Blob> => {
+  const params = new URLSearchParams({ organizationId });
+  const res = await fetch(
+    `${API_URL}/api/v1/reports/supply-chain/pdf?${params.toString()}`,
+    { method: "GET" }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const msg =
+      typeof body.error === "string"
+        ? body.error
+        : (body.message ?? res.statusText);
+    throw new ApiError(res.status, msg);
+  }
+  return res.blob();
+};
+
 /** Upload a STIX 2.1 JSON file via multipart form data */
 export async function uploadSpartaBundle(
   file: File

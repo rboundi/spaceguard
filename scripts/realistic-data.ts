@@ -42,6 +42,23 @@ interface MappingDef {
   lastAssessed?: string; // ISO timestamp
 }
 
+interface SupplierDef {
+  name: string;
+  type: string;
+  country: string;
+  criticality: string;
+  description?: string;
+  securityAssessment?: {
+    lastAssessed?: string | null;
+    nextReview?: string | null;
+    iso27001Certified?: boolean;
+    soc2Certified?: boolean;
+    nis2Compliant?: boolean;
+    riskScore?: number;
+    notes?: string | null;
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Organisation definitions
 // ---------------------------------------------------------------------------
@@ -50,6 +67,7 @@ const ORGS: Array<{
   org: OrgDef;
   assets: AssetDef[];
   mappings: MappingDef[];
+  suppliers?: SupplierDef[];
 }> = [
   // --------------------------------------------------------------------------
   // 1. Proba Space Systems (Small EO Constellation, Belgium, most mature)
@@ -317,6 +335,88 @@ const ORGS: Array<{
       {
         requirementIndex: 17,
         status: "NOT_ASSESSED",
+      },
+    ],
+    suppliers: [
+      {
+        name: "KSAT",
+        type: "GROUND_STATION_OPERATOR",
+        country: "NO",
+        criticality: "CRITICAL",
+        description: "Kongsberg Satellite Services - primary ground station network provider (Svalbard, TrollSat). 24/7 LEO TT&C and data downlink.",
+        securityAssessment: {
+          lastAssessed: "2025-11-15",
+          nextReview: "2026-05-15",
+          iso27001Certified: true,
+          soc2Certified: false,
+          nis2Compliant: true,
+          riskScore: 3,
+          notes: "Mature provider with strong physical security. Annual on-site audits performed. Data-in-transit encrypted via dedicated VPN.",
+        },
+      },
+      {
+        name: "e-GEOS",
+        type: "GROUND_STATION_OPERATOR",
+        country: "IT",
+        criticality: "HIGH",
+        description: "Secondary ground station network via ASI Matera facility. EO data relay and emergency TT&C backup.",
+        securityAssessment: {
+          lastAssessed: "2025-09-22",
+          nextReview: "2026-03-22",
+          iso27001Certified: true,
+          soc2Certified: false,
+          nis2Compliant: true,
+          riskScore: 4,
+          notes: "ASI facility meets ESA security standards. Network segmentation verified. Some legacy systems in data processing chain.",
+        },
+      },
+      {
+        name: "OHB SE",
+        type: "COMPONENT_MANUFACTURER",
+        country: "DE",
+        criticality: "CRITICAL",
+        description: "Satellite bus manufacturer (SmallGEO-derived platform). Responsible for AOCS, EPS, and COMMS subsystem hardware and firmware.",
+        securityAssessment: {
+          lastAssessed: "2025-06-10",
+          nextReview: "2026-06-10",
+          iso27001Certified: true,
+          soc2Certified: true,
+          nis2Compliant: true,
+          riskScore: 2,
+          notes: "Gold-standard supply chain partner. Hardware provenance tracking via ITAR-compliant processes. Firmware signing and secure boot chain verified.",
+        },
+      },
+      {
+        name: "AWS",
+        type: "CLOUD_PROVIDER",
+        country: "IE",
+        criticality: "HIGH",
+        description: "Cloud infrastructure for mission control system (MCS), data processing pipeline, and archival storage. Region: eu-west-1.",
+        securityAssessment: {
+          lastAssessed: "2025-12-01",
+          nextReview: "2026-06-01",
+          iso27001Certified: true,
+          soc2Certified: true,
+          nis2Compliant: false,
+          riskScore: 3,
+          notes: "Hyperscaler with extensive compliance portfolio. NIS2 self-assessment pending from AWS. Data residency confirmed within EU. Shared responsibility model documented.",
+        },
+      },
+      {
+        name: "Custom MCS Vendor",
+        type: "SOFTWARE_VENDOR",
+        country: "BE",
+        criticality: "MEDIUM",
+        description: "Develops and maintains the bespoke Mission Control System software. Small team (8 engineers) based in Brussels.",
+        securityAssessment: {
+          lastAssessed: "2025-04-20",
+          nextReview: "2025-10-20",
+          iso27001Certified: false,
+          soc2Certified: false,
+          nis2Compliant: false,
+          riskScore: 7,
+          notes: "No formal security certifications. SAST/DAST tooling not yet adopted. Penetration test scheduled for Q1 2026. Key-person risk: only 2 engineers know the full codebase.",
+        },
       },
     ],
   },
@@ -994,15 +1094,40 @@ async function run() {
         mappingCount++;
       }
       console.log(`  Created ${mappingCount} compliance mappings`);
+
+      // Insert suppliers (if defined)
+      const orgSuppliers = entry.suppliers ?? [];
+      let supplierCount = 0;
+      for (const sup of orgSuppliers) {
+        await sql`
+          INSERT INTO suppliers
+            (organization_id, name, type, country, criticality, description, security_assessment)
+          VALUES (
+            ${orgId},
+            ${sup.name},
+            ${sup.type}::supplier_type,
+            ${sup.country},
+            ${sup.criticality}::supplier_criticality,
+            ${sup.description ?? null},
+            ${sup.securityAssessment ? JSON.stringify(sup.securityAssessment) : null}
+          )
+        `;
+        supplierCount++;
+      }
+      if (supplierCount > 0) {
+        console.log(`  Created ${supplierCount} suppliers`);
+      }
     }
 
     console.log("\nDone! Summary:");
     const orgCount = await sql<Array<{ count: string }>>`SELECT count(*)::text as count FROM organizations`;
     const assetCount = await sql<Array<{ count: string }>>`SELECT count(*)::text as count FROM space_assets`;
     const mappingCount = await sql<Array<{ count: string }>>`SELECT count(*)::text as count FROM compliance_mappings`;
+    const supplierCountTotal = await sql<Array<{ count: string }>>`SELECT count(*)::text as count FROM suppliers`;
     console.log(`  Organizations: ${orgCount[0].count}`);
     console.log(`  Assets: ${assetCount[0].count}`);
     console.log(`  Compliance mappings: ${mappingCount[0].count}`);
+    console.log(`  Suppliers: ${supplierCountTotal[0].count}`);
   } finally {
     await sql.end();
   }

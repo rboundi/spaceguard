@@ -23,3 +23,6 @@ export * from "./intel";
 
 // Admin: SPARTA Data Management
 export * from "./sparta";
+
+// Supply Chain Management
+export * from "./supply-chain";

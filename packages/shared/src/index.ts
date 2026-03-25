@@ -7,3 +7,4 @@ export * from "./schemas/alert";
 export * from "./schemas/incident";
 export * from "./schemas/intel";
 export * from "./schemas/sparta";
+export * from "./schemas/supplier";

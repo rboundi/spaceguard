@@ -15,6 +15,7 @@ import {
   Bell,
   AlertTriangle,
   ShieldAlert,
+  Link as LinkIcon,
   Settings,
 } from "lucide-react";
 import { useAlerts } from "@/lib/alerts-context";
@@ -60,6 +61,13 @@ const navItems = [
     label: "Threat Intel",
     href: "/intel",
     icon: ShieldAlert,
+    exact: false,
+    badge: false,
+  },
+  {
+    label: "Supply Chain",
+    href: "/supply-chain",
+    icon: LinkIcon,
     exact: false,
     badge: false,
   },
