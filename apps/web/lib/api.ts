@@ -619,6 +619,44 @@ export interface DuplicateCheckResult {
 export const checkSpartaDuplicates = (autoClean = false) =>
   api.post<DuplicateCheckResult>("/api/v1/admin/sparta/duplicates", { autoClean });
 
+// ---------------------------------------------------------------------------
+// SPARTA Technique Navigation (new endpoints from Module 5)
+// ---------------------------------------------------------------------------
+
+export interface TechniqueDetail {
+  technique: IntelResponse;
+  subTechniques: IntelResponse[];
+  countermeasures: IntelResponse[];
+}
+
+/** Return all SPARTA techniques (parent + sub) for a given tactic phase name or STIX ID */
+export const getTacticTechniques = (tacticId: string) =>
+  api.get<{ data: IntelResponse[]; total: number }>(
+    `/api/v1/intel/tactics/${encodeURIComponent(tacticId)}/techniques`
+  );
+
+/** Full-text search restricted to SPARTA attack-pattern objects */
+export const searchSpartaTechniques = (q: string, limit = 50) =>
+  api.get<{ data: IntelResponse[]; total: number }>(
+    `/api/v1/intel/techniques/search?q=${encodeURIComponent(q)}&limit=${limit}`
+  );
+
+/** Return a technique with its sub-techniques and countermeasures */
+export const getTechniqueDetail = (id: string) =>
+  api.get<TechniqueDetail>(`/api/v1/intel/techniques/${encodeURIComponent(id)}`);
+
+/** Return countermeasures mapped to a technique STIX ID */
+export const getTechniqueCountermeasures = (stixId: string) =>
+  api.get<{ data: IntelResponse[]; total: number }>(
+    `/api/v1/intel/techniques/${encodeURIComponent(stixId)}/countermeasures`
+  );
+
+/** Find countermeasures mapped to a NIST SP 800-53 control (e.g. "AC-2") */
+export const getCountermeasuresByNist = (controlId: string) =>
+  api.get<{ data: IntelResponse[]; total: number }>(
+    `/api/v1/intel/countermeasures/nist/${encodeURIComponent(controlId)}`
+  );
+
 /** Upload a STIX 2.1 JSON file via multipart form data */
 export async function uploadSpartaBundle(
   file: File
