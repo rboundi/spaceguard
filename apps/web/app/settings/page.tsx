@@ -122,19 +122,25 @@ function Toggle({ enabled, onChange, size = "default" }: {
   onChange: (v: boolean) => void;
   size?: "default" | "small";
 }) {
-  const w = size === "small" ? "w-7 h-4" : "w-9 h-5";
-  const dot = size === "small" ? "w-3 h-3" : "w-4 h-4";
-  const translate = size === "small" ? "translate-x-3" : "translate-x-4";
+  const isSmall = size === "small";
+  const trackClass = isSmall ? "w-8 h-[18px]" : "w-10 h-[22px]";
+  const dotClass = isSmall ? "h-3.5 w-3.5" : "h-[18px] w-[18px]";
+  const dotTranslate = enabled
+    ? (isSmall ? "translate-x-[14px]" : "translate-x-[18px]")
+    : "translate-x-0";
 
   return (
     <button
       type="button"
       role="switch"
       aria-checked={enabled}
-      onClick={() => onChange(!enabled)}
-      className={`relative ${w} rounded-full shrink-0 transition-colors ${enabled ? "bg-blue-600" : "bg-slate-700"}`}
+      onClick={(e) => { e.stopPropagation(); onChange(!enabled); }}
+      className={`relative inline-flex items-center ${trackClass} rounded-full shrink-0 transition-colors duration-200 ${enabled ? "bg-blue-600" : "bg-slate-700"}`}
     >
-      <span className={`absolute top-0.5 ${dot} rounded-full bg-white transition-transform ${enabled ? translate : "translate-x-0.5"}`} />
+      <span
+        className={`inline-block ${dotClass} rounded-full bg-white shadow-sm transition-transform duration-200 ${dotTranslate}`}
+        style={{ marginLeft: 2 }}
+      />
     </button>
   );
 }
