@@ -18,6 +18,7 @@ import {
   getCountermeasures,
   getCountermeasuresByNist,
 } from "../services/intel.service";
+import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const intelRoutes = new Hono();
 
@@ -89,6 +90,14 @@ intelRoutes.post(
   async (c) => {
     const data = c.req.valid("json");
     const intel = await createIntel(data);
+    logAudit({
+      actor: extractActor(c),
+      action: "CREATE",
+      resourceType: "threat_intel",
+      resourceId: intel.id,
+      details: { stixType: intel.stixType, name: intel.name },
+      ipAddress: extractIp(c),
+    });
     return c.json(intel, 201);
   }
 );

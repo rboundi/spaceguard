@@ -151,6 +151,14 @@ incidentRoutes.post(
     const { id } = c.req.valid("param");
     const { alertId } = c.req.valid("json");
     const link = await addAlertToIncident(id, alertId);
+    logAudit({
+      actor: extractActor(c),
+      action: "UPDATE",
+      resourceType: "incident",
+      resourceId: id,
+      details: { op: "link_alert", alertId },
+      ipAddress: extractIp(c),
+    });
     return c.json(link, 201);
   }
 );
@@ -179,6 +187,14 @@ incidentRoutes.post(
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
     const note = await addNote(id, body);
+    logAudit({
+      actor: extractActor(c),
+      action: "UPDATE",
+      resourceType: "incident",
+      resourceId: id,
+      details: { op: "add_note", noteId: note.id },
+      ipAddress: extractIp(c),
+    });
     return c.json(note, 201);
   }
 );
@@ -207,6 +223,14 @@ incidentRoutes.post(
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
     const report = await generateNis2Report(id, body);
+    logAudit({
+      actor: extractActor(c),
+      action: "CREATE",
+      resourceType: "incident",
+      resourceId: id,
+      details: { op: "generate_nis2_report", reportType: body.reportType },
+      ipAddress: extractIp(c),
+    });
     return c.json(report, 201);
   }
 );
@@ -231,9 +255,17 @@ incidentRoutes.put(
     z.object({ submittedTo: z.string().min(1).max(255) })
   ),
   async (c) => {
-    const { reportId } = c.req.valid("param");
+    const { id, reportId } = c.req.valid("param");
     const { submittedTo } = c.req.valid("json");
     const report = await markReportSubmitted(reportId, submittedTo);
+    logAudit({
+      actor: extractActor(c),
+      action: "STATUS_CHANGE",
+      resourceType: "incident",
+      resourceId: id,
+      details: { op: "submit_nis2_report", reportId, submittedTo },
+      ipAddress: extractIp(c),
+    });
     return c.json(report);
   }
 );

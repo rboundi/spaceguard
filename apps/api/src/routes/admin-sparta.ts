@@ -16,6 +16,7 @@ import {
   checkDuplicates,
 } from "../services/sparta.service";
 import { spartaFetchRequestSchema } from "@spaceguard/shared";
+import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const adminSpartaRoutes = new Hono();
 
@@ -59,6 +60,14 @@ adminSpartaRoutes.post("/admin/sparta/import", async (c) => {
     fileName,
   });
 
+  logAudit({
+    actor: extractActor(c),
+    action: "CREATE",
+    resourceType: "threat_intel",
+    details: { op: "sparta_import", source: "file_upload", fileName, ...diff },
+    ipAddress: extractIp(c),
+  });
+
   return c.json(diff, 200);
 });
 
@@ -86,6 +95,15 @@ adminSpartaRoutes.post("/admin/sparta/fetch", async (c) => {
   }
 
   const diff = await fetchFromServer(url);
+
+  logAudit({
+    actor: extractActor(c),
+    action: "CREATE",
+    resourceType: "threat_intel",
+    details: { op: "sparta_fetch", source: "remote_server", url: url ?? "default", ...diff },
+    ipAddress: extractIp(c),
+  });
+
   return c.json(diff, 200);
 });
 
@@ -131,6 +149,15 @@ adminSpartaRoutes.put("/admin/sparta/settings", async (c) => {
     return c.json({ error: "spartaUrl must be a valid URL" }, 400);
   }
   const saved = await setSpartaUrl(url);
+
+  logAudit({
+    actor: extractActor(c),
+    action: "UPDATE",
+    resourceType: "threat_intel",
+    details: { op: "sparta_settings_update", spartaUrl: saved },
+    ipAddress: extractIp(c),
+  });
+
   return c.json({ spartaUrl: saved }, 200);
 });
 
@@ -149,5 +176,14 @@ adminSpartaRoutes.post("/admin/sparta/duplicates", async (c) => {
     // No body is fine, just check without cleaning
   }
   const result = await checkDuplicates(autoClean);
+
+  logAudit({
+    actor: extractActor(c),
+    action: autoClean ? "DELETE" : "VIEW",
+    resourceType: "threat_intel",
+    details: { op: "sparta_duplicates_check", autoClean, ...result },
+    ipAddress: extractIp(c),
+  });
+
   return c.json(result, 200);
 });

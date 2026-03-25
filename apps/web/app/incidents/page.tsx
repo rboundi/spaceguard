@@ -158,8 +158,8 @@ function CreateIncidentDialog({
       });
       reset();
       onCreate(incident);
-    } catch {
-      setError("Failed to create incident. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create incident. Please try again.");
     } finally {
       setLoading(false);
     }
