@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   ShieldAlert,
   Link as LinkIcon,
+  ClipboardList,
   Settings,
 } from "lucide-react";
 import { useAlerts } from "@/lib/alerts-context";
@@ -68,6 +69,13 @@ const navItems = [
     label: "Supply Chain",
     href: "/supply-chain",
     icon: LinkIcon,
+    exact: false,
+    badge: false,
+  },
+  {
+    label: "Audit Trail",
+    href: "/audit",
+    icon: ClipboardList,
     exact: false,
     badge: false,
   },

@@ -6,7 +6,6 @@ import {
   Download,
   Loader2,
   AlertTriangle,
-  Clock,
   ShieldCheck,
   Layers,
   CalendarDays,
@@ -15,6 +14,7 @@ import {
   CheckCircle2,
   Target,
   Link as LinkIcon,
+  ClipboardList,
 } from "lucide-react";
 import {
   getDashboard,
@@ -23,6 +23,7 @@ import {
   getIncidentSummaryPdf,
   getThreatBriefingPdf,
   getSupplyChainPdf,
+  getAuditTrailPdf,
   type IncidentSummaryStats,
 } from "@/lib/api";
 import { useOrg } from "@/lib/context";
@@ -633,6 +634,161 @@ function SupplyChainCard({ orgId }: { orgId: string | null }) {
 }
 
 // ---------------------------------------------------------------------------
+// Audit Trail Report card
+// ---------------------------------------------------------------------------
+
+function AuditTrailCard({ orgId }: { orgId: string | null }) {
+  const [fromDate, setFromDate] = useState(nDaysAgo(90));
+  const [toDate, setToDate] = useState(today());
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  async function handleDownload() {
+    if (!orgId) return;
+    setDownloading(true);
+    setDownloadError(null);
+    let url: string | null = null;
+    const a = document.createElement("a");
+    try {
+      const blob = await getAuditTrailPdf(orgId, fromDate, toDate);
+      url = URL.createObjectURL(blob);
+      a.href = url;
+      a.download = `spaceguard-audit-trail-${fromDate}-to-${toDate}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "Failed to generate report");
+    } finally {
+      if (document.body.contains(a)) document.body.removeChild(a);
+      if (url) setTimeout(() => URL.revokeObjectURL(url!), 100);
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <Card className="border-slate-700 bg-slate-900">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-slate-500/10 p-2 text-slate-400">
+              <ClipboardList size={20} />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold text-slate-100">
+                Audit Trail Report
+              </CardTitle>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Timestamped action log, NIS2 Art. 21(2)(i) evidence - PDF
+              </p>
+            </div>
+          </div>
+          <Badge variant="success" className="text-[10px] px-2 shrink-0">
+            Available
+          </Badge>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <p className="text-sm text-slate-400 leading-relaxed">
+          Complete audit trail of all platform actions including asset changes,
+          compliance mapping updates, incident management, alert acknowledgements,
+          and supply chain modifications. Actor-attributed and tamper-evident.
+          Constitutes regulatory evidence under NIS2 Article 21(2)(i).
+        </p>
+
+        {/* Date range picker */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-widest text-slate-500">
+              From
+            </Label>
+            <div className="relative">
+              <CalendarDays size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
+              <Input
+                type="date"
+                value={fromDate}
+                max={toDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="pl-7 h-8 text-xs bg-slate-800 border-slate-700 text-slate-300"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-widest text-slate-500">
+              To
+            </Label>
+            <div className="relative">
+              <CalendarDays size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
+              <Input
+                type="date"
+                value={toDate}
+                min={fromDate}
+                max={today()}
+                onChange={(e) => setToDate(e.target.value)}
+                className="pl-7 h-8 text-xs bg-slate-800 border-slate-700 text-slate-300"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-slate-700/30 bg-slate-800/20 px-4 py-3 space-y-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            Report Contents
+          </p>
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
+            {[
+              "Title page with date range + KPIs",
+              "Events by action type (bar chart)",
+              "Daily volume timeline",
+              "Events by actor breakdown",
+              "Critical actions log (DELETE, STATUS_CHANGE)",
+              "NIS2 Art. 21(2)(i) compliance statement",
+            ].map((item) => (
+              <li key={item} className="text-xs text-slate-400 flex items-center gap-1.5">
+                <span className="text-slate-500 text-[10px]">&#x25B8;</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {downloadError && (
+          <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            <AlertTriangle size={12} className="shrink-0" />
+            {downloadError}
+          </div>
+        )}
+
+        <Button
+          onClick={handleDownload}
+          disabled={!orgId || downloading}
+          suppressHydrationWarning
+          className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium disabled:opacity-50"
+        >
+          {downloading ? (
+            <>
+              <Loader2 size={16} className="mr-2 animate-spin" />
+              Generating PDF...
+            </>
+          ) : (
+            <>
+              <Download size={16} className="mr-2" />
+              Download Audit Trail PDF
+            </>
+          )}
+        </Button>
+
+        {!orgId && (
+          <p className="text-center text-xs text-slate-600">
+            Set up your organization to enable report generation.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -850,11 +1006,7 @@ export default function ReportsPage() {
         {/* ---------------------------------------------------------------- */}
         <SupplyChainCard orgId={orgId} />
 
-        <PlaceholderCard
-          icon={<Clock size={18} />}
-          title="Audit Trail Report"
-          description="Timestamped log of all compliance changes, asset updates, incident actions, and user activity for regulatory audit purposes and internal governance reviews."
-        />
+        <AuditTrailCard orgId={orgId} />
 
         <PlaceholderCard
           icon={<BarChart2 size={18} />}

@@ -7,7 +7,7 @@ import {
   StyleSheet,
   renderToBuffer,
 } from "@react-pdf/renderer";
-import { eq, and, ne, gte, lte, avg, isNotNull, sql, inArray } from "drizzle-orm";
+import { eq, and, ne, gte, lte, avg, isNotNull, sql, inArray, desc } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db/client";
 import {
@@ -20,6 +20,7 @@ import {
 } from "../db/schema/index";
 import { incidents, incidentAlerts } from "../db/schema/incidents";
 import { alerts } from "../db/schema/alerts";
+import { auditLog } from "../db/schema/audit";
 import type { DashboardResponse } from "@spaceguard/shared";
 import { getDashboard } from "./compliance.service";
 
@@ -3491,5 +3492,783 @@ export async function generateSupplyChainPdf(
 ): Promise<Buffer> {
   const data = await buildSupplyChainData(organizationId);
   const buffer = await renderToBuffer(<SupplyChainReport data={data} />);
+  return buffer;
+}
+
+// ===========================================================================
+// AUDIT TRAIL REPORT
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Data builder
+// ---------------------------------------------------------------------------
+
+interface AuditEntryData {
+  id: string;
+  actor: string;
+  action: string;
+  resourceType: string | null;
+  resourceId: string | null;
+  details: Record<string, unknown> | null;
+  ipAddress: string | null;
+  timestamp: Date;
+}
+
+interface AuditReportData {
+  org: OrgDetails;
+  from: Date;
+  to: Date;
+  generatedAt: string;
+  total: number;
+  uniqueActors: number;
+  byAction: Record<string, number>;
+  byActor: Record<string, number>;
+  byResourceType: Record<string, number>;
+  perDay: Array<{ date: string; count: number }>;
+  criticalEvents: AuditEntryData[];
+  recentEvents: AuditEntryData[];
+}
+
+async function buildAuditReportData(
+  organizationId: string,
+  from: Date,
+  to: Date
+): Promise<AuditReportData> {
+  // Fetch org
+  const [orgRow] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, organizationId))
+    .limit(1);
+  if (!orgRow) {
+    throw new HTTPException(404, { message: "Organization not found" });
+  }
+
+  const org: OrgDetails = {
+    id: orgRow.id,
+    name: orgRow.name,
+    country: orgRow.country,
+    sector: orgRow.sector,
+    nis2Classification: orgRow.nis2Classification,
+    contactEmail: orgRow.contactEmail,
+  };
+
+  // Fetch all audit events in range for this org
+  const rows = await db
+    .select()
+    .from(auditLog)
+    .where(
+      and(
+        eq(auditLog.organizationId, organizationId),
+        gte(auditLog.timestamp, from),
+        lte(auditLog.timestamp, to)
+      )
+    )
+    .orderBy(desc(auditLog.timestamp));
+
+  const byAction: Record<string, number> = {};
+  const byActor: Record<string, number> = {};
+  const byResourceType: Record<string, number> = {};
+  const perDayMap: Record<string, number> = {};
+  const actors = new Set<string>();
+  const criticalEvents: AuditEntryData[] = [];
+
+  const CRITICAL_ACTIONS = new Set([
+    "DELETE", "STATUS_CHANGE", "INCIDENT_CREATED", "MAPPING_CHANGED",
+  ]);
+
+  for (const row of rows) {
+    byAction[row.action] = (byAction[row.action] ?? 0) + 1;
+    byActor[row.actor] = (byActor[row.actor] ?? 0) + 1;
+    actors.add(row.actor);
+
+    if (row.resourceType) {
+      byResourceType[row.resourceType] = (byResourceType[row.resourceType] ?? 0) + 1;
+    }
+
+    const dateKey = row.timestamp.toISOString().slice(0, 10);
+    perDayMap[dateKey] = (perDayMap[dateKey] ?? 0) + 1;
+
+    if (CRITICAL_ACTIONS.has(row.action) && criticalEvents.length < 30) {
+      criticalEvents.push({
+        id: row.id,
+        actor: row.actor,
+        action: row.action,
+        resourceType: row.resourceType ?? null,
+        resourceId: row.resourceId ?? null,
+        details: (row.details as Record<string, unknown>) ?? null,
+        ipAddress: row.ipAddress ?? null,
+        timestamp: row.timestamp,
+      });
+    }
+  }
+
+  const perDay = Object.entries(perDayMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, count]) => ({ date, count }));
+
+  // Most recent 25 events for the timeline section
+  const recentEvents = rows.slice(0, 25).map((row) => ({
+    id: row.id,
+    actor: row.actor,
+    action: row.action,
+    resourceType: row.resourceType ?? null,
+    resourceId: row.resourceId ?? null,
+    details: (row.details as Record<string, unknown>) ?? null,
+    ipAddress: row.ipAddress ?? null,
+    timestamp: row.timestamp,
+  }));
+
+  return {
+    org,
+    from,
+    to,
+    generatedAt: new Date().toISOString(),
+    total: rows.length,
+    uniqueActors: actors.size,
+    byAction,
+    byActor,
+    byResourceType,
+    perDay,
+    criticalEvents,
+    recentEvents,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Design helpers (reuse C and s from above)
+// ---------------------------------------------------------------------------
+
+const auditActionColor: Record<string, string> = {
+  CREATE: C.compliant,
+  UPDATE: C.blue,
+  DELETE: C.nonCompliant,
+  STATUS_CHANGE: C.partial,
+  INCIDENT_CREATED: "#f97316",
+  ALERT_ACKNOWLEDGED: C.compliant,
+  MAPPING_CHANGED: "#a78bfa",
+  REPORT_GENERATED: "#22d3ee",
+  EXPORT: "#22d3ee",
+  VIEW: C.notAssessed,
+  LOGIN: "#a78bfa",
+  LOGOUT: C.notAssessed,
+};
+
+function getAuditColor(action: string): string {
+  return auditActionColor[action] ?? C.slate;
+}
+
+function fmtAuditDateShort(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function fmtAuditDatetime(d: Date): string {
+  return d.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+}
+
+// ---------------------------------------------------------------------------
+// Audit Report React PDF component
+// ---------------------------------------------------------------------------
+
+function AuditReport({ data }: { data: AuditReportData }) {
+  const fromStr = fmtAuditDateShort(data.from);
+  const toStr = fmtAuditDateShort(data.to);
+  const dateRange = `${fromStr} to ${toStr}`;
+  const topActions = Object.entries(data.byAction)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8);
+  const topActors = Object.entries(data.byActor)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8);
+  const peakDay = data.perDay.reduce(
+    (best, d) => (d.count > best.count ? d : best),
+    { date: "-", count: 0 }
+  );
+  const avgPerDay =
+    data.perDay.length > 0
+      ? Math.round(data.total / data.perDay.length)
+      : 0;
+
+  // -------------------------------------------------------------------------
+  // Title page
+  // -------------------------------------------------------------------------
+  function TitlePage() {
+    return (
+      <Page size="A4" style={s.titlePage}>
+        {/* Top banner */}
+        <View style={s.titleBanner}>
+          <View>
+            <Text style={s.titleBrandName}>SPACEGUARD</Text>
+            <Text style={s.titleBrandSub}>OPERATIONAL CYBERSECURITY PLATFORM</Text>
+          </View>
+          <Text style={s.titleBannerRight}>{"CONFIDENTIAL\nFor internal use only"}</Text>
+        </View>
+
+        {/* Body */}
+        <View style={s.titleBody}>
+          <Text style={s.titleHeading}>Audit Trail{"\n"}Report</Text>
+          <Text style={s.titleSubheading}>{dateRange}</Text>
+
+          <View style={s.titleOrgBox}>
+            <Text style={s.titleOrgLabel}>ORGANIZATION</Text>
+            <Text style={s.titleOrgName}>{data.org.name}</Text>
+            <Text style={s.titleOrgMeta}>
+              {data.org.country} | {data.org.sector.toUpperCase()} |{" "}
+              {data.org.nis2Classification}
+            </Text>
+          </View>
+
+          {/* KPI row */}
+          <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
+            {[
+              { label: "TOTAL EVENTS", value: String(data.total), color: C.blue },
+              { label: "UNIQUE ACTORS", value: String(data.uniqueActors), color: C.compliant },
+              { label: "ACTION TYPES", value: String(Object.keys(data.byAction).length), color: C.partial },
+              { label: "DAYS COVERED", value: String(data.perDay.length), color: C.slate },
+            ].map(({ label, value, color }) => (
+              <View
+                key={label}
+                style={{
+                  flex: 1,
+                  backgroundColor: C.navyCard,
+                  borderRadius: 6,
+                  padding: 14,
+                  borderTopWidth: 2,
+                  borderTopColor: color,
+                  borderTopStyle: "solid",
+                }}
+              >
+                <Text style={{ fontSize: 7, color: C.slate, letterSpacing: 1.5, marginBottom: 6 }}>
+                  {label}
+                </Text>
+                <Text style={{ fontSize: 22, fontFamily: "Helvetica-Bold", color }}>
+                  {value}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* NIS2 badge */}
+          <View
+            style={{
+              marginTop: 28,
+              backgroundColor: C.blueDim,
+              borderRadius: 6,
+              padding: 14,
+              borderLeftWidth: 3,
+              borderLeftColor: C.blue,
+              borderLeftStyle: "solid",
+            }}
+          >
+            <Text style={{ fontSize: 8, color: C.blueLight, fontFamily: "Helvetica-Bold", marginBottom: 4 }}>
+              NIS2 ARTICLE 21(2)(i) - AUDIT TRAIL EVIDENCE
+            </Text>
+            <Text style={{ fontSize: 9, color: C.slate, lineHeight: 1.5 }}>
+              This report constitutes audit trail evidence as required under NIS2 Directive
+              Article 21(2)(i) which mandates policies and procedures for the use of
+              cryptography and the logging and monitoring of cybersecurity events.
+              All events are timestamped, actor-attributed, and tamper-evident.
+            </Text>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={s.titleFooter}>
+          <Text style={s.titleFooterText}>
+            {"Generated: " + data.generatedAt.replace("T", " ").slice(0, 19) + " UTC"}
+          </Text>
+          <Text style={s.titleFooterText}>{"SpaceGuard v1.0 | CONFIDENTIAL"}</Text>
+        </View>
+      </Page>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Summary page
+  // -------------------------------------------------------------------------
+  function SummaryPage() {
+    return (
+      <Page size="A4" style={s.contentPage}>
+        <View style={s.pageHeader}>
+          <Text style={[s.sectionBrand, { letterSpacing: 0 }]}>SPACEGUARD AUDIT TRAIL</Text>
+          <Text style={s.sectionBrand}>{data.org.name}</Text>
+        </View>
+
+        <Text style={s.sectionTitle}>Activity Summary</Text>
+
+        {/* Stats row */}
+        <View style={{ flexDirection: "row", gap: 10, marginBottom: 18 }}>
+          {[
+            { label: "Total Events", value: data.total, color: C.blue },
+            { label: "Peak Day Events", value: peakDay.count, color: C.partial },
+            { label: "Avg Events/Day", value: avgPerDay, color: C.slate },
+            { label: "Critical Actions", value: data.criticalEvents.length, color: C.nonCompliant },
+          ].map(({ label, value, color }) => (
+            <View
+              key={label}
+              style={{
+                flex: 1,
+                backgroundColor: C.navyCard,
+                borderRadius: 6,
+                padding: 12,
+              }}
+            >
+              <Text style={{ fontSize: 7, color: C.slate, letterSpacing: 1, marginBottom: 5 }}>
+                {label.toUpperCase()}
+              </Text>
+              <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color }}>
+                {value}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Actions breakdown */}
+        <View style={{ ...navyBoxStyle, marginBottom: 14 }}>
+          <Text style={navyBoxTitleStyle}>Events by Action Type</Text>
+          {topActions.map(([action, count]) => {
+            const pct = data.total > 0 ? (count / data.total) * 100 : 0;
+            const barColor = getAuditColor(action);
+            return (
+              <View key={action} style={{ marginBottom: 7 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
+                  <Text style={{ fontSize: 8, color: C.slateLight }}>{action.replace(/_/g, " ")}</Text>
+                  <Text style={{ fontSize: 8, color: barColor, fontFamily: "Helvetica-Bold" }}>
+                    {count}
+                  </Text>
+                </View>
+                <View style={{ height: 5, backgroundColor: C.navyLight, borderRadius: 3 }}>
+                  <View
+                    style={{
+                      height: 5,
+                      width: `${Math.min(100, pct)}%`,
+                      backgroundColor: barColor,
+                      borderRadius: 3,
+                    }}
+                  />
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Actor breakdown */}
+        <View style={navyBoxStyle}>
+          <Text style={navyBoxTitleStyle}>Events by Actor</Text>
+          {topActors.map(([actor, count]) => {
+            const pct = data.total > 0 ? (count / data.total) * 100 : 0;
+            return (
+              <View key={actor} style={{ marginBottom: 7 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
+                  <Text style={{ fontSize: 8, color: C.slateLight }}>{actor}</Text>
+                  <Text style={{ fontSize: 8, color: C.blue, fontFamily: "Helvetica-Bold" }}>
+                    {count}
+                  </Text>
+                </View>
+                <View style={{ height: 5, backgroundColor: C.navyLight, borderRadius: 3 }}>
+                  <View
+                    style={{
+                      height: 5,
+                      width: `${Math.min(100, pct)}%`,
+                      backgroundColor: C.blue,
+                      borderRadius: 3,
+                    }}
+                  />
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 24, borderTopWidth: 1, borderTopColor: C.navyCard, borderTopStyle: "solid", paddingTop: 8 }}>
+          <Text style={{ fontSize: 7, color: C.notAssessed }}>{dateRange}</Text>
+          <Text style={{ fontSize: 7, color: C.notAssessed }} render={({ pageNumber }) => `Page ${pageNumber}`} />
+        </View>
+      </Page>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Activity timeline page (daily counts + resource breakdown)
+  // -------------------------------------------------------------------------
+  function TimelinePage() {
+    const maxCount = Math.max(...data.perDay.map((d) => d.count), 1);
+    const chartHeight = 70;
+
+    return (
+      <Page size="A4" style={s.contentPage}>
+        <View style={s.pageHeader}>
+          <Text style={[s.sectionBrand, { letterSpacing: 0 }]}>SPACEGUARD AUDIT TRAIL</Text>
+          <Text style={s.sectionBrand}>{data.org.name}</Text>
+        </View>
+
+        <Text style={s.sectionTitle}>Activity Timeline</Text>
+
+        {/* Daily bar chart */}
+        {data.perDay.length > 0 ? (
+          <View style={{ ...navyBoxStyle, marginBottom: 18 }}>
+            <Text style={navyBoxTitleStyle}>Daily Event Volume</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-end",
+                height: chartHeight,
+                gap: 2,
+                paddingHorizontal: 4,
+              }}
+            >
+              {data.perDay.map((d) => {
+                const barH = Math.max(4, (d.count / maxCount) * chartHeight);
+                return (
+                  <View
+                    key={d.date}
+                    style={{
+                      flex: 1,
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: "100%",
+                        height: barH,
+                        backgroundColor:
+                          d.date === peakDay.date ? C.partial : C.blue,
+                        borderRadius: 2,
+                      }}
+                    />
+                  </View>
+                );
+              })}
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginTop: 4,
+                paddingHorizontal: 4,
+              }}
+            >
+              <Text style={{ fontSize: 7, color: C.notAssessed }}>
+                {data.perDay[0]?.date ?? ""}
+              </Text>
+              <Text style={{ fontSize: 7, color: C.partial }}>
+                Peak: {peakDay.date} ({peakDay.count})
+              </Text>
+              <Text style={{ fontSize: 7, color: C.notAssessed }}>
+                {data.perDay[data.perDay.length - 1]?.date ?? ""}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <View style={{ ...navyBoxStyle, marginBottom: 18 }}>
+            <Text style={{ fontSize: 9, color: C.notAssessed }}>No activity in this period.</Text>
+          </View>
+        )}
+
+        {/* Resource type breakdown */}
+        <View style={{ ...navyBoxStyle, marginBottom: 14 }}>
+          <Text style={navyBoxTitleStyle}>Events by Resource Type</Text>
+          {Object.entries(data.byResourceType)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 10)
+            .map(([rt, count]) => {
+              const pct = data.total > 0 ? (count / data.total) * 100 : 0;
+              return (
+                <View key={rt} style={{ marginBottom: 6 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2 }}>
+                    <Text style={{ fontSize: 8, color: C.slateLight }}>
+                      {rt.replace(/_/g, " ")}
+                    </Text>
+                    <Text style={{ fontSize: 8, color: C.slate }}>
+                      {count} ({pct.toFixed(0)}%)
+                    </Text>
+                  </View>
+                  <View style={{ height: 4, backgroundColor: C.navyLight, borderRadius: 2 }}>
+                    <View
+                      style={{
+                        height: 4,
+                        width: `${pct}%`,
+                        backgroundColor: C.blueLight,
+                        borderRadius: 2,
+                      }}
+                    />
+                  </View>
+                </View>
+              );
+            })}
+          {Object.keys(data.byResourceType).length === 0 && (
+            <Text style={{ fontSize: 9, color: C.notAssessed }}>No resource types recorded.</Text>
+          )}
+        </View>
+
+        {/* Period stats */}
+        <View
+          style={{
+            backgroundColor: C.navyCard,
+            borderRadius: 6,
+            padding: 12,
+            flexDirection: "row",
+            gap: 10,
+          }}
+        >
+          {[
+            { label: "Period Start", value: fromStr },
+            { label: "Period End", value: toStr },
+            { label: "Peak Activity", value: peakDay.date !== "-" ? `${peakDay.date} (${peakDay.count} events)` : "N/A" },
+            { label: "Avg Events/Day", value: `${avgPerDay} events` },
+          ].map(({ label, value }) => (
+            <View key={label} style={{ flex: 1 }}>
+              <Text style={{ fontSize: 7, color: C.notAssessed, marginBottom: 3, letterSpacing: 1 }}>
+                {label.toUpperCase()}
+              </Text>
+              <Text style={{ fontSize: 9, color: C.slateLight, fontFamily: "Helvetica-Bold" }}>
+                {value}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 24, borderTopWidth: 1, borderTopColor: C.navyCard, borderTopStyle: "solid", paddingTop: 8 }}>
+          <Text style={{ fontSize: 7, color: C.notAssessed }}>{dateRange}</Text>
+          <Text style={{ fontSize: 7, color: C.notAssessed }} render={({ pageNumber }) => `Page ${pageNumber}`} />
+        </View>
+      </Page>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Critical actions page
+  // -------------------------------------------------------------------------
+  function CriticalPage() {
+    return (
+      <Page size="A4" style={s.contentPage}>
+        <View style={s.pageHeader}>
+          <Text style={[s.sectionBrand, { letterSpacing: 0 }]}>SPACEGUARD AUDIT TRAIL</Text>
+          <Text style={s.sectionBrand}>{data.org.name}</Text>
+        </View>
+
+        <Text style={s.sectionTitle}>Critical Actions Log</Text>
+
+        <Text style={{ fontSize: 9, color: C.slate, marginBottom: 14, lineHeight: 1.5 }}>
+          The following events represent high-impact actions requiring elevated scrutiny:
+          deletions, status changes, incident creations, and compliance mapping changes.
+          These events are flagged for regulatory review under NIS2 Article 21.
+        </Text>
+
+        {/* Table header */}
+        <View
+          style={{
+            flexDirection: "row",
+            backgroundColor: C.navyCard,
+            borderRadius: 4,
+            paddingHorizontal: 10,
+            paddingVertical: 7,
+            marginBottom: 4,
+          }}
+        >
+          {["Timestamp", "Actor", "Action", "Resource", "Details"].map((h, i) => (
+            <Text
+              key={h}
+              style={{
+                fontSize: 7,
+                color: C.blue,
+                fontFamily: "Helvetica-Bold",
+                letterSpacing: 1,
+                flex: i === 4 ? 2 : 1,
+              }}
+            >
+              {h.toUpperCase()}
+            </Text>
+          ))}
+        </View>
+
+        {data.criticalEvents.length === 0 ? (
+          <View style={{ ...navyBoxStyle, marginTop: 8 }}>
+            <Text style={{ fontSize: 9, color: C.compliant }}>
+              No critical actions recorded in this period.
+            </Text>
+          </View>
+        ) : (
+          data.criticalEvents.map((ev, idx) => (
+            <View
+              key={ev.id}
+              style={{
+                flexDirection: "row",
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                backgroundColor: idx % 2 === 0 ? C.navyMid : C.navyDark,
+                borderLeftWidth: 2,
+                borderLeftColor: getAuditColor(ev.action),
+                borderLeftStyle: "solid",
+              }}
+            >
+              <Text style={{ flex: 1, fontSize: 7, color: C.slateLight, fontFamily: "Helvetica" }}>
+                {fmtAuditDatetime(ev.timestamp).slice(0, 16)}
+              </Text>
+              <Text style={{ flex: 1, fontSize: 7, color: C.slateLight }}>
+                {ev.actor.length > 14 ? ev.actor.slice(0, 12) + ".." : ev.actor}
+              </Text>
+              <Text style={{ flex: 1, fontSize: 7, color: getAuditColor(ev.action), fontFamily: "Helvetica-Bold" }}>
+                {ev.action.replace(/_/g, " ")}
+              </Text>
+              <Text style={{ flex: 1, fontSize: 7, color: C.slate }}>
+                {ev.resourceType ?? "-"}
+              </Text>
+              <Text style={{ flex: 2, fontSize: 7, color: C.slate }}>
+                {ev.details
+                  ? Object.entries(ev.details).slice(0, 2).map(([k, v]) => `${k}:${String(v)}`).join(" ")
+                  : "-"}
+              </Text>
+            </View>
+          ))
+        )}
+
+        {/* NIS2 compliance statement */}
+        <View
+          style={{
+            marginTop: 20,
+            backgroundColor: C.blueDim,
+            borderRadius: 6,
+            padding: 14,
+            borderLeftWidth: 3,
+            borderLeftColor: C.blue,
+            borderLeftStyle: "solid",
+          }}
+        >
+          <Text style={{ fontSize: 8, color: C.blueLight, fontFamily: "Helvetica-Bold", marginBottom: 6 }}>
+            NIS2 ARTICLE 21(2)(i) COMPLIANCE STATEMENT
+          </Text>
+          <Text style={{ fontSize: 8.5, color: C.slate, lineHeight: 1.6 }}>
+            {data.org.name} maintains a complete, tamper-evident audit trail of all
+            cybersecurity-relevant actions on the SpaceGuard platform. This includes
+            access controls, compliance mapping changes, incident management actions,
+            alert handling, and supply chain modifications. The audit log is timestamped,
+            actor-attributed, and retained for regulatory review. This constitutes
+            compliance evidence under NIS2 Directive Article 21(2)(i) relating to
+            policies and procedures for logging and monitoring of cybersecurity events.
+          </Text>
+          <Text style={{ fontSize: 7.5, color: C.notAssessed, marginTop: 8 }}>
+            {"Report generated: " + data.generatedAt.replace("T", " ").slice(0, 19) + " UTC | SpaceGuard Audit System v1.0"}
+          </Text>
+        </View>
+
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 24, borderTopWidth: 1, borderTopColor: C.navyCard, borderTopStyle: "solid", paddingTop: 8 }}>
+          <Text style={{ fontSize: 7, color: C.notAssessed }}>{dateRange}</Text>
+          <Text style={{ fontSize: 7, color: C.notAssessed }} render={({ pageNumber }) => `Page ${pageNumber}`} />
+        </View>
+      </Page>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Recent events page
+  // -------------------------------------------------------------------------
+  function RecentEventsPage() {
+    return (
+      <Page size="A4" style={s.contentPage}>
+        <View style={s.pageHeader}>
+          <Text style={[s.sectionBrand, { letterSpacing: 0 }]}>SPACEGUARD AUDIT TRAIL</Text>
+          <Text style={s.sectionBrand}>{data.org.name}</Text>
+        </View>
+
+        <Text style={s.sectionTitle}>Recent Events (Last 25)</Text>
+
+        {/* Table header */}
+        <View
+          style={{
+            flexDirection: "row",
+            backgroundColor: C.navyCard,
+            borderRadius: 4,
+            paddingHorizontal: 10,
+            paddingVertical: 7,
+            marginBottom: 4,
+          }}
+        >
+          {["Timestamp", "Actor", "Action", "Resource Type", "Resource ID"].map((h, i) => (
+            <Text
+              key={h}
+              style={{
+                fontSize: 7,
+                color: C.blue,
+                fontFamily: "Helvetica-Bold",
+                letterSpacing: 1,
+                flex: i === 0 ? 1.4 : 1,
+              }}
+            >
+              {h.toUpperCase()}
+            </Text>
+          ))}
+        </View>
+
+        {data.recentEvents.length === 0 ? (
+          <View style={navyBoxStyle}>
+            <Text style={{ fontSize: 9, color: C.notAssessed }}>No events in this period.</Text>
+          </View>
+        ) : (
+          data.recentEvents.map((ev, idx) => (
+            <View
+              key={ev.id}
+              style={{
+                flexDirection: "row",
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                backgroundColor: idx % 2 === 0 ? C.navyMid : C.navyDark,
+              }}
+            >
+              <Text style={{ flex: 1.4, fontSize: 7, color: C.slate, fontFamily: "Helvetica" }}>
+                {fmtAuditDatetime(ev.timestamp).slice(0, 16)}
+              </Text>
+              <Text style={{ flex: 1, fontSize: 7, color: C.slateLight }}>
+                {ev.actor.length > 14 ? ev.actor.slice(0, 12) + ".." : ev.actor}
+              </Text>
+              <Text style={{ flex: 1, fontSize: 7, color: getAuditColor(ev.action), fontFamily: "Helvetica-Bold" }}>
+                {ev.action.replace(/_/g, " ")}
+              </Text>
+              <Text style={{ flex: 1, fontSize: 7, color: C.slate }}>
+                {ev.resourceType ?? "-"}
+              </Text>
+              <Text style={{ flex: 1, fontSize: 7, color: C.notAssessed, fontFamily: "Helvetica" }}>
+                {ev.resourceId ? ev.resourceId.slice(0, 8) + "..." : "-"}
+              </Text>
+            </View>
+          ))
+        )}
+
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 24, borderTopWidth: 1, borderTopColor: C.navyCard, borderTopStyle: "solid", paddingTop: 8 }}>
+          <Text style={{ fontSize: 7, color: C.notAssessed }}>{dateRange}</Text>
+          <Text style={{ fontSize: 7, color: C.notAssessed }} render={({ pageNumber }) => `Page ${pageNumber}`} />
+        </View>
+      </Page>
+    );
+  }
+
+  return (
+    <Document
+      title={`SpaceGuard Audit Trail - ${data.org.name} (${dateRange})`}
+      author="SpaceGuard"
+      subject="Audit Trail Report - NIS2 Article 21(2)(i)"
+    >
+      <TitlePage />
+      <SummaryPage />
+      <TimelinePage />
+      <CriticalPage />
+      <RecentEventsPage />
+    </Document>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Exported: Audit Trail PDF generator
+// ---------------------------------------------------------------------------
+
+export async function generateAuditTrailPdf(
+  organizationId: string,
+  from: Date,
+  to: Date
+): Promise<Buffer> {
+  const data = await buildAuditReportData(organizationId, from, to);
+  const buffer = await renderToBuffer(<AuditReport data={data} />);
   return buffer;
 }

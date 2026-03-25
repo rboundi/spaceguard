@@ -5,6 +5,7 @@ import {
   getIncidentSummaryStats,
   generateThreatBriefingPdf,
   generateSupplyChainPdf,
+  generateAuditTrailPdf,
 } from "../services/report.service";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
@@ -169,6 +170,46 @@ reportRoutes.get("/reports/supply-chain/pdf", async (c) => {
 
   const dateStr = new Date().toISOString().slice(0, 10);
   const filename = `spaceguard-supply-chain-${dateStr}.pdf`;
+
+  return new Response(buffer as unknown as BodyInit, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Length": buffer.byteLength.toString(),
+      "Cache-Control": "no-store",
+    },
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/reports/audit-trail/pdf
+//    ?organizationId=xxx&from=YYYY-MM-DD&to=YYYY-MM-DD
+//
+// Returns a downloadable PDF Audit Trail report.
+// ---------------------------------------------------------------------------
+reportRoutes.get("/reports/audit-trail/pdf", async (c) => {
+  const organizationId = c.req.query("organizationId");
+  if (!organizationId) return c.json({ error: "organizationId is required" }, 400);
+  if (!UUID_RE.test(organizationId)) return c.json({ error: "organizationId must be a valid UUID" }, 400);
+
+  const range = parseDateRange(c.req.query("from"), c.req.query("to"));
+  if ("error" in range) return c.json({ error: range.error }, 400);
+
+  const buffer = await generateAuditTrailPdf(organizationId, range.from, range.to);
+
+  logAudit({
+    organizationId,
+    actor: extractActor(c),
+    action: "REPORT_GENERATED",
+    resourceType: "report",
+    details: { reportType: "audit-trail" },
+    ipAddress: extractIp(c),
+  });
+
+  const fromStr = range.from.toISOString().slice(0, 10);
+  const toStr = range.to.toISOString().slice(0, 10);
+  const filename = `spaceguard-audit-trail-${fromStr}-to-${toStr}.pdf`;
 
   return new Response(buffer as unknown as BodyInit, {
     status: 200,

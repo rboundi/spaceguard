@@ -726,6 +726,71 @@ export const getThreatBriefingPdf = async (
 };
 
 // ---------------------------------------------------------------------------
+// Audit Trail
+// ---------------------------------------------------------------------------
+
+export interface AuditLogEntry {
+  id: string;
+  organizationId: string | null;
+  actor: string;
+  action: string;
+  resourceType: string | null;
+  resourceId: string | null;
+  details: Record<string, unknown> | null;
+  ipAddress: string | null;
+  timestamp: string;
+}
+
+export const getAuditLogs = (query?: {
+  organizationId?: string;
+  from?: string;
+  to?: string;
+  actor?: string;
+  action?: string;
+  resourceType?: string;
+  page?: number;
+  perPage?: number;
+}) => {
+  const params = new URLSearchParams();
+  if (query?.organizationId) params.set("organizationId", query.organizationId);
+  if (query?.from)           params.set("from", query.from);
+  if (query?.to)             params.set("to", query.to);
+  if (query?.actor)          params.set("actor", query.actor);
+  if (query?.action)         params.set("action", query.action);
+  if (query?.resourceType)   params.set("resourceType", query.resourceType);
+  if (query?.page)           params.set("page", String(query.page));
+  if (query?.perPage)        params.set("perPage", String(query.perPage));
+  const qs = params.toString();
+  return api.get<{
+    data: AuditLogEntry[];
+    total: number;
+    page: number;
+    perPage: number;
+  }>(`/api/v1/audit${qs ? `?${qs}` : ""}`);
+};
+
+export const getAuditTrailPdf = async (
+  organizationId: string,
+  from: string,
+  to: string
+): Promise<Blob> => {
+  const params = new URLSearchParams({ organizationId, from, to });
+  const res = await fetch(
+    `${API_URL}/api/v1/reports/audit-trail/pdf?${params.toString()}`,
+    { method: "GET" }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const msg =
+      typeof body.error === "string"
+        ? body.error
+        : (body.message ?? res.statusText);
+    throw new ApiError(res.status, msg);
+  }
+  return res.blob();
+};
+
+// ---------------------------------------------------------------------------
 // Supply Chain
 // ---------------------------------------------------------------------------
 
