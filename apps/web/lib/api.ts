@@ -321,6 +321,18 @@ export interface AlertStats {
   openHigh: number;
 }
 
+export interface DetectionRuleResponse {
+  id: string;
+  name: string;
+  description: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  sparta: { tactic: string; technique: string } | null;
+  mitre: { techniqueId: string; techniqueName: string } | null;
+  nis2Articles: string[];
+  sourceFile: string | null;
+  conditionType: string;
+}
+
 export const getAlerts = (query: {
   organizationId: string;
   status?: string;
@@ -362,6 +374,9 @@ export const getAlertStats = (organizationId: string) => {
   const params = new URLSearchParams({ organizationId });
   return api.get<AlertStats>(`/api/v1/alerts/stats?${params.toString()}`);
 };
+
+export const getDetectionRules = () =>
+  api.get<{ rules: DetectionRuleResponse[]; total: number }>("/api/v1/alerts/rules");
 
 // ---------------------------------------------------------------------------
 // Incidents

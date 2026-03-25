@@ -1,0 +1,182 @@
+---
+# SpaceGuard Detection Rules - Access Control & Authentication
+# Format version: 1
+#
+# These rules detect unauthorized access attempts, privilege escalation,
+# and suspicious authentication patterns across ground segment systems,
+# mission control software, and operational technology interfaces.
+#
+# Parameter naming convention:
+#   ac.privilege_escalation_flag  - 1 when a user account gains elevated privileges
+#   ac.service_account_login_flag - 1 when a service account is used interactively
+#   ac.mfa_bypass_flag            - 1 when MFA is bypassed or downgraded
+#   ac.concurrent_session_count   - number of active sessions for a single user
+#   ac.after_hours_login_flag     - 1 when login occurs outside business hours
+#   ac.api_key_misuse_count       - count of API calls with revoked or expired keys
+
+rules:
+  - id: SG-AC-001
+    name: "Privilege Escalation Detected on Ground System"
+    description: >
+      A user account on a ground segment system has been granted elevated
+      privileges outside of the normal provisioning workflow. Unauthorised
+      privilege escalation is a key indicator of account compromise or insider
+      threat activity. The attacker may be attempting to gain access to
+      spacecraft commanding interfaces, encryption key material, or
+      configuration management systems.
+    severity: CRITICAL
+    sparta:
+      tactic: "Privilege Escalation"
+      technique: "Valid Accounts"
+    mitre:
+      technique_id: "T1078"
+      technique_name: "Valid Accounts"
+    nis2_articles:
+      - "Art. 21(2)(i)"
+      - "Art. 21(2)(j)"
+    condition:
+      type: threshold
+      parameter: ac.privilege_escalation_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: access_control
+
+  - id: SG-AC-002
+    name: "Service Account Used for Interactive Login"
+    description: >
+      A service account that is designed for automated processes has been used
+      for an interactive login session. Service accounts typically have elevated
+      privileges and are not monitored for interactive use. An adversary who
+      obtains service account credentials can use them to access systems
+      without triggering standard user-focused detection rules.
+    severity: HIGH
+    sparta:
+      tactic: "Persistence"
+      technique: "Valid Accounts"
+    mitre:
+      technique_id: "T1078"
+      technique_name: "Valid Accounts"
+    nis2_articles:
+      - "Art. 21(2)(i)"
+    condition:
+      type: threshold
+      parameter: ac.service_account_login_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: access_control
+
+  - id: SG-AC-003
+    name: "Multi-Factor Authentication Bypass Attempt"
+    description: >
+      A login to a ground segment system has been completed without the
+      required multi-factor authentication step, or MFA has been downgraded
+      to a weaker method. MFA bypass is a common technique used by advanced
+      persistent threats (APTs) to maintain access after obtaining primary
+      credentials through phishing or credential theft.
+    severity: CRITICAL
+    sparta:
+      tactic: "Defense Evasion"
+      technique: "Protocol Downgrade"
+    mitre:
+      technique_id: "T1556"
+      technique_name: "Modify Authentication Process"
+    nis2_articles:
+      - "Art. 21(2)(i)"
+      - "Art. 21(2)(j)"
+    condition:
+      type: threshold
+      parameter: ac.mfa_bypass_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: access_control
+
+  - id: SG-AC-004
+    name: "Concurrent Session Limit Exceeded (Credential Sharing)"
+    description: >
+      A single user account has more active sessions than the permitted maximum.
+      Multiple concurrent sessions may indicate credential sharing between
+      operators (a compliance violation), or that an adversary is using stolen
+      credentials concurrently with the legitimate user to avoid detection
+      through session termination.
+    severity: MEDIUM
+    sparta:
+      tactic: "Initial Access"
+      technique: "Valid Accounts"
+    mitre:
+      technique_id: "T1078"
+      technique_name: "Valid Accounts"
+    nis2_articles:
+      - "Art. 21(2)(i)"
+    condition:
+      type: threshold
+      parameter: ac.concurrent_session_count
+      operator: gt
+      value: 3
+      duration_seconds: 60
+    actions:
+      - alert
+      - nis2_category: access_control
+
+  - id: SG-AC-005
+    name: "After-Hours Login to Mission-Critical System"
+    description: >
+      A login to a mission-critical ground segment system has occurred outside
+      of defined operational hours. While some operations require 24/7 access,
+      after-hours logins to spacecraft commanding, key management, or network
+      configuration systems warrant investigation as they may indicate
+      unauthorized access or compromised credentials being used when detection
+      is less likely.
+    severity: MEDIUM
+    sparta:
+      tactic: "Initial Access"
+      technique: "External Remote Services"
+    mitre:
+      technique_id: "T1133"
+      technique_name: "External Remote Services"
+    nis2_articles:
+      - "Art. 21(2)(i)"
+    condition:
+      type: threshold
+      parameter: ac.after_hours_login_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+
+  - id: SG-AC-006
+    name: "Revoked or Expired API Key Usage"
+    description: >
+      One or more API calls have been made using an API key that has been
+      revoked or has expired. Continued use of decommissioned credentials
+      may indicate that an adversary previously exfiltrated the key and is
+      testing whether it still grants access, or that a third-party integration
+      has not been properly updated after key rotation.
+    severity: HIGH
+    sparta:
+      tactic: "Initial Access"
+      technique: "Credential Access"
+    mitre:
+      technique_id: "T1528"
+      technique_name: "Steal Application Access Token"
+    nis2_articles:
+      - "Art. 21(2)(i)"
+      - "Art. 21(2)(h)"
+    condition:
+      type: threshold
+      parameter: ac.api_key_misuse_count
+      operator: gt
+      value: 0
+      duration_seconds: 10
+    actions:
+      - alert
+      - nis2_category: access_control

@@ -28,6 +28,11 @@ rules:
     sparta:
       tactic: "Impact"
       technique: "Jamming"
+    mitre:
+      technique_id: "T1498"
+      technique_name: "Network Denial of Service"
+    nis2_articles:
+      - "Art. 21(2)(e)"
     condition:
       type: threshold
       parameter: di.crc_error_rate
@@ -49,6 +54,11 @@ rules:
     sparta:
       tactic: "Defense Evasion"
       technique: "Data Suppression"
+    mitre:
+      technique_id: "T1565"
+      technique_name: "Data Manipulation"
+    nis2_articles:
+      - "Art. 21(2)(e)"
     condition:
       type: threshold
       parameter: di.sequence_gap_count
@@ -70,6 +80,12 @@ rules:
     sparta:
       tactic: "Defense Evasion"
       technique: "Telemetry Spoofing"
+    mitre:
+      technique_id: "T1565"
+      technique_name: "Data Manipulation"
+    nis2_articles:
+      - "Art. 21(2)(e)"
+      - "Art. 21(2)(g)"
     condition:
       type: threshold
       parameter: di.apid_mismatch_count
@@ -92,6 +108,11 @@ rules:
     sparta:
       tactic: "Defense Evasion"
       technique: "Telemetry Spoofing"
+    mitre:
+      technique_id: "T1565"
+      technique_name: "Data Manipulation"
+    nis2_articles:
+      - "Art. 21(2)(e)"
     condition:
       type: threshold
       parameter: di.timestamp_skew_sec
@@ -115,6 +136,12 @@ rules:
     sparta:
       tactic: "Defense Evasion"
       technique: "Spacecraft Identity Spoofing"
+    mitre:
+      technique_id: "T1557"
+      technique_name: "Adversary-in-the-Middle"
+    nis2_articles:
+      - "Art. 21(2)(e)"
+      - "Art. 21(2)(h)"
     condition:
       type: threshold
       parameter: di.duplicate_scid_count

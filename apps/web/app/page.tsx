@@ -31,6 +31,7 @@ import {
   getAlertStats,
   getIncidents,
   getTelemetryStreams,
+  getDetectionRules,
 } from "@/lib/api";
 import type { AlertResponse, AlertStats, IncidentResponse } from "@/lib/api";
 import type { StreamResponse } from "@spaceguard/shared";
@@ -47,6 +48,7 @@ import {
   Activity,
   CheckCircle2,
   XCircle,
+  BookOpen,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -759,6 +761,7 @@ export default function DashboardPage() {
   const [recentAlerts, setRecentAlerts] = useState<AlertResponse[]>([]);
   const [incidents, setIncidents] = useState<IncidentResponse[]>([]);
   const [streams, setStreams] = useState<StreamResponse[]>([]);
+  const [rulesCount, setRulesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -776,12 +779,13 @@ export default function DashboardPage() {
       try {
         setLoading(true);
         setError(null);
-        const [dash, stats, recent, inc, str] = await Promise.all([
+        const [dash, stats, recent, inc, str, rulesRes] = await Promise.all([
           getDashboard(orgId!),
           getAlertStats(orgId!).catch(() => null),
           getAlerts({ organizationId: orgId!, perPage: 8 }).catch(() => ({ data: [], total: 0 })),
           getIncidents({ organizationId: orgId!, perPage: 20 }).catch(() => ({ data: [], total: 0 })),
           getTelemetryStreams(orgId!).catch(() => ({ data: [], total: 0 })),
+          getDetectionRules().catch(() => ({ rules: [], total: 0 })),
         ]);
         if (cancelled) return;
         setDashboard(dash);
@@ -789,6 +793,7 @@ export default function DashboardPage() {
         setRecentAlerts(recent.data);
         setIncidents(inc.data);
         setStreams(str.data);
+        setRulesCount(rulesRes.total);
       } catch (err) {
         if (cancelled) return;
         setError(
@@ -810,7 +815,8 @@ export default function DashboardPage() {
           <Skeleton className="h-7 w-48 mb-2" />
           <Skeleton className="h-4 w-64" />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+          <MetricCardSkeleton />
           <MetricCardSkeleton />
           <MetricCardSkeleton />
           <MetricCardSkeleton />
@@ -876,7 +882,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Row 1 - Key metric cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <MetricCard
           icon={<ShieldCheck size={16} />}
           label="Compliance Score"
@@ -914,6 +920,14 @@ export default function DashboardPage() {
           subtitle={`${incidents.filter((i) => i.nis2Classification === "SIGNIFICANT" && INCIDENT_STATUS_ACTIVE.has(i.status)).length} NIS2-significant`}
           href="/incidents"
           accentClass={openIncidents > 0 ? "text-amber-400" : "text-emerald-400"}
+        />
+        <MetricCard
+          icon={<BookOpen size={16} />}
+          label="Detection Rules"
+          value={rulesCount}
+          subtitle="9 categories, SPARTA mapped"
+          href="/alerts/rules"
+          accentClass="text-blue-400"
         />
         <MetricCard
           icon={<Waves size={16} />}

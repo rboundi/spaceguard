@@ -25,6 +25,12 @@ rules:
     sparta:
       tactic: "Discovery"
       technique: "Command Probing"
+    mitre:
+      technique_id: "T0846"
+      technique_name: "Remote System Discovery"
+    nis2_articles:
+      - "Art. 21(2)(d)"
+      - "Art. 21(2)(g)"
     condition:
       type: threshold
       parameter: tc.invalid_apid_count
@@ -47,6 +53,12 @@ rules:
     sparta:
       tactic: "Initial Access"
       technique: "Rogue Uplink Station"
+    mitre:
+      technique_id: "T1190"
+      technique_name: "Exploit Public-Facing Application"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+      - "Art. 21(2)(i)"
     condition:
       type: threshold
       parameter: tc.outside_pass_window_flag
@@ -68,6 +80,11 @@ rules:
     sparta:
       tactic: "Execution"
       technique: "Replay Attack"
+    mitre:
+      technique_id: "T1574"
+      technique_name: "Hijack Execution Flow"
+    nis2_articles:
+      - "Art. 21(2)(e)"
     condition:
       type: rate_of_change
       parameter: tc.command_rate_per_sec
@@ -88,6 +105,12 @@ rules:
     sparta:
       tactic: "Defense Evasion"
       technique: "Protocol Downgrade"
+    mitre:
+      technique_id: "T1557"
+      technique_name: "Adversary-in-the-Middle"
+    nis2_articles:
+      - "Art. 21(2)(e)"
+      - "Art. 21(2)(h)"
     condition:
       type: threshold
       parameter: tc.unencrypted_flag
@@ -111,6 +134,12 @@ rules:
     sparta:
       tactic: "Impact"
       technique: "Degradation"
+    mitre:
+      technique_id: "T0831"
+      technique_name: "Manipulation of Control"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+      - "Art. 21(2)(c)"
     condition:
       type: threshold
       parameter: tc.safe_mode_command_flag

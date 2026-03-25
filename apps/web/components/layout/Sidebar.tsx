@@ -20,6 +20,7 @@ import {
   Settings,
   UserCog,
   Download,
+  BookOpen,
 } from "lucide-react";
 import { useAlerts } from "@/lib/alerts-context";
 import { useIncidents } from "@/lib/incidents-context";
@@ -59,6 +60,13 @@ const navItems = [
     icon: AlertTriangle,
     exact: false,
     badge: "incidents" as const,
+  },
+  {
+    label: "Rule Library",
+    href: "/alerts/rules",
+    icon: BookOpen,
+    exact: true,
+    badge: false,
   },
   {
     label: "Threat Intel",

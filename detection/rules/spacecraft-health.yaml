@@ -1,0 +1,183 @@
+---
+# SpaceGuard Detection Rules - Spacecraft Health & Safety
+# Format version: 1
+#
+# These rules monitor spacecraft subsystem health parameters for anomalies
+# that may indicate hardware degradation, adversarial manipulation of
+# onboard systems, or environmental hazards requiring operator attention.
+#
+# Parameter naming convention:
+#   sc.solar_power_w           - total solar panel output in watts
+#   sc.cpu_load_pct            - onboard computer CPU utilisation percentage
+#   sc.memory_free_kb          - free memory on onboard computer in KB
+#   sc.attitude_error_deg      - pointing error magnitude in degrees
+#   sc.orbit_deviation_m       - deviation from predicted orbital position in metres
+#   sc.safe_mode_entry_flag    - 1 when spacecraft enters safe mode
+
+rules:
+  - id: SG-SC-001
+    name: "Solar Panel Power Output Below Minimum"
+    description: >
+      Total solar panel power output has dropped below the minimum threshold
+      needed to maintain positive energy balance. Sustained low power may cause
+      battery drain and eventual loss of mission. Possible causes include panel
+      degradation, pointing errors, eclipse anomalies, or deliberate attitude
+      manipulation by an adversary to reduce power generation.
+    severity: HIGH
+    sparta:
+      tactic: "Impact"
+      technique: "Degradation"
+    mitre:
+      technique_id: "T0826"
+      technique_name: "Loss of Availability"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+      - "Art. 21(2)(c)"
+    condition:
+      type: threshold
+      parameter: sc.solar_power_w
+      operator: lt
+      value: 50.0
+      duration_seconds: 60
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-SC-002
+    name: "Onboard Computer CPU Load Critical"
+    description: >
+      The spacecraft onboard computer CPU utilisation has exceeded the critical
+      threshold. Sustained high CPU load may prevent the onboard computer from
+      processing telecommands, executing attitude manoeuvres, or running
+      housekeeping tasks. This may indicate a resource exhaustion attack where
+      malicious commands cause the OBC to enter a processing loop.
+    severity: HIGH
+    sparta:
+      tactic: "Impact"
+      technique: "Denial of Service"
+    mitre:
+      technique_id: "T0826"
+      technique_name: "Loss of Availability"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+    condition:
+      type: threshold
+      parameter: sc.cpu_load_pct
+      operator: gt
+      value: 95.0
+      duration_seconds: 30
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-SC-003
+    name: "Onboard Computer Memory Exhaustion"
+    description: >
+      Free memory on the spacecraft onboard computer has dropped below a
+      critical threshold. Memory exhaustion can cause task scheduling failures,
+      data loss, or an uncontrolled reboot. An adversary could exploit this by
+      sending repeated commands that allocate memory without releasing it, or
+      by triggering excessive logging of error conditions.
+    severity: CRITICAL
+    sparta:
+      tactic: "Impact"
+      technique: "Denial of Service"
+    mitre:
+      technique_id: "T0826"
+      technique_name: "Loss of Availability"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+      - "Art. 21(2)(c)"
+    condition:
+      type: threshold
+      parameter: sc.memory_free_kb
+      operator: lt
+      value: 512
+      duration_seconds: 15
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-SC-004
+    name: "Attitude Pointing Error Exceeds Tolerance"
+    description: >
+      The spacecraft attitude pointing error exceeds the operational tolerance
+      for the current mission mode. Large pointing errors affect communication
+      link quality, payload data quality, and solar power generation. An
+      adversary who gains access to the attitude control system could
+      deliberately mispoint the spacecraft to deny service or degrade
+      mission performance.
+    severity: HIGH
+    sparta:
+      tactic: "Impact"
+      technique: "Degradation"
+    mitre:
+      technique_id: "T0831"
+      technique_name: "Manipulation of Control"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+    condition:
+      type: threshold
+      parameter: sc.attitude_error_deg
+      operator: gt
+      value: 5.0
+      duration_seconds: 20
+    actions:
+      - alert
+
+  - id: SG-SC-005
+    name: "Orbital Position Deviation (Possible Manoeuvre Tampering)"
+    description: >
+      The spacecraft position deviates from the predicted orbit by more than
+      the acceptable threshold. Unexpected orbital deviations may indicate that
+      an unauthorised or malicious orbit manoeuvre command was executed. For
+      geostationary satellites, even small deviations can cause interference
+      with adjacent spacecraft and violate ITU coordination agreements.
+    severity: CRITICAL
+    sparta:
+      tactic: "Impact"
+      technique: "Orbital Manipulation"
+    mitre:
+      technique_id: "T0831"
+      technique_name: "Manipulation of Control"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+      - "Art. 21(2)(c)"
+    condition:
+      type: threshold
+      parameter: sc.orbit_deviation_m
+      operator: gt
+      value: 500
+      duration_seconds: 30
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-SC-006
+    name: "Unexpected Safe Mode Entry"
+    description: >
+      The spacecraft has entered safe mode without a scheduled or commanded
+      transition. Safe mode restricts the spacecraft to survival functions,
+      suspending payload operations and reducing available commands. Repeated
+      unexpected safe mode entries may indicate an adversary is deliberately
+      triggering fault conditions to disrupt the mission, or that a hardware
+      fault is escalating.
+    severity: HIGH
+    sparta:
+      tactic: "Impact"
+      technique: "Denial of Service"
+    mitre:
+      technique_id: "T0826"
+      technique_name: "Loss of Availability"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+      - "Art. 21(2)(c)"
+    condition:
+      type: threshold
+      parameter: sc.safe_mode_entry_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: significant_incident

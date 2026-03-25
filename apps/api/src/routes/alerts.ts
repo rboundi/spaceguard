@@ -20,9 +20,35 @@ import {
   updateAlert,
   getAlertStats,
 } from "../services/detection/alert.service";
+import { loadRules } from "../services/detection/rule-loader";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const alertRoutes = new Hono();
+
+// ---------------------------------------------------------------------------
+// GET /alerts/stats?organizationId=
+// MUST be defined before /alerts/:id so "stats" is not treated as an id
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// GET /alerts/rules - detection rule library
+// ---------------------------------------------------------------------------
+
+alertRoutes.get("/alerts/rules", async (c) => {
+  const rules = loadRules();
+  const mapped = rules.map((r) => ({
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    severity: r.severity,
+    sparta: r.sparta ?? null,
+    mitre: r.mitre ?? null,
+    nis2Articles: r.nis2Articles ?? [],
+    sourceFile: r.sourceFile ?? null,
+    conditionType: r.condition.type,
+  }));
+  return c.json({ rules: mapped, total: mapped.length });
+});
 
 // ---------------------------------------------------------------------------
 // GET /alerts/stats?organizationId=

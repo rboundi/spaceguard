@@ -27,6 +27,12 @@ rules:
     sparta:
       tactic: "Impact"
       technique: "Denial of Service"
+    mitre:
+      technique_id: "T0826"
+      technique_name: "Loss of Availability"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+      - "Art. 21(2)(c)"
     condition:
       type: threshold
       parameter: battery_voltage_v
@@ -48,6 +54,11 @@ rules:
     sparta:
       tactic: "Impact"
       technique: "Degradation"
+    mitre:
+      technique_id: "T0826"
+      technique_name: "Loss of Availability"
+    nis2_articles:
+      - "Art. 21(2)(a)"
     condition:
       type: threshold
       parameter: temperature_obc_c
@@ -68,6 +79,12 @@ rules:
     sparta:
       tactic: "Impact"
       technique: "Degradation"
+    mitre:
+      technique_id: "T0831"
+      technique_name: "Manipulation of Control"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+      - "Art. 21(2)(c)"
     condition:
       type: rate_of_change
       parameter: reaction_wheel_0_rpm
@@ -88,6 +105,11 @@ rules:
     sparta:
       tactic: "Execution"
       technique: "Jamming"
+    mitre:
+      technique_id: "T1498"
+      technique_name: "Network Denial of Service"
+    nis2_articles:
+      - "Art. 21(2)(a)"
     condition:
       type: threshold
       parameter: signal_strength_dbm
@@ -108,6 +130,12 @@ rules:
     sparta:
       tactic: "Impact"
       technique: "Denial of Service"
+    mitre:
+      technique_id: "T1498"
+      technique_name: "Network Denial of Service"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+      - "Art. 21(2)(c)"
     condition:
       type: absence
       # Fire if no points arrive for this many consecutive seconds

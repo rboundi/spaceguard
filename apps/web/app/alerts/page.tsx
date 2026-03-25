@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   AlertCircle,
@@ -589,6 +590,16 @@ export default function AlertsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/alerts/rules">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs border-slate-700 text-slate-400 hover:text-slate-200"
+            >
+              <BookOpen size={13} />
+              Rule Library
+            </Button>
+          </Link>
           {alerts.length > 0 && (
             <>
               <Button

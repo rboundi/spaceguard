@@ -26,6 +26,12 @@ rules:
     sparta:
       tactic: "Initial Access"
       technique: "Credential Access"
+    mitre:
+      technique_id: "T1110"
+      technique_name: "Brute Force"
+    nis2_articles:
+      - "Art. 21(2)(i)"
+      - "Art. 21(2)(j)"
     condition:
       type: threshold
       parameter: gs.auth_failure_count
@@ -47,6 +53,11 @@ rules:
     sparta:
       tactic: "Initial Access"
       technique: "External Remote Services"
+    mitre:
+      technique_id: "T1133"
+      technique_name: "External Remote Services"
+    nis2_articles:
+      - "Art. 21(2)(i)"
     condition:
       type: threshold
       parameter: gs.unknown_ip_flag
@@ -68,6 +79,12 @@ rules:
     sparta:
       tactic: "Persistence"
       technique: "Modify System Configuration"
+    mitre:
+      technique_id: "T1543"
+      technique_name: "Create or Modify System Process"
+    nis2_articles:
+      - "Art. 21(2)(b)"
+      - "Art. 21(2)(f)"
     condition:
       type: threshold
       parameter: gs.config_change_flag
@@ -90,6 +107,11 @@ rules:
     sparta:
       tactic: "Execution"
       technique: "Command Injection"
+    mitre:
+      technique_id: "T1059"
+      technique_name: "Command and Scripting Interpreter"
+    nis2_articles:
+      - "Art. 21(2)(e)"
     condition:
       type: threshold
       parameter: gs.uplink_volume_kb
@@ -112,6 +134,12 @@ rules:
     sparta:
       tactic: "Impact"
       technique: "Denial of Service"
+    mitre:
+      technique_id: "T1498"
+      technique_name: "Network Denial of Service"
+    nis2_articles:
+      - "Art. 21(2)(c)"
+      - "Art. 21(2)(e)"
     condition:
       type: absence
       max_gap_seconds: 300

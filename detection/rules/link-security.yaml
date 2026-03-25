@@ -1,0 +1,184 @@
+---
+# SpaceGuard Detection Rules - RF Link Security
+# Format version: 1
+#
+# These rules detect attacks against the radio-frequency (RF) communication
+# link between spacecraft and ground stations. They cover jamming, spoofing,
+# eavesdropping indicators, and link degradation patterns that may indicate
+# adversarial activity on the space-to-ground or inter-satellite links.
+#
+# Parameter naming convention:
+#   rf.snr_db                 - signal-to-noise ratio in dB
+#   rf.carrier_offset_hz      - carrier frequency offset from nominal in Hz
+#   rf.ber                    - bit error rate (0.0-1.0)
+#   rf.agc_level_db           - automatic gain control level in dB
+#   rf.polarization_angle_deg - polarization angle deviation from expected
+#   rf.adjacent_channel_power_db - power detected on adjacent channel in dB
+
+rules:
+  - id: SG-RF-001
+    name: "Sustained SNR Drop on Downlink (Possible Jamming)"
+    description: >
+      The signal-to-noise ratio on the spacecraft downlink has dropped below the
+      minimum operational threshold for an extended period. While brief drops may
+      occur during orbital geometry changes, a sustained SNR degradation is
+      consistent with a broadband jamming attack targeting the downlink
+      frequency band. Cross-reference with ground station antenna pointing data
+      and orbital predictions to confirm.
+    severity: HIGH
+    sparta:
+      tactic: "Impact"
+      technique: "Jamming"
+    mitre:
+      technique_id: "T1498"
+      technique_name: "Network Denial of Service"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+      - "Art. 21(2)(e)"
+    condition:
+      type: threshold
+      parameter: rf.snr_db
+      operator: lt
+      value: 5.0
+      duration_seconds: 30
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-RF-002
+    name: "Carrier Frequency Offset Anomaly (Possible Spoofing)"
+    description: >
+      The received carrier frequency deviates from the predicted frequency
+      (accounting for Doppler) by more than the acceptable tolerance. A large
+      carrier offset that does not correlate with orbital mechanics may indicate
+      that a rogue transmitter is broadcasting on or near the spacecraft
+      frequency, attempting to inject false telemetry or interfere with
+      legitimate communications.
+    severity: HIGH
+    sparta:
+      tactic: "Defense Evasion"
+      technique: "Telemetry Spoofing"
+    mitre:
+      technique_id: "T1557"
+      technique_name: "Adversary-in-the-Middle"
+    nis2_articles:
+      - "Art. 21(2)(e)"
+      - "Art. 21(2)(h)"
+    condition:
+      type: threshold
+      parameter: rf.carrier_offset_hz
+      operator: gt
+      value: 5000
+      duration_seconds: 15
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-RF-003
+    name: "Bit Error Rate Spike on Communication Link"
+    description: >
+      The bit error rate on the communication link has exceeded the acceptable
+      operational limit. Elevated BER degrades telemetry quality and may cause
+      command rejection. Persistent high BER beyond normal atmospheric effects
+      may indicate targeted RF interference or a partial jamming attack designed
+      to degrade rather than deny the link.
+    severity: MEDIUM
+    sparta:
+      tactic: "Impact"
+      technique: "Degradation"
+    mitre:
+      technique_id: "T1498"
+      technique_name: "Network Denial of Service"
+    nis2_articles:
+      - "Art. 21(2)(e)"
+    condition:
+      type: threshold
+      parameter: rf.ber
+      operator: gt
+      value: 0.001
+      duration_seconds: 20
+    actions:
+      - alert
+
+  - id: SG-RF-004
+    name: "Rapid AGC Level Fluctuation (RF Environment Anomaly)"
+    description: >
+      The automatic gain control level on the ground station receiver is
+      fluctuating rapidly, indicating sudden and repeated changes in received
+      signal power. This pattern is characteristic of swept-frequency jamming,
+      where an adversary rapidly sweeps across the operational frequency band
+      to create intermittent disruption that is harder to localise than
+      continuous jamming.
+    severity: HIGH
+    sparta:
+      tactic: "Impact"
+      technique: "Jamming"
+    mitre:
+      technique_id: "T1498"
+      technique_name: "Network Denial of Service"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+      - "Art. 21(2)(e)"
+    condition:
+      type: rate_of_change
+      parameter: rf.agc_level_db
+      max_change_per_second: 15
+      duration_seconds: 10
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-RF-005
+    name: "Polarization Angle Deviation (Possible Signal Interception)"
+    description: >
+      The received signal polarization angle deviates significantly from the
+      expected value based on spacecraft antenna configuration and orbital
+      geometry. Polarization anomalies may indicate that a third-party antenna
+      is reflecting or retransmitting the signal, or that the spacecraft antenna
+      has been mechanically manipulated. This can be an indicator of
+      man-in-the-middle interception attempts.
+    severity: MEDIUM
+    sparta:
+      tactic: "Collection"
+      technique: "Signal Interception"
+    mitre:
+      technique_id: "T1040"
+      technique_name: "Network Sniffing"
+    nis2_articles:
+      - "Art. 21(2)(e)"
+      - "Art. 21(2)(h)"
+    condition:
+      type: threshold
+      parameter: rf.polarization_angle_deg
+      operator: gt
+      value: 15.0
+      duration_seconds: 20
+    actions:
+      - alert
+
+  - id: SG-RF-006
+    name: "Adjacent Channel Power Anomaly (Co-Channel Interference)"
+    description: >
+      Significant power has been detected on a frequency channel adjacent to the
+      operational downlink. Adjacent channel interference can degrade link
+      quality and may indicate intentional interference from a nearby
+      transmitter. In the space domain, this may represent an adversary
+      operating a rogue ground station or satellite on a neighbouring frequency
+      to create plausible interference.
+    severity: MEDIUM
+    sparta:
+      tactic: "Impact"
+      technique: "Jamming"
+    mitre:
+      technique_id: "T1498"
+      technique_name: "Network Denial of Service"
+    nis2_articles:
+      - "Art. 21(2)(e)"
+    condition:
+      type: threshold
+      parameter: rf.adjacent_channel_power_db
+      operator: gt
+      value: -30.0
+      duration_seconds: 30
+    actions:
+      - alert

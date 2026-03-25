@@ -1,0 +1,187 @@
+---
+# SpaceGuard Detection Rules - Data Exfiltration
+# Format version: 1
+#
+# These rules detect potential unauthorized data extraction from spacecraft
+# systems, ground segment networks, and mission data repositories. Space
+# systems handle sensitive payload data, orbital parameters, encryption keys,
+# and command sequences that are high-value targets for adversaries.
+#
+# Parameter naming convention:
+#   dx.outbound_volume_mb      - outbound data volume in MB over measurement window
+#   dx.unauthorized_dest_flag  - 1 when data is sent to an unapproved destination
+#   dx.payload_download_rate_mbps - payload data download rate in Mbps
+#   dx.key_export_flag         - 1 when cryptographic key material is exported
+#   dx.bulk_query_count        - number of bulk database queries in measurement window
+#   dx.tle_access_anomaly_flag - 1 when TLE/ephemeris data accessed abnormally
+
+rules:
+  - id: SG-DX-001
+    name: "Anomalous Outbound Data Volume from Ground Network"
+    description: >
+      The outbound data volume from the ground segment network has exceeded the
+      normal operational baseline by a significant margin. Large outbound
+      transfers may indicate exfiltration of mission data, telemetry archives,
+      command sequences, or other sensitive operational information. Review the
+      destination IP addresses and data types to determine if the transfer is
+      authorized.
+    severity: HIGH
+    sparta:
+      tactic: "Exfiltration"
+      technique: "Data Exfiltration"
+    mitre:
+      technique_id: "T1048"
+      technique_name: "Exfiltration Over Alternative Protocol"
+    nis2_articles:
+      - "Art. 21(2)(e)"
+      - "Art. 21(2)(a)"
+    condition:
+      type: threshold
+      parameter: dx.outbound_volume_mb
+      operator: gt
+      value: 500
+      duration_seconds: 300
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-DX-002
+    name: "Data Transfer to Unauthorized Destination"
+    description: >
+      Outbound data from the ground segment has been detected flowing to a
+      network destination that is not on the approved whitelist. Transfers to
+      unauthorized destinations are a strong indicator of data exfiltration,
+      whether by a compromised system sending data to an attacker-controlled
+      server, or by a malicious insider forwarding information to an external
+      party.
+    severity: CRITICAL
+    sparta:
+      tactic: "Exfiltration"
+      technique: "Exfiltration Over C2 Channel"
+    mitre:
+      technique_id: "T1041"
+      technique_name: "Exfiltration Over C2 Channel"
+    nis2_articles:
+      - "Art. 21(2)(e)"
+      - "Art. 21(2)(a)"
+    condition:
+      type: threshold
+      parameter: dx.unauthorized_dest_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-DX-003
+    name: "Excessive Payload Data Download Rate"
+    description: >
+      The payload data download rate from the spacecraft has exceeded the
+      expected operational limit. While payload downlinks are normal during
+      scheduled ground passes, an abnormally high download rate outside of
+      scheduled windows may indicate that an adversary has gained access to
+      the payload data interface and is extracting imagery, sensor data, or
+      other mission products.
+    severity: HIGH
+    sparta:
+      tactic: "Collection"
+      technique: "Payload Data Access"
+    mitre:
+      technique_id: "T1005"
+      technique_name: "Data from Local System"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+      - "Art. 21(2)(e)"
+    condition:
+      type: threshold
+      parameter: dx.payload_download_rate_mbps
+      operator: gt
+      value: 100.0
+      duration_seconds: 60
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-DX-004
+    name: "Cryptographic Key Material Export Detected"
+    description: >
+      An export operation involving cryptographic key material (encryption keys,
+      signing keys, or session keys) has been detected. Unauthorised export of
+      key material could allow an adversary to decrypt past and future
+      communications, forge telecommands, or impersonate the spacecraft or
+      ground station. Key material should only be exported through the approved
+      key management ceremony workflow.
+    severity: CRITICAL
+    sparta:
+      tactic: "Exfiltration"
+      technique: "Data Exfiltration"
+    mitre:
+      technique_id: "T1552"
+      technique_name: "Unsecured Credentials"
+    nis2_articles:
+      - "Art. 21(2)(h)"
+      - "Art. 21(2)(i)"
+    condition:
+      type: threshold
+      parameter: dx.key_export_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: cryptography
+
+  - id: SG-DX-005
+    name: "Bulk Database Query Anomaly"
+    description: >
+      An unusually high number of bulk database queries have been executed
+      against the mission operations database within a short time window. This
+      pattern may indicate automated data harvesting, where an adversary or
+      malicious script systematically extracts telemetry archives, command
+      histories, orbital parameters, or operator credentials from the database.
+    severity: HIGH
+    sparta:
+      tactic: "Collection"
+      technique: "Data from Information Repositories"
+    mitre:
+      technique_id: "T1213"
+      technique_name: "Data from Information Repositories"
+    nis2_articles:
+      - "Art. 21(2)(i)"
+      - "Art. 21(2)(a)"
+    condition:
+      type: threshold
+      parameter: dx.bulk_query_count
+      operator: gt
+      value: 50
+      duration_seconds: 300
+    actions:
+      - alert
+      - nis2_category: access_control
+
+  - id: SG-DX-006
+    name: "Abnormal TLE/Ephemeris Data Access Pattern"
+    description: >
+      Two-line element (TLE) or ephemeris data has been accessed in an abnormal
+      pattern, such as bulk download of orbital parameters for multiple
+      spacecraft or access from an unauthorized system. Orbital data is
+      sensitive as it reveals precise spacecraft positions and can be used
+      to plan physical attacks, signal interception, or conjunction events.
+    severity: MEDIUM
+    sparta:
+      tactic: "Collection"
+      technique: "Signal Interception"
+    mitre:
+      technique_id: "T1005"
+      technique_name: "Data from Local System"
+    nis2_articles:
+      - "Art. 21(2)(a)"
+    condition:
+      type: threshold
+      parameter: dx.tle_access_anomaly_flag
+      operator: gte
+      value: 1
+      duration_seconds: 10
+    actions:
+      - alert

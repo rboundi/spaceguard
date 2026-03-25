@@ -54,6 +54,13 @@ export interface SpartaMapping {
   technique: string;
 }
 
+export interface MitreMapping {
+  /** MITRE ATT&CK technique ID, e.g. "T1190" */
+  techniqueId: string;
+  /** Human-readable technique name */
+  techniqueName: string;
+}
+
 export interface DetectionRule {
   /** Unique identifier, e.g. "SG-TM-001" */
   id: string;
@@ -65,6 +72,12 @@ export interface DetectionRule {
   severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   /** Optional SPARTA ATT&CK for Space mapping */
   sparta?: SpartaMapping;
+  /** Optional MITRE ATT&CK mapping */
+  mitre?: MitreMapping;
+  /** Optional NIS2 Article 21 section references */
+  nis2Articles?: string[];
+  /** Source YAML filename */
+  sourceFile?: string;
   /** Evaluation logic */
   condition: RuleCondition;
   /** Rule actions. Currently only "alert" is implemented; others are metadata. */
@@ -198,6 +211,28 @@ function parseRule(raw: unknown, source: string): DetectionRule {
     sparta = { tactic: s.tactic, technique: s.technique };
   }
 
+  // Optional MITRE ATT&CK mapping
+  let mitre: MitreMapping | undefined;
+  if (r.mitre !== undefined) {
+    if (typeof r.mitre !== "object" || r.mitre === null) {
+      throw new Error(`${source}[${r.id}]: 'mitre' must be an object`);
+    }
+    const m = r.mitre as Record<string, unknown>;
+    if (typeof m.technique_id !== "string" || typeof m.technique_name !== "string") {
+      throw new Error(`${source}[${r.id}]: mitre must have string 'technique_id' and 'technique_name'`);
+    }
+    mitre = { techniqueId: m.technique_id, techniqueName: m.technique_name };
+  }
+
+  // Optional NIS2 article references
+  let nis2Articles: string[] | undefined;
+  if (r.nis2_articles !== undefined) {
+    if (!Array.isArray(r.nis2_articles)) {
+      throw new Error(`${source}[${r.id}]: 'nis2_articles' must be an array of strings`);
+    }
+    nis2Articles = (r.nis2_articles as unknown[]).map(String);
+  }
+
   // Actions: array of strings or {key: value} objects
   const actions: DetectionRule["actions"] = Array.isArray(r.actions)
     ? (r.actions as DetectionRule["actions"])
@@ -209,6 +244,8 @@ function parseRule(raw: unknown, source: string): DetectionRule {
     description: r.description.trim(),
     severity: r.severity,
     sparta,
+    mitre,
+    nis2Articles,
     condition,
     actions,
   };
@@ -263,7 +300,9 @@ export function loadRules(): DetectionRule[] {
       const fileRules: DetectionRule[] = [];
       for (const rawRule of doc.rules) {
         try {
-          fileRules.push(parseRule(rawRule, filename));
+          const rule = parseRule(rawRule, filename);
+          rule.sourceFile = filename;
+          fileRules.push(rule);
         } catch (ruleErr) {
           console.error(`[rule-loader] Skipping invalid rule:`, ruleErr instanceof Error ? ruleErr.message : ruleErr);
         }

@@ -1,0 +1,192 @@
+---
+# SpaceGuard Detection Rules - Persistence & Evasion
+# Format version: 1
+#
+# These rules detect techniques used by adversaries to maintain long-term
+# access to space systems and evade detection. Persistence in the space domain
+# is particularly dangerous because spacecraft software updates are complex,
+# risky, and infrequent, meaning implanted malware or backdoors may persist
+# for the entire mission lifetime.
+#
+# Parameter naming convention:
+#   pe.firmware_hash_mismatch_flag  - 1 when a firmware hash does not match expected
+#   pe.scheduled_task_anomaly_flag  - 1 when an unexpected scheduled task is detected
+#   pe.log_deletion_flag            - 1 when log entries have been deleted or truncated
+#   pe.process_injection_flag       - 1 when an unexpected process appears on OBC
+#   pe.comms_schedule_change_flag   - 1 when comm pass schedule changes unexpectedly
+#   pe.encryption_downgrade_flag    - 1 when link encryption is downgraded
+
+rules:
+  - id: SG-PE-001
+    name: "Firmware Hash Mismatch on Onboard System"
+    description: >
+      The computed hash of an onboard software or firmware image does not match
+      the expected hash from the ground-verified baseline. A firmware hash
+      mismatch is a critical indicator that the onboard software has been
+      modified, potentially through an unauthorized upload, cosmic ray bit-flip,
+      or malicious firmware replacement. Immediate verification of the software
+      image integrity is required before any further commanding.
+    severity: CRITICAL
+    sparta:
+      tactic: "Persistence"
+      technique: "Firmware Modification"
+    mitre:
+      technique_id: "T0839"
+      technique_name: "Module Firmware"
+    nis2_articles:
+      - "Art. 21(2)(d)"
+      - "Art. 21(2)(f)"
+    condition:
+      type: threshold
+      parameter: pe.firmware_hash_mismatch_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-PE-002
+    name: "Unexpected Scheduled Task on Ground System"
+    description: >
+      An unrecognised or unapproved scheduled task (cron job, Windows task, or
+      systemd timer) has been detected on a ground segment system. Adversaries
+      commonly use scheduled tasks for persistence, ensuring their malware or
+      backdoor is re-executed after system reboots or at regular intervals.
+      Verify whether the task was created through the approved change management
+      process.
+    severity: HIGH
+    sparta:
+      tactic: "Persistence"
+      technique: "Scheduled Task"
+    mitre:
+      technique_id: "T1053"
+      technique_name: "Scheduled Task/Job"
+    nis2_articles:
+      - "Art. 21(2)(b)"
+      - "Art. 21(2)(f)"
+    condition:
+      type: threshold
+      parameter: pe.scheduled_task_anomaly_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: change_management
+
+  - id: SG-PE-003
+    name: "Audit Log Deletion or Truncation Detected"
+    description: >
+      Security audit log entries on a ground segment system have been deleted
+      or truncated. Adversaries delete logs to remove evidence of their
+      activities, making incident investigation and forensic analysis more
+      difficult. Log integrity is a key NIS2 requirement and any log tampering
+      must be treated as a high-priority security event.
+    severity: CRITICAL
+    sparta:
+      tactic: "Defense Evasion"
+      technique: "Indicator Removal"
+    mitre:
+      technique_id: "T1070"
+      technique_name: "Indicator Removal"
+    nis2_articles:
+      - "Art. 21(2)(b)"
+      - "Art. 21(2)(g)"
+    condition:
+      type: threshold
+      parameter: pe.log_deletion_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-PE-004
+    name: "Unexpected Process Detected on Onboard Computer"
+    description: >
+      A process not listed in the approved onboard software manifest has been
+      detected running on the spacecraft onboard computer. This may indicate
+      that malicious code has been uploaded and executed, either through a
+      compromised command link or a supply chain attack on the flight software.
+      Unexpected processes may attempt to modify telemetry, disable safety
+      mechanisms, or establish covert communication channels.
+    severity: CRITICAL
+    sparta:
+      tactic: "Execution"
+      technique: "Software Deployment"
+    mitre:
+      technique_id: "T1055"
+      technique_name: "Process Injection"
+    nis2_articles:
+      - "Art. 21(2)(d)"
+      - "Art. 21(2)(f)"
+    condition:
+      type: threshold
+      parameter: pe.process_injection_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: significant_incident
+
+  - id: SG-PE-005
+    name: "Communication Pass Schedule Anomaly"
+    description: >
+      The spacecraft communication pass schedule has been modified outside of
+      the normal mission planning workflow. Changes to the pass schedule can
+      be used by an adversary to create unmonitored communication windows
+      during which they can send commands or download data without operator
+      awareness. This is a persistence technique that provides recurring
+      access opportunities.
+    severity: HIGH
+    sparta:
+      tactic: "Persistence"
+      technique: "Modify System Configuration"
+    mitre:
+      technique_id: "T1543"
+      technique_name: "Create or Modify System Process"
+    nis2_articles:
+      - "Art. 21(2)(b)"
+      - "Art. 21(2)(f)"
+    condition:
+      type: threshold
+      parameter: pe.comms_schedule_change_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: change_management
+
+  - id: SG-PE-006
+    name: "Link Encryption Downgrade Detected"
+    description: >
+      The encryption level on the spacecraft communication link has been
+      downgraded from the configured strength. This may indicate an adversary
+      performing a cryptographic downgrade attack to make the link easier to
+      intercept or decrypt, a misconfiguration introduced through unauthorized
+      ground station changes, or a deliberate modification to enable future
+      eavesdropping. Any encryption downgrade on operational links must be
+      investigated immediately.
+    severity: CRITICAL
+    sparta:
+      tactic: "Defense Evasion"
+      technique: "Protocol Downgrade"
+    mitre:
+      technique_id: "T1562"
+      technique_name: "Impair Defenses"
+    nis2_articles:
+      - "Art. 21(2)(e)"
+      - "Art. 21(2)(h)"
+    condition:
+      type: threshold
+      parameter: pe.encryption_downgrade_flag
+      operator: gte
+      value: 1
+      duration_seconds: 5
+    actions:
+      - alert
+      - nis2_category: cryptography
