@@ -37,7 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getAlerts, updateAlert, getAsset, enrichAlert } from "@/lib/api";
+import { getAlerts, updateAlert, getAsset, enrichAlert, exportAlertsCsv } from "@/lib/api";
 import type { AlertEnrichment, AlertResponse } from "@/lib/api";
 import { useOrg } from "@/lib/context";
 
@@ -590,18 +590,29 @@ export default function AlertsPage() {
         </div>
         <div className="flex items-center gap-2">
           {alerts.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportStix}
-              className="gap-1.5 text-xs border-slate-700 text-slate-400 hover:text-slate-200"
-            >
-              <Download size={13} />
-              Export STIX
-              {selectedIds.size > 0 && (
-                <span className="text-[10px] text-blue-400 ml-0.5">({selectedIds.size})</span>
-              )}
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => orgId && void exportAlertsCsv(orgId)}
+                className="gap-1.5 text-xs border-slate-700 text-slate-400 hover:text-slate-200"
+              >
+                <Download size={13} />
+                CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportStix}
+                className="gap-1.5 text-xs border-slate-700 text-slate-400 hover:text-slate-200"
+              >
+                <Download size={13} />
+                STIX
+                {selectedIds.size > 0 && (
+                  <span className="text-[10px] text-blue-400 ml-0.5">({selectedIds.size})</span>
+                )}
+              </Button>
+            </>
           )}
           <Button
             variant="outline"

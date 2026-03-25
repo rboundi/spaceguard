@@ -19,6 +19,7 @@ import {
   ClipboardList,
   Settings,
   UserCog,
+  Download,
 } from "lucide-react";
 import { useAlerts } from "@/lib/alerts-context";
 import { useIncidents } from "@/lib/incidents-context";
@@ -91,6 +92,13 @@ const navItems = [
     label: "Reports",
     href: "/reports",
     icon: FileText,
+    exact: false,
+    badge: false,
+  },
+  {
+    label: "Exports",
+    href: "/exports",
+    icon: Download,
     exact: false,
     badge: false,
   },

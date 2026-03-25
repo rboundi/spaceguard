@@ -17,6 +17,7 @@ import { adminSpartaRoutes } from "./routes/admin-sparta";
 import { supplyChainRoutes } from "./routes/supply-chain";
 import { auditRoutes } from "./routes/audit";
 import { authRoutes } from "./routes/auth";
+import { exportRoutes } from "./routes/exports";
 import { auditMiddleware } from "./middleware/audit";
 import { authMiddleware } from "./middleware/auth-guard";
 
@@ -76,6 +77,8 @@ app.use("/api/v1/supply-chain/*", authMiddleware);
 app.use("/api/v1/supply-chain", authMiddleware);
 app.use("/api/v1/audit/*", authMiddleware);
 app.use("/api/v1/audit", authMiddleware);
+app.use("/api/v1/export/*", authMiddleware);
+app.use("/api/v1/export", authMiddleware);
 app.use("/api/v1/admin/*", authMiddleware);
 
 // Module 1 routes
@@ -101,6 +104,9 @@ app.route("/api/v1", supplyChainRoutes);
 
 // Audit Trail routes
 app.route("/api/v1", auditRoutes);
+
+// Export routes
+app.route("/api/v1", exportRoutes);
 
 // Admin routes
 app.route("/api/v1", adminSpartaRoutes);

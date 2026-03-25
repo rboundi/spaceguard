@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { ChevronDown, ChevronRight, Shield, Plus, Save } from "lucide-react";
+import { ChevronDown, ChevronRight, Shield, Plus, Save, Download } from "lucide-react";
 import { ComplianceStatus, complianceStatusLabels } from "@spaceguard/shared";
 import type {
   ComplianceRequirement,
@@ -14,6 +14,7 @@ import {
   getAssets,
   createMapping,
   updateMapping,
+  exportComplianceCsv,
 } from "@/lib/api";
 import { useOrg } from "@/lib/context";
 import { Badge } from "@/components/ui/badge";
@@ -797,6 +798,15 @@ export default function CompliancePage() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            {orgId && (
+              <button
+                onClick={() => void exportComplianceCsv(orgId)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-700 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+              >
+                <Download size={13} />
+                Export CSV
+              </button>
+            )}
             <div className="text-right">
               <p className="text-xs text-slate-500">Compliance Score</p>
               <p

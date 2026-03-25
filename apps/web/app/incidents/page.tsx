@@ -13,6 +13,7 @@ import {
   Clock,
   TrendingDown,
   ShieldCheck,
+  Download,
 } from "lucide-react";
 import {
   Card,
@@ -43,7 +44,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { getIncidents, createIncident, getAssets } from "@/lib/api";
+import { getIncidents, createIncident, getAssets, exportIncidentsCsv } from "@/lib/api";
 import type { IncidentResponse, AssetResponse } from "@/lib/api";
 import { useOrg } from "@/lib/context";
 
@@ -493,14 +494,25 @@ export default function IncidentsPage() {
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           </Button>
           {orgId && (
-            <Button
-              size="sm"
-              onClick={() => setCreateOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
-            >
-              <Plus size={14} />
-              Create Incident
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void exportIncidentsCsv(orgId)}
+                className="gap-1.5 text-xs border-slate-700 text-slate-400 hover:text-slate-200"
+              >
+                <Download size={13} />
+                CSV
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setCreateOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+              >
+                <Plus size={14} />
+                Create Incident
+              </Button>
+            </>
           )}
         </div>
       </div>
