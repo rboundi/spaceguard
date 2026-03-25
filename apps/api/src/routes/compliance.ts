@@ -122,8 +122,9 @@ complianceRoutes.put(
 complianceRoutes.delete("/compliance/mappings/:id", async (c) => {
   const id = c.req.param("id");
   assertUUID(id, "id");
-  await deleteMapping(id);
+  const { organizationId } = await deleteMapping(id);
   logAudit({
+    organizationId,
     actor: extractActor(c),
     action: "DELETE",
     resourceType: "compliance_mapping",

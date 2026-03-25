@@ -1,25 +1,9 @@
 import { z } from "zod";
-import { Criticality } from "../enums";
+import { Criticality, SupplierType } from "../enums";
 
-export enum SupplierType {
-  COMPONENT_MANUFACTURER = "COMPONENT_MANUFACTURER",
-  GROUND_STATION_OPERATOR = "GROUND_STATION_OPERATOR",
-  LAUNCH_PROVIDER = "LAUNCH_PROVIDER",
-  CLOUD_PROVIDER = "CLOUD_PROVIDER",
-  SOFTWARE_VENDOR = "SOFTWARE_VENDOR",
-  INTEGRATION_PARTNER = "INTEGRATION_PARTNER",
-  DATA_RELAY_PROVIDER = "DATA_RELAY_PROVIDER",
-}
-
-export const supplierTypeLabels: Record<SupplierType, string> = {
-  [SupplierType.COMPONENT_MANUFACTURER]: "Component Manufacturer",
-  [SupplierType.GROUND_STATION_OPERATOR]: "Ground Station Operator",
-  [SupplierType.LAUNCH_PROVIDER]: "Launch Provider",
-  [SupplierType.CLOUD_PROVIDER]: "Cloud Provider",
-  [SupplierType.SOFTWARE_VENDOR]: "Software Vendor",
-  [SupplierType.INTEGRATION_PARTNER]: "Integration Partner",
-  [SupplierType.DATA_RELAY_PROVIDER]: "Data Relay Provider",
-};
+// Re-export for backward compatibility (consumers that import from this file)
+export { SupplierType } from "../enums";
+export { supplierTypeLabels } from "../enums";
 
 export const securityAssessmentSchema = z.object({
   lastAssessed: z.string().nullable().optional(),

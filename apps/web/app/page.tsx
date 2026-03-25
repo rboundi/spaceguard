@@ -466,15 +466,14 @@ function CategoryChart({ byCategory }: { byCategory: DashboardResponse["byCatego
     score: c.score,
   }));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const renderLabel = (props: any): React.ReactElement => {
-    const { x, y, width, height, value } = props as {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      value: number;
-    };
+  const renderLabel = (props: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    value: number;
+  }): React.ReactElement => {
+    const { x, y, width, height, value } = props;
     if (width < 30) return <g />;
     return (
       <text

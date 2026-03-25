@@ -115,6 +115,15 @@ reportRoutes.get("/reports/incident-summary/pdf", async (c) => {
 
   const buffer = await generateIncidentSummaryPdf(organizationId, range.from, range.to);
 
+  logAudit({
+    organizationId,
+    actor: extractActor(c),
+    action: "REPORT_GENERATED",
+    resourceType: "report",
+    details: { reportType: "incident-summary" },
+    ipAddress: extractIp(c),
+  });
+
   const fromStr = range.from.toISOString().slice(0, 10);
   const toStr = range.to.toISOString().slice(0, 10);
   const filename = `spaceguard-incidents-${fromStr}-to-${toStr}.pdf`;
@@ -142,6 +151,15 @@ reportRoutes.get("/reports/threat-briefing/pdf", async (c) => {
 
   const buffer = await generateThreatBriefingPdf(organizationId);
 
+  logAudit({
+    organizationId,
+    actor: extractActor(c),
+    action: "REPORT_GENERATED",
+    resourceType: "report",
+    details: { reportType: "threat-briefing" },
+    ipAddress: extractIp(c),
+  });
+
   const dateStr = new Date().toISOString().slice(0, 10);
   const filename = `spaceguard-threat-briefing-${dateStr}.pdf`;
 
@@ -167,6 +185,15 @@ reportRoutes.get("/reports/supply-chain/pdf", async (c) => {
   if (!UUID_RE.test(organizationId)) return c.json({ error: "organizationId must be a valid UUID" }, 400);
 
   const buffer = await generateSupplyChainPdf(organizationId);
+
+  logAudit({
+    organizationId,
+    actor: extractActor(c),
+    action: "REPORT_GENERATED",
+    resourceType: "report",
+    details: { reportType: "supply-chain" },
+    ipAddress: extractIp(c),
+  });
 
   const dateStr = new Date().toISOString().slice(0, 10);
   const filename = `spaceguard-supply-chain-${dateStr}.pdf`;

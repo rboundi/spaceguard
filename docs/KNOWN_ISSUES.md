@@ -67,15 +67,14 @@ creation in `seed-data/seed.ts`.
 
 ## Frontend
 
-### Recharts callback uses `any` type
+### Recharts callback type
 
-**Status**: Accepted
-**Impact**: None (guarded by explicit cast)
+**Status**: Fixed (code review pass, March 2026)
+**Impact**: None
 
-In `apps/web/app/page.tsx`, the `renderLabel` callback for Recharts' Bar
-component accepts `props: any` because Recharts does not export a typed
-props interface for custom label renderers. The function immediately casts
-to a known shape.
+Previously `apps/web/app/page.tsx` used `props: any` for the Recharts
+custom label renderer. This has been replaced with an explicit typed
+interface.
 
 ### AlertStats type not in shared package
 
@@ -126,3 +125,39 @@ characters will match more broadly than expected.
 
 **Resolution path**: Escape `%` and `_` in user search input before
 constructing LIKE patterns.
+
+### Audit log organizationId is nullable
+
+**Status**: Intentional
+**Impact**: Low
+
+The `audit_log.organization_id` column is nullable to support system-level
+events (login/logout, platform-wide actions) that are not scoped to a
+specific organization. The audit middleware infers organizationId from the
+URL path when possible, but some events (e.g. system health checks) have
+no org context.
+
+### No database CHECK constraint on threat_intel.confidence
+
+**Status**: Deferred
+**Impact**: Low (Zod validates 0-100 at API boundary)
+
+The `confidence` column in `threat_intel` allows any integer at the
+database level. The Zod schema enforces 0-100 at the API layer, but
+direct database inserts (e.g. seed scripts) could set invalid values.
+
+**Resolution path**: Add `CHECK (confidence >= 0 AND confidence <= 100)`
+in a future migration.
+
+### OrgContext does not expose API error state
+
+**Status**: Deferred
+**Impact**: Medium (header stays in skeleton on API failure)
+
+If the initial `getOrganizations()` call fails in `OrgProvider`, the error
+is silently caught. There is no `error` field in `OrgContextValue`, so
+consuming components cannot display an error message. The user sees
+an indefinite loading skeleton.
+
+**Resolution path**: Add `error: string | null` to the context value and
+display a retry button in the Header component.

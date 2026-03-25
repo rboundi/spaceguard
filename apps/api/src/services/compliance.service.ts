@@ -230,9 +230,12 @@ export async function updateMapping(
   return mappingToResponse(row);
 }
 
-export async function deleteMapping(id: string): Promise<void> {
+export async function deleteMapping(id: string): Promise<{ organizationId: string }> {
   const [existing] = await db
-    .select({ id: complianceMappings.id })
+    .select({
+      id: complianceMappings.id,
+      organizationId: complianceMappings.organizationId,
+    })
     .from(complianceMappings)
     .where(eq(complianceMappings.id, id))
     .limit(1);
@@ -242,6 +245,7 @@ export async function deleteMapping(id: string): Promise<void> {
   }
 
   await db.delete(complianceMappings).where(eq(complianceMappings.id, id));
+  return { organizationId: existing.organizationId };
 }
 
 export async function listMappings(filters: {

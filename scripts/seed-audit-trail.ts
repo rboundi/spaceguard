@@ -391,26 +391,22 @@ async function run() {
         });
       }
 
-      // Batch insert in chunks of 50
-      const CHUNK = 50;
-      for (let i = 0; i < events.length; i += CHUNK) {
-        const chunk = events.slice(i, i + CHUNK);
-        const values = chunk
-          .map(
-            (e) =>
-              `(${org.id ? `'${e.organization_id}'::uuid` : "NULL"}, '${e.actor}', '${e.action}'::audit_action, ${
-                e.resource_type ? `'${e.resource_type}'` : "NULL"
-              }, ${e.resource_id ? `'${e.resource_id}'::uuid` : "NULL"}, ${
-                e.details ? `'${e.details.replace(/'/g, "''")}'::jsonb` : "NULL"
-              }, ${e.ip_address ? `'${e.ip_address}'` : "NULL"}, '${e.timestamp.toISOString()}'::timestamptz)`
-          )
-          .join(",\n");
-
-        await sql.unsafe(`
+      // Insert events using parameterized queries (no raw interpolation)
+      for (const e of events) {
+        await sql`
           INSERT INTO audit_log
             (organization_id, actor, action, resource_type, resource_id, details, ip_address, timestamp)
-          VALUES ${values}
-        `);
+          VALUES (
+            ${e.organization_id}::uuid,
+            ${e.actor},
+            ${e.action}::audit_action,
+            ${e.resource_type},
+            ${e.resource_id ? sql`${e.resource_id}::uuid` : null},
+            ${e.details ? sql`${e.details}::jsonb` : null},
+            ${e.ip_address},
+            ${e.timestamp}
+          )
+        `;
       }
 
       totalInserted += events.length;

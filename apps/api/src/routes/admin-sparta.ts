@@ -114,8 +114,14 @@ adminSpartaRoutes.get("/admin/sparta/settings", async (c) => {
 // Update the SPARTA fetch URL. Body: { spartaUrl: "https://..." }
 
 adminSpartaRoutes.put("/admin/sparta/settings", async (c) => {
-  const body = await c.req.json();
-  const url = typeof body.spartaUrl === "string" ? body.spartaUrl.trim() : "";
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Request body must be valid JSON" }, 400);
+  }
+  const parsed = body as Record<string, unknown>;
+  const url = typeof parsed.spartaUrl === "string" ? parsed.spartaUrl.trim() : "";
   if (!url) {
     return c.json({ error: "spartaUrl is required" }, 400);
   }
