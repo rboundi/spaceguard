@@ -26,3 +26,6 @@ export * from "./sparta";
 
 // Supply Chain Management
 export * from "./supply-chain";
+
+// Audit Trail
+export * from "./audit";

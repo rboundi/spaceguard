@@ -20,6 +20,7 @@ import {
   updateAlert,
   getAlertStats,
 } from "../services/detection/alert.service";
+import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const alertRoutes = new Hono();
 
@@ -81,6 +82,16 @@ alertRoutes.put(
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
     const updated = await updateAlert(id, body);
+    const isAck = body.status === "RESOLVED" || body.status === "FALSE_POSITIVE";
+    logAudit({
+      organizationId: updated.organizationId,
+      actor: extractActor(c),
+      action: isAck ? "ALERT_ACKNOWLEDGED" : "STATUS_CHANGE",
+      resourceType: "alert",
+      resourceId: id,
+      details: { newStatus: body.status, ruleId: updated.ruleId, title: updated.title },
+      ipAddress: extractIp(c),
+    });
     return c.json(updated);
   }
 );

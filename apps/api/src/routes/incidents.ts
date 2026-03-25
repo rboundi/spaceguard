@@ -46,6 +46,7 @@ import {
   markReportSubmitted,
   getActiveIncidentCount,
 } from "../services/incident.service";
+import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const incidentRoutes = new Hono();
 
@@ -77,6 +78,15 @@ incidentRoutes.post(
   async (c) => {
     const body = c.req.valid("json");
     const incident = await createIncident(body);
+    logAudit({
+      organizationId: incident.organizationId,
+      actor: extractActor(c),
+      action: "INCIDENT_CREATED",
+      resourceType: "incident",
+      resourceId: incident.id,
+      details: { title: incident.title, severity: incident.severity },
+      ipAddress: extractIp(c),
+    });
     return c.json(incident, 201);
   }
 );
@@ -112,6 +122,18 @@ incidentRoutes.put(
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
     const incident = await updateIncident(id, body);
+    const isStatusChange = "status" in body;
+    logAudit({
+      organizationId: incident.organizationId,
+      actor: extractActor(c),
+      action: isStatusChange ? "STATUS_CHANGE" : "UPDATE",
+      resourceType: "incident",
+      resourceId: id,
+      details: isStatusChange
+        ? { newStatus: body.status, title: incident.title }
+        : { changes: body },
+      ipAddress: extractIp(c),
+    });
     return c.json(incident);
   }
 );

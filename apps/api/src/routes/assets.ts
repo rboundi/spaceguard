@@ -13,6 +13,7 @@ import {
   updateAsset,
   deleteAsset,
 } from "../services/asset.service";
+import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const assetRoutes = new Hono();
 
@@ -32,6 +33,15 @@ assetRoutes.post(
   async (c) => {
     const data = c.req.valid("json");
     const asset = await createAsset(data);
+    logAudit({
+      organizationId: asset.organizationId,
+      actor: extractActor(c),
+      action: "CREATE",
+      resourceType: "asset",
+      resourceId: asset.id,
+      details: { name: asset.name, assetType: asset.assetType, criticality: asset.criticality },
+      ipAddress: extractIp(c),
+    });
     return c.json(asset, 201);
   }
 );
@@ -64,6 +74,15 @@ assetRoutes.put(
     assertUUID(id, "id");
     const data = c.req.valid("json");
     const asset = await updateAsset(id, data);
+    logAudit({
+      organizationId: asset.organizationId,
+      actor: extractActor(c),
+      action: "UPDATE",
+      resourceType: "asset",
+      resourceId: id,
+      details: { changes: data },
+      ipAddress: extractIp(c),
+    });
     return c.json(asset);
   }
 );
@@ -73,5 +92,14 @@ assetRoutes.delete("/assets/:id", async (c) => {
   const id = c.req.param("id");
   assertUUID(id, "id");
   const asset = await deleteAsset(id);
+  logAudit({
+    organizationId: asset.organizationId,
+    actor: extractActor(c),
+    action: "DELETE",
+    resourceType: "asset",
+    resourceId: id,
+    details: { name: asset.name },
+    ipAddress: extractIp(c),
+  });
   return c.json(asset);
 });

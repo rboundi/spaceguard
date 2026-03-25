@@ -8,6 +8,7 @@ import {
   listOrganizations,
   updateOrganization,
 } from "../services/organization.service";
+import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const organizationRoutes = new Hono();
 
@@ -27,6 +28,15 @@ organizationRoutes.post(
   async (c) => {
     const data = c.req.valid("json");
     const org = await createOrganization(data);
+    logAudit({
+      organizationId: org.id,
+      actor: extractActor(c),
+      action: "CREATE",
+      resourceType: "organization",
+      resourceId: org.id,
+      details: { name: org.name, country: org.country, nis2Classification: org.nis2Classification },
+      ipAddress: extractIp(c),
+    });
     return c.json(org, 201);
   }
 );
@@ -54,6 +64,15 @@ organizationRoutes.put(
     assertUUID(id, "id");
     const data = c.req.valid("json");
     const org = await updateOrganization(id, data);
+    logAudit({
+      organizationId: id,
+      actor: extractActor(c),
+      action: "UPDATE",
+      resourceType: "organization",
+      resourceId: id,
+      details: { changes: data },
+      ipAddress: extractIp(c),
+    });
     return c.json(org);
   }
 );

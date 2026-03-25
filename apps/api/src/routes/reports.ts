@@ -6,6 +6,7 @@ import {
   generateThreatBriefingPdf,
   generateSupplyChainPdf,
 } from "../services/report.service";
+import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const reportRoutes = new Hono();
 
@@ -32,6 +33,14 @@ reportRoutes.get("/reports/compliance/pdf", async (c) => {
   }
 
   const buffer = await generateCompliancePdf(organizationId);
+  logAudit({
+    organizationId,
+    actor: extractActor(c),
+    action: "REPORT_GENERATED",
+    resourceType: "report",
+    details: { reportType: "compliance" },
+    ipAddress: extractIp(c),
+  });
 
   const dateStr = new Date().toISOString().slice(0, 10);
   const filename = `spaceguard-compliance-${dateStr}.pdf`;

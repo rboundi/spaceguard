@@ -16,6 +16,7 @@ import {
   listMappings,
   getDashboard,
 } from "../services/compliance.service";
+import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const complianceRoutes = new Hono();
 
@@ -62,6 +63,19 @@ complianceRoutes.post(
   async (c) => {
     const data = c.req.valid("json");
     const mapping = await createMapping(data);
+    logAudit({
+      organizationId: mapping.organizationId,
+      actor: extractActor(c),
+      action: "MAPPING_CHANGED",
+      resourceType: "compliance_mapping",
+      resourceId: mapping.id,
+      details: {
+        op: "create",
+        requirementId: mapping.requirementId,
+        status: mapping.status,
+      },
+      ipAddress: extractIp(c),
+    });
     return c.json(mapping, 201);
   }
 );
@@ -86,6 +100,20 @@ complianceRoutes.put(
     assertUUID(id, "id");
     const data = c.req.valid("json");
     const mapping = await updateMapping(id, data);
+    logAudit({
+      organizationId: mapping.organizationId,
+      actor: extractActor(c),
+      action: "MAPPING_CHANGED",
+      resourceType: "compliance_mapping",
+      resourceId: id,
+      details: {
+        op: "update",
+        requirementId: mapping.requirementId,
+        newStatus: mapping.status,
+        changes: data,
+      },
+      ipAddress: extractIp(c),
+    });
     return c.json(mapping);
   }
 );
@@ -95,6 +123,14 @@ complianceRoutes.delete("/compliance/mappings/:id", async (c) => {
   const id = c.req.param("id");
   assertUUID(id, "id");
   await deleteMapping(id);
+  logAudit({
+    actor: extractActor(c),
+    action: "DELETE",
+    resourceType: "compliance_mapping",
+    resourceId: id,
+    details: { op: "delete" },
+    ipAddress: extractIp(c),
+  });
   return c.json({ success: true });
 });
 

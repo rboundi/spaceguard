@@ -14,6 +14,7 @@ import {
   deleteSupplier,
   getSupplierRiskSummary,
 } from "../services/supply-chain.service";
+import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const supplyChainRoutes = new Hono();
 
@@ -33,6 +34,15 @@ supplyChainRoutes.post(
   async (c) => {
     const data = c.req.valid("json");
     const supplier = await createSupplier(data);
+    logAudit({
+      organizationId: supplier.organizationId,
+      actor: extractActor(c),
+      action: "CREATE",
+      resourceType: "supplier",
+      resourceId: supplier.id,
+      details: { name: supplier.name, type: supplier.type, criticality: supplier.criticality },
+      ipAddress: extractIp(c),
+    });
     return c.json(supplier, 201);
   }
 );
@@ -65,6 +75,15 @@ supplyChainRoutes.put(
     assertUUID(id, "id");
     const data = c.req.valid("json");
     const supplier = await updateSupplier(id, data);
+    logAudit({
+      organizationId: supplier.organizationId,
+      actor: extractActor(c),
+      action: "UPDATE",
+      resourceType: "supplier",
+      resourceId: id,
+      details: { name: supplier.name, changes: data },
+      ipAddress: extractIp(c),
+    });
     return c.json(supplier);
   }
 );
@@ -74,6 +93,15 @@ supplyChainRoutes.delete("/supply-chain/suppliers/:id", async (c) => {
   const id = c.req.param("id");
   assertUUID(id, "id");
   const supplier = await deleteSupplier(id);
+  logAudit({
+    organizationId: supplier.organizationId,
+    actor: extractActor(c),
+    action: "DELETE",
+    resourceType: "supplier",
+    resourceId: id,
+    details: { name: supplier.name },
+    ipAddress: extractIp(c),
+  });
   return c.json(supplier);
 });
 

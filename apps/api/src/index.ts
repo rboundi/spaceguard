@@ -15,6 +15,8 @@ import { incidentRoutes } from "./routes/incidents";
 import { intelRoutes } from "./routes/intel";
 import { adminSpartaRoutes } from "./routes/admin-sparta";
 import { supplyChainRoutes } from "./routes/supply-chain";
+import { auditRoutes } from "./routes/audit";
+import { auditMiddleware } from "./middleware/audit";
 
 const app = new Hono();
 
@@ -45,6 +47,7 @@ app.use("/api/v1/*", async (c, next) => {
   return bodyLimit({ maxSize: limit, onError: (ctx) => ctx.json({ error: msg }, 413) })(c, next);
 });
 app.use("*", errorMiddleware);
+app.use("/api/v1/*", auditMiddleware);
 
 // Health check
 app.get("/health", (c) => {
@@ -71,6 +74,9 @@ app.route("/api/v1", intelRoutes);
 
 // Supply Chain routes
 app.route("/api/v1", supplyChainRoutes);
+
+// Audit Trail routes
+app.route("/api/v1", auditRoutes);
 
 // Admin routes
 app.route("/api/v1", adminSpartaRoutes);
