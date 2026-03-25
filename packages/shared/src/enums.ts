@@ -154,6 +154,24 @@ export enum IncidentReportType {
 
 // Supply Chain enums
 
+// ---------------------------------------------------------------------------
+// User Roles
+// ---------------------------------------------------------------------------
+
+export enum UserRole {
+  ADMIN = "ADMIN",
+  OPERATOR = "OPERATOR",
+  VIEWER = "VIEWER",
+  AUDITOR = "AUDITOR",
+}
+
+export const userRoleLabels: Record<UserRole, string> = {
+  [UserRole.ADMIN]: "Admin",
+  [UserRole.OPERATOR]: "Operator",
+  [UserRole.VIEWER]: "Viewer",
+  [UserRole.AUDITOR]: "Auditor",
+};
+
 export enum SupplierType {
   COMPONENT_MANUFACTURER = "COMPONENT_MANUFACTURER",
   GROUND_STATION_OPERATOR = "GROUND_STATION_OPERATOR",
