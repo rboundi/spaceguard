@@ -227,6 +227,7 @@ type Tab = "upload" | "fetch";
 export default function SpartaAdminPage() {
   const [status, setStatus] = useState<SpartaStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("upload");
 
   // Upload state
@@ -263,7 +264,7 @@ export default function SpartaAdminPage() {
       setSpartaUrl(settings.spartaUrl);
       setSpartaUrlDraft(settings.spartaUrl);
     } catch (err) {
-      console.error("Failed to load SPARTA status:", err);
+      setLoadError(err instanceof Error ? err.message : "Failed to load SPARTA status");
     } finally {
       setLoading(false);
     }
@@ -331,6 +332,16 @@ export default function SpartaAdminPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <RefreshCw size={24} className="animate-spin text-slate-500" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-sm text-red-400">
+          {loadError}
+        </div>
       </div>
     );
   }
