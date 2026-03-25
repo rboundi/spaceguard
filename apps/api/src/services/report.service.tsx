@@ -15,6 +15,7 @@ import {
   complianceRequirements,
   complianceMappings,
   spaceAssets,
+  threatIntel,
 } from "../db/schema/index";
 import { incidents, incidentAlerts } from "../db/schema/incidents";
 import { alerts } from "../db/schema/alerts";
@@ -2054,5 +2055,876 @@ export async function generateIncidentSummaryPdf(
 ): Promise<Buffer> {
   const data = await buildIncidentSummaryData(organizationId, from, to);
   const buffer = await renderToBuffer(<IncidentSummaryReport data={data} />);
+  return buffer;
+}
+
+// =============================================================================
+// THREAT LANDSCAPE BRIEFING REPORT
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Segment classification helpers
+// ---------------------------------------------------------------------------
+
+const SPACE_SEGMENT_TYPES = new Set([
+  "LEO_SATELLITE", "MEO_SATELLITE", "GEO_SATELLITE", "INTER_SATELLITE_LINK",
+]);
+
+const GROUND_SEGMENT_TYPES = new Set([
+  "GROUND_STATION", "CONTROL_CENTER", "UPLINK", "DOWNLINK",
+]);
+
+const INFRA_SEGMENT_TYPES = new Set([
+  "DATA_CENTER", "NETWORK_SEGMENT",
+]);
+
+// SPARTA tactic phase names that are primarily relevant per segment.
+// Techniques belonging to these tactics get a relevance boost when the
+// org has assets in the matching segment.
+const SPACE_RELEVANT_PHASES = new Set([
+  "execution", "persistence", "impact", "exfiltration",
+]);
+const GROUND_RELEVANT_PHASES = new Set([
+  "initial-access", "reconnaissance", "defense-evasion", "lateral-movement",
+  "command-and-control",
+]);
+const ALL_RELEVANT_PHASES = new Set([
+  "privilege-escalation", "resource-development", "collection",
+]);
+
+// ---------------------------------------------------------------------------
+// Internal types
+// ---------------------------------------------------------------------------
+
+interface ThreatTechniqueRow {
+  id: string;
+  stixId: string;
+  name: string;
+  description: string | null;
+  mitreId: string | null;
+  phase: string;         // kill_chain_phases[0].phase_name
+  tactic: string;        // display name
+  hasDetection: boolean; // detection rule covers this technique
+  cmCount: number;       // countermeasures mapped to this technique
+  alertCount: number;    // recent alerts matching this technique name
+  relevanceScore: number;
+  riskLevel: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+}
+
+interface TacticCoverage {
+  tactic: string;
+  phase: string;
+  techniqueCount: number;
+  withDetection: number;
+  withCountermeasures: number;
+  withAlerts: number;
+}
+
+interface RecommendedCountermeasure {
+  name: string;
+  description: string | null;
+  nistControls: string[];
+  category: string;
+  deployment: string;
+  effort: "LOW" | "MEDIUM" | "HIGH";
+  targetTechnique: string;
+}
+
+interface ThreatBriefingData {
+  org: OrgDetails;
+  generatedAt: string;
+  segments: { space: boolean; ground: boolean; infra: boolean };
+  assetTypes: string[];
+  stats: {
+    totalTechniques: number;
+    relevantTechniques: number;
+    withDetectionRules: number;
+    withCountermeasures: number;
+    coveragePct: number;
+    recentAlerts: number;
+  };
+  topThreats: ThreatTechniqueRow[];
+  tacticCoverage: TacticCoverage[];
+  recentAlertsByTactic: { tactic: string; count: number; techniques: string[] }[];
+  recommendations: RecommendedCountermeasure[];
+}
+
+// ---------------------------------------------------------------------------
+// Phase -> display name map (mirrors frontend)
+// ---------------------------------------------------------------------------
+
+const PHASE_DISPLAY: Record<string, string> = {
+  "reconnaissance":       "Reconnaissance",
+  "resource-development": "Resource Development",
+  "initial-access":       "Initial Access",
+  "execution":            "Execution",
+  "persistence":          "Persistence",
+  "privilege-escalation": "Privilege Escalation",
+  "defense-evasion":      "Defense Evasion",
+  "lateral-movement":     "Lateral Movement",
+  "collection":           "Collection",
+  "exfiltration":         "Exfiltration",
+  "command-and-control":  "Command & Control",
+  "impact":               "Impact",
+};
+
+function phaseDisplay(phase: string): string {
+  return PHASE_DISPLAY[phase] ?? phase;
+}
+
+function effortLabel(cmCount: number): "LOW" | "MEDIUM" | "HIGH" {
+  if (cmCount <= 1) return "LOW";
+  if (cmCount <= 3) return "MEDIUM";
+  return "HIGH";
+}
+
+function riskLevel(
+  relevanceScore: number
+): "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" {
+  if (relevanceScore >= 80) return "CRITICAL";
+  if (relevanceScore >= 55) return "HIGH";
+  if (relevanceScore >= 30) return "MEDIUM";
+  return "LOW";
+}
+
+const RISK_COLORS: Record<string, string> = {
+  CRITICAL: "#ef4444",
+  HIGH:     "#f97316",
+  MEDIUM:   "#f59e0b",
+  LOW:      "#6b7280",
+};
+
+// ---------------------------------------------------------------------------
+// Data builder
+// ---------------------------------------------------------------------------
+
+async function buildThreatBriefingData(
+  organizationId: string
+): Promise<ThreatBriefingData> {
+  // 1. Org + assets
+  const [org] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, organizationId))
+    .limit(1);
+  if (!org) throw new HTTPException(404, { message: "Organization not found" });
+
+  const orgAssets = await db
+    .select({ assetType: spaceAssets.assetType })
+    .from(spaceAssets)
+    .where(
+      and(
+        eq(spaceAssets.organizationId, organizationId),
+        ne(spaceAssets.status, "DECOMMISSIONED")
+      )
+    );
+
+  const assetTypeSet = new Set(orgAssets.map((a) => a.assetType));
+  const assetTypes = [...assetTypeSet];
+
+  const hasSpace  = assetTypes.some((t) => SPACE_SEGMENT_TYPES.has(t));
+  const hasGround = assetTypes.some((t) => GROUND_SEGMENT_TYPES.has(t));
+  const hasInfra  = assetTypes.some((t) => INFRA_SEGMENT_TYPES.has(t));
+
+  // 2. Load SPARTA data from DB
+  // All parent attack-patterns (stix_id without a dot-suffix is a parent)
+  const allTechniques = await db
+    .select()
+    .from(threatIntel)
+    .where(eq(threatIntel.stixType, "attack-pattern"));
+
+  const parentTechniques = allTechniques.filter((t) => {
+    const d = t.data as Record<string, unknown>;
+    const mid = String(d.x_mitre_id ?? d.x_sparta_id ?? "");
+    return !mid.includes(".");
+  });
+
+  // All countermeasures
+  const allCMs = await db
+    .select()
+    .from(threatIntel)
+    .where(eq(threatIntel.stixType, "course-of-action"));
+
+  // Relationships: related-to (technique <-> CM)
+  const relRows = await db
+    .select()
+    .from(threatIntel)
+    .where(eq(threatIntel.stixType, "relationship"));
+
+  // Build: technique stixId -> set of countermeasure stixIds
+  const techToCMs = new Map<string, Set<string>>();
+  const cmById    = new Map<string, typeof allCMs[0]>();
+  for (const cm of allCMs) cmById.set(cm.stixId, cm);
+
+  for (const rel of relRows) {
+    const d = rel.data as Record<string, unknown>;
+    if (d.relationship_type !== "related-to") continue;
+    const src = String(d.source_ref ?? "");
+    const tgt = String(d.target_ref ?? "");
+    // CM -> technique
+    if (src.startsWith("course-of-action--") && tgt.startsWith("attack-pattern--")) {
+      if (!techToCMs.has(tgt)) techToCMs.set(tgt, new Set());
+      techToCMs.get(tgt)!.add(src);
+    }
+    // technique -> CM  (some bundles have it the other way)
+    if (src.startsWith("attack-pattern--") && tgt.startsWith("course-of-action--")) {
+      if (!techToCMs.has(src)) techToCMs.set(src, new Set());
+      techToCMs.get(src)!.add(tgt);
+    }
+  }
+
+  // 3. Load detection rules (YAML files on disk)
+  const { loadRules } = await import("./detection/rule-loader.js");
+  const detectionRules = loadRules();
+  // Build set of (tactic+technique) pairs covered by rules
+  const coveredTacticTech = new Set<string>();
+  for (const rule of detectionRules) {
+    if (rule.sparta) {
+      coveredTacticTech.add(
+        `${rule.sparta.tactic.toLowerCase()}|${rule.sparta.technique.toLowerCase()}`
+      );
+    }
+  }
+
+  // 4. Recent alerts (last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const recentAlerts = await db
+    .select({
+      spartaTactic:    alerts.spartaTactic,
+      spartaTechnique: alerts.spartaTechnique,
+    })
+    .from(alerts)
+    .where(
+      and(
+        eq(alerts.organizationId, organizationId),
+        gte(alerts.triggeredAt, thirtyDaysAgo)
+      )
+    );
+
+  // technique name -> alert count
+  const techAlertCount = new Map<string, number>();
+  for (const a of recentAlerts) {
+    if (a.spartaTechnique) {
+      const k = a.spartaTechnique.toLowerCase();
+      techAlertCount.set(k, (techAlertCount.get(k) ?? 0) + 1);
+    }
+  }
+
+  // 5. Score and filter techniques
+  const scored: ThreatTechniqueRow[] = [];
+
+  for (const tech of parentTechniques) {
+    const d = tech.data as Record<string, unknown>;
+    const phases = d.kill_chain_phases as { kill_chain_name: string; phase_name: string }[] | undefined;
+    const phase = phases?.[0]?.phase_name ?? "unknown";
+
+    // Segment relevance: skip if no matching segment (unless org has all three)
+    const isSpacePhase  = SPACE_RELEVANT_PHASES.has(phase);
+    const isGroundPhase = GROUND_RELEVANT_PHASES.has(phase);
+    const isAllPhase    = ALL_RELEVANT_PHASES.has(phase);
+
+    const segmentMatch =
+      isAllPhase ||
+      (hasSpace  && isSpacePhase)  ||
+      (hasGround && isGroundPhase) ||
+      (hasInfra  && (isGroundPhase || isAllPhase));
+
+    if (!segmentMatch && (hasSpace || hasGround || hasInfra)) continue;
+
+    const mitreId = String(d.x_mitre_id ?? d.x_sparta_id ?? "");
+    const tacticDisplay = phaseDisplay(phase);
+
+    const cmStixIds = techToCMs.get(tech.stixId) ?? new Set();
+    const cmCount = cmStixIds.size;
+
+    const techKey = `${tacticDisplay.toLowerCase()}|${tech.name.toLowerCase()}`;
+    const hasDetection = coveredTacticTech.has(techKey) ||
+      [...coveredTacticTech].some((k) => k.includes(tech.name.toLowerCase()));
+
+    const alertCnt = techAlertCount.get(tech.name.toLowerCase()) ?? 0;
+
+    // Relevance score (0-100)
+    // Higher = more relevant / more dangerous
+    let score = 20; // base
+    if (alertCnt > 0)    score += Math.min(alertCnt * 10, 40); // recent activity
+    if (!hasDetection)   score += 20;                           // no detection = higher risk
+    if (cmCount === 0)   score += 15;                           // no CMs = gap
+    if (isSpacePhase && hasSpace)   score += 5;
+    if (isGroundPhase && hasGround) score += 5;
+    score = Math.min(score, 100);
+
+    scored.push({
+      id: tech.id,
+      stixId: tech.stixId,
+      name: tech.name,
+      description: tech.description,
+      mitreId: mitreId || null,
+      phase,
+      tactic: tacticDisplay,
+      hasDetection,
+      cmCount,
+      alertCount: alertCnt,
+      relevanceScore: score,
+      riskLevel: riskLevel(score),
+    });
+  }
+
+  scored.sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+  const topThreats = scored.slice(0, 10);
+
+  // 6. Tactic coverage heat map
+  const tacticMap = new Map<string, { count: number; det: number; cm: number; al: number }>();
+  for (const t of scored) {
+    const cur = tacticMap.get(t.tactic) ?? { count: 0, det: 0, cm: 0, al: 0 };
+    cur.count++;
+    if (t.hasDetection) cur.det++;
+    if (t.cmCount > 0)  cur.cm++;
+    if (t.alertCount > 0) cur.al++;
+    tacticMap.set(t.tactic, cur);
+  }
+  const tacticCoverage: TacticCoverage[] = [...tacticMap.entries()]
+    .map(([tactic, v]) => ({
+      tactic,
+      phase: Object.entries(PHASE_DISPLAY).find(([, disp]) => disp === tactic)?.[0] ?? tactic,
+      techniqueCount: v.count,
+      withDetection: v.det,
+      withCountermeasures: v.cm,
+      withAlerts: v.al,
+    }))
+    .sort((a, b) => b.withAlerts - a.withAlerts || b.techniqueCount - a.techniqueCount);
+
+  // 7. Recent alerts by tactic
+  const alertTacticMap = new Map<string, Set<string>>();
+  for (const a of recentAlerts) {
+    const tactic = a.spartaTactic ?? "Unknown";
+    if (!alertTacticMap.has(tactic)) alertTacticMap.set(tactic, new Set());
+    if (a.spartaTechnique) alertTacticMap.get(tactic)!.add(a.spartaTechnique);
+  }
+  const recentAlertsByTactic = [...alertTacticMap.entries()]
+    .map(([tactic, techs]) => ({ tactic, count: techs.size, techniques: [...techs] }))
+    .sort((a, b) => b.count - a.count);
+
+  // 8. Recommended countermeasures
+  // Pick top gaps (high-relevance techniques with no detection and no CMs)
+  const gaps = scored.filter((t) => !t.hasDetection || t.cmCount === 0).slice(0, 8);
+  const recommendedCMs: RecommendedCountermeasure[] = [];
+  const seenCmNames = new Set<string>();
+
+  for (const gap of gaps) {
+    // Find best-fitting CM for this technique
+    const cmStixIds = techToCMs.get(gap.stixId);
+    if (!cmStixIds || cmStixIds.size === 0) continue;
+
+    for (const cmStixId of [...cmStixIds].slice(0, 2)) {
+      const cm = cmById.get(cmStixId);
+      if (!cm || seenCmNames.has(cm.name)) continue;
+      seenCmNames.add(cm.name);
+
+      const cd = cm.data as Record<string, unknown>;
+      const nistRaw = cd.x_nist_rev5;
+      const nistList: string[] = Array.isArray(nistRaw)
+        ? (nistRaw as string[])
+        : typeof nistRaw === "string" && nistRaw
+          ? nistRaw.split(/[,;]\s*/).filter(Boolean)
+          : [];
+
+      recommendedCMs.push({
+        name: cm.name,
+        description: cm.description,
+        nistControls: nistList.slice(0, 3),
+        category: String(cd.x_sparta_category ?? ""),
+        deployment: String(cd.x_sparta_deployment ?? ""),
+        effort: effortLabel(recommendedCMs.length),
+        targetTechnique: gap.name,
+      });
+
+      if (recommendedCMs.length >= 5) break;
+    }
+    if (recommendedCMs.length >= 5) break;
+  }
+
+  // 9. Stats
+  const withDetection = scored.filter((t) => t.hasDetection).length;
+  const withCMs       = scored.filter((t) => t.cmCount > 0).length;
+  const coveragePct   = scored.length > 0
+    ? Math.round(((withDetection + withCMs) / (scored.length * 2)) * 100)
+    : 0;
+
+  return {
+    org: {
+      id: org.id,
+      name: org.name,
+      country: org.country,
+      sector: org.sector,
+      nis2Classification: org.nis2Classification,
+      contactEmail: org.contactEmail,
+    },
+    generatedAt: new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC",
+    segments: { space: hasSpace, ground: hasGround, infra: hasInfra },
+    assetTypes,
+    stats: {
+      totalTechniques: parentTechniques.length,
+      relevantTechniques: scored.length,
+      withDetectionRules: withDetection,
+      withCountermeasures: withCMs,
+      coveragePct,
+      recentAlerts: recentAlerts.length,
+    },
+    topThreats,
+    tacticCoverage,
+    recentAlertsByTactic,
+    recommendations: recommendedCMs,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// PDF Component
+// ---------------------------------------------------------------------------
+
+function ThreatBriefingReport({ data }: { data: ThreatBriefingData }) {
+  const { org, generatedAt, segments, assetTypes, stats, topThreats,
+          tacticCoverage, recentAlertsByTactic, recommendations } = data;
+
+  const pageStyle = s.contentPage;
+
+  // ---- Title Page ----
+  const TitlePage = () => (
+    <Page size="A4" style={s.titlePage}>
+      <View style={s.titleBanner}>
+        <View>
+          <Text style={s.titleBrandName}>SPACEGUARD</Text>
+          <Text style={s.titleBrandSub}>CYBERSECURITY PLATFORM</Text>
+        </View>
+        <View>
+          <Text style={[s.titleBannerRight, { textAlign: "right" }]}>
+            THREAT LANDSCAPE BRIEFING
+          </Text>
+          <Text style={[s.titleBannerRight, { marginTop: 3 }]}>
+            {generatedAt}
+          </Text>
+        </View>
+      </View>
+
+      <View style={s.titleBody}>
+        <Text style={s.titleHeading}>Space Threat{"\n"}Landscape Briefing</Text>
+        <Text style={s.titleSubheading}>
+          SPARTA-mapped threat analysis tailored to your asset profile
+        </Text>
+
+        <View style={s.titleOrgBox}>
+          <Text style={s.titleOrgLabel}>ORGANISATION</Text>
+          <Text style={s.titleOrgName}>{org.name}</Text>
+          <Text style={s.titleOrgMeta}>
+            {org.country.toUpperCase()} · {org.nis2Classification} Entity · {org.sector.toUpperCase()}
+          </Text>
+          <Text style={[s.titleOrgMeta, { marginTop: 4 }]}>
+            Segments covered:{" "}
+            {[
+              segments.space  && "Space",
+              segments.ground && "Ground",
+              segments.infra  && "Infrastructure",
+            ].filter(Boolean).join(" · ")}
+          </Text>
+        </View>
+
+        <View style={s.titleScoreRow}>
+          <View style={s.titleScoreCard}>
+            <Text style={s.titleScoreLabel}>RELEVANT TECHNIQUES</Text>
+            <Text style={[s.titleScoreValue, { color: C.partial }]}>
+              {stats.relevantTechniques}
+            </Text>
+            <Text style={s.titleScoreSub}>of {stats.totalTechniques} SPARTA</Text>
+          </View>
+          <View style={s.titleScoreCard}>
+            <Text style={s.titleScoreLabel}>COVERAGE</Text>
+            <Text style={[s.titleScoreValue, {
+              color: stats.coveragePct >= 70 ? C.compliant
+                   : stats.coveragePct >= 40 ? C.partial
+                   : C.nonCompliant,
+            }]}>
+              {stats.coveragePct}%
+            </Text>
+            <Text style={s.titleScoreSub}>detection + CM</Text>
+          </View>
+          <View style={s.titleScoreCard}>
+            <Text style={s.titleScoreLabel}>RECENT ALERTS</Text>
+            <Text style={[s.titleScoreValue, { color: stats.recentAlerts > 0 ? C.nonCompliant : C.compliant }]}>
+              {stats.recentAlerts}
+            </Text>
+            <Text style={s.titleScoreSub}>last 30 days</Text>
+          </View>
+          <View style={s.titleScoreCard}>
+            <Text style={s.titleScoreLabel}>OPEN GAPS</Text>
+            <Text style={[s.titleScoreValue, { color: C.nonCompliant }]}>
+              {stats.relevantTechniques - stats.withDetectionRules}
+            </Text>
+            <Text style={s.titleScoreSub}>without detection</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={s.titleFooter}>
+        <Text style={s.titleFooterText}>Generated {generatedAt}</Text>
+        <Text style={s.titleFooterText}>CONFIDENTIAL - INTERNAL USE ONLY</Text>
+      </View>
+    </Page>
+  );
+
+  const PageHeader = ({ title }: { title: string }) => (
+    <View style={s.pageHeader}>
+      <Text style={s.sectionTitle}>{title}</Text>
+      <Text style={s.sectionBrand}>SPACEGUARD · THREAT BRIEFING</Text>
+    </View>
+  );
+
+  // ---- Threat Overview page ----
+  const OverviewPage = () => (
+    <Page size="A4" style={pageStyle}>
+      <PageHeader title="Threat Overview" />
+
+      {/* Asset profile */}
+      <View style={[s.navyBox, { marginBottom: 14 }]}>
+        <Text style={s.navyBoxTitle}>Organisation Asset Profile</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+          {assetTypes.map((t) => (
+            <View key={t} style={{
+              paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4,
+              backgroundColor: C.navyCard,
+            }}>
+              <Text style={{ fontSize: 8, color: C.slateLight }}>
+                {ASSET_TYPE_LABELS[t] ?? t}
+              </Text>
+            </View>
+          ))}
+        </View>
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+          {[
+            { label: "SPACE SEGMENT",   active: segments.space  },
+            { label: "GROUND SEGMENT",  active: segments.ground },
+            { label: "INFRASTRUCTURE",  active: segments.infra  },
+          ].map(({ label, active }) => (
+            <View key={label} style={{
+              flexDirection: "row", alignItems: "center", gap: 5,
+              paddingHorizontal: 10, paddingVertical: 5,
+              backgroundColor: active ? C.blueDim : C.navyCard,
+              borderRadius: 4,
+              borderWidth: 1,
+              borderColor: active ? C.blue : C.navyCard,
+              borderStyle: "solid",
+            }}>
+              <View style={{
+                width: 6, height: 6, borderRadius: 3,
+                backgroundColor: active ? C.blue : C.notAssessed,
+              }} />
+              <Text style={{ fontSize: 8, color: active ? C.blueLight : C.slate }}>
+                {label}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Stats row */}
+      <View style={[s.summaryGrid, { marginBottom: 14 }]}>
+        {[
+          { label: "TOTAL SPARTA TECHNIQUES", value: stats.totalTechniques, color: C.slate },
+          { label: "RELEVANT TO PROFILE",      value: stats.relevantTechniques, color: C.partial },
+          { label: "DETECTION COVERAGE",        value: stats.withDetectionRules, color: C.blue },
+          { label: "WITH COUNTERMEASURES",      value: stats.withCountermeasures, color: C.compliant },
+        ].map(({ label, value, color }) => (
+          <View key={label} style={[s.summaryCard, { borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10 }]}>
+            <Text style={[s.summaryLabel, { fontSize: 7, letterSpacing: 1.2, marginBottom: 5 }]}>{label}</Text>
+            <Text style={[s.summaryValue, { color }]}>{value}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Coverage by tactic (heat map rows) */}
+      <View style={s.navyBox}>
+        <Text style={s.navyBoxTitle}>Coverage by Tactic</Text>
+        {tacticCoverage.slice(0, 8).map((tc) => {
+          const detPct = tc.techniqueCount > 0
+            ? Math.round((tc.withDetection / tc.techniqueCount) * 100) : 0;
+          const cmPct  = tc.techniqueCount > 0
+            ? Math.round((tc.withCountermeasures / tc.techniqueCount) * 100) : 0;
+          const coveragePctRow = Math.round((detPct + cmPct) / 2);
+          const barColor = coveragePctRow >= 70 ? C.compliant
+                         : coveragePctRow >= 40 ? C.partial
+                         : C.nonCompliant;
+
+          return (
+            <View key={tc.tactic} style={{ marginBottom: 7 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                <View style={{ width: 110 }}>
+                  <Text style={{ fontSize: 8, color: C.slateLight }}>{tc.tactic}</Text>
+                </View>
+                <View style={{ flex: 1, height: 9, backgroundColor: C.navyCard, borderRadius: 4, overflow: "hidden" }}>
+                  <View style={{ width: `${coveragePctRow}%`, height: "100%", backgroundColor: barColor, borderRadius: 4 }} />
+                </View>
+                <Text style={{ fontSize: 8, color: C.white, width: 28, textAlign: "right" }}>
+                  {coveragePctRow}%
+                </Text>
+                {tc.withAlerts > 0 && (
+                  <View style={{ paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3, backgroundColor: "#3b1919" }}>
+                    <Text style={{ fontSize: 7, color: C.nonCompliant }}>
+                      {tc.withAlerts} alert{tc.withAlerts > 1 ? "s" : ""}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <View style={{ flexDirection: "row", gap: 12, marginLeft: 116 }}>
+                <Text style={{ fontSize: 7, color: C.slate }}>
+                  {tc.withDetection}/{tc.techniqueCount} detection rules
+                </Text>
+                <Text style={{ fontSize: 7, color: C.slate }}>
+                  {tc.withCountermeasures}/{tc.techniqueCount} CMs
+                </Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </Page>
+  );
+
+  // ---- Top Threats page ----
+  const TopThreatsPage = () => (
+    <Page size="A4" style={pageStyle}>
+      <PageHeader title="Top 10 Threats for This Organisation" />
+
+      {topThreats.length === 0 ? (
+        <View style={s.navyBox}>
+          <Text style={{ fontSize: 10, color: C.slate, textAlign: "center", paddingVertical: 20 }}>
+            No SPARTA techniques relevant to your asset profile.
+          </Text>
+        </View>
+      ) : (
+        topThreats.map((t, idx) => {
+          const riskColor = RISK_COLORS[t.riskLevel] ?? C.slate;
+          return (
+            <View key={t.id} style={{
+              marginBottom: 7, backgroundColor: C.navyLight,
+              borderRadius: 5, padding: 10,
+              borderLeftWidth: 3, borderLeftColor: riskColor,
+              borderLeftStyle: "solid",
+            }}>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                {/* Rank */}
+                <Text style={{ fontSize: 9, color: C.slate, width: 16, marginTop: 1 }}>
+                  {String(idx + 1).padStart(2, "0")}.
+                </Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  {/* Name row */}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" }}>
+                    <Text style={{ fontSize: 10, color: C.white, fontFamily: "Helvetica-Bold" }}>
+                      {t.name}
+                    </Text>
+                    {t.mitreId && (
+                      <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold",
+                        color: C.slate, backgroundColor: C.navyCard,
+                        paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3 }}>
+                        {t.mitreId}
+                      </Text>
+                    )}
+                    <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3,
+                      backgroundColor: riskColor + "33" }}>
+                      <Text style={{ fontSize: 7, color: riskColor, fontFamily: "Helvetica-Bold" }}>
+                        {t.riskLevel}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 7, color: C.slate }}>{t.tactic}</Text>
+                  </View>
+                  {/* Description */}
+                  {t.description && (
+                    <Text style={{ fontSize: 8, color: C.slate, lineHeight: 1.4, marginBottom: 4 }}>
+                      {t.description.slice(0, 180)}{t.description.length > 180 ? "..." : ""}
+                    </Text>
+                  )}
+                  {/* Coverage indicators */}
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                      <View style={{
+                        width: 6, height: 6, borderRadius: 3,
+                        backgroundColor: t.hasDetection ? C.compliant : C.nonCompliant,
+                      }} />
+                      <Text style={{ fontSize: 7, color: C.slate }}>
+                        {t.hasDetection ? "Detection rule active" : "No detection rule"}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                      <View style={{
+                        width: 6, height: 6, borderRadius: 3,
+                        backgroundColor: t.cmCount > 0 ? C.compliant : C.partial,
+                      }} />
+                      <Text style={{ fontSize: 7, color: C.slate }}>
+                        {t.cmCount > 0 ? `${t.cmCount} countermeasure${t.cmCount > 1 ? "s" : ""}` : "No countermeasures"}
+                      </Text>
+                    </View>
+                    {t.alertCount > 0 && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C.nonCompliant }} />
+                        <Text style={{ fontSize: 7, color: C.nonCompliant }}>
+                          {t.alertCount} recent alert{t.alertCount > 1 ? "s" : ""}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </View>
+            </View>
+          );
+        })
+      )}
+    </Page>
+  );
+
+  // ---- Recent Activity + Recommendations page ----
+  const ActivityRecsPage = () => (
+    <Page size="A4" style={pageStyle}>
+      <PageHeader title="Recent Activity and Recommended Actions" />
+
+      {/* Recent alerts by tactic */}
+      <View style={[s.navyBox, { marginBottom: 14 }]}>
+        <Text style={s.navyBoxTitle}>Alert Activity - Last 30 Days</Text>
+        {stats.recentAlerts === 0 ? (
+          <Text style={{ fontSize: 9, color: C.slate, fontStyle: "italic" }}>
+            No alerts recorded in the last 30 days.
+          </Text>
+        ) : (
+          recentAlertsByTactic.slice(0, 6).map((item) => (
+            <View key={item.tactic} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+              <View style={{
+                paddingHorizontal: 6, paddingVertical: 3, borderRadius: 3,
+                backgroundColor: C.nonCompliant + "33", minWidth: 24, alignItems: "center",
+              }}>
+                <Text style={{ fontSize: 9, color: C.nonCompliant, fontFamily: "Helvetica-Bold" }}>
+                  {item.count}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 9, color: C.white, fontFamily: "Helvetica-Bold", marginBottom: 2 }}>
+                  {item.tactic}
+                </Text>
+                <Text style={{ fontSize: 8, color: C.slate }}>
+                  Techniques: {item.techniques.slice(0, 4).join(" · ")}
+                  {item.techniques.length > 4 ? ` +${item.techniques.length - 4} more` : ""}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+
+      {/* Recommended countermeasures */}
+      <View style={s.navyBox}>
+        <Text style={s.navyBoxTitle}>Top 5 Recommended Actions</Text>
+        {recommendations.length === 0 ? (
+          <Text style={{ fontSize: 9, color: C.slate, fontStyle: "italic" }}>
+            All relevant techniques have countermeasures mapped. Ensure they are implemented and regularly reviewed.
+          </Text>
+        ) : (
+          recommendations.map((rec, i) => (
+            <View key={i} style={{
+              flexDirection: "row", gap: 10, marginBottom: 10,
+              paddingBottom: 10,
+              borderBottomWidth: i < recommendations.length - 1 ? 1 : 0,
+              borderBottomColor: C.navyCard,
+              borderBottomStyle: "solid",
+            }}>
+              {/* Number circle */}
+              <View style={{
+                width: 20, height: 20, borderRadius: 10,
+                backgroundColor: C.blue, alignItems: "center",
+                justifyContent: "center", flexShrink: 0, marginTop: 1,
+              }}>
+                <Text style={{ fontSize: 9, color: C.white, fontFamily: "Helvetica-Bold" }}>{i + 1}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 10, color: C.white, fontFamily: "Helvetica-Bold", marginBottom: 2 }}>
+                  {rec.name}
+                </Text>
+                <View style={{ flexDirection: "row", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
+                  {/* Target technique */}
+                  <View style={{ paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3,
+                    backgroundColor: C.blueDim }}>
+                    <Text style={{ fontSize: 7, color: C.blueLight }}>
+                      Addresses: {rec.targetTechnique.slice(0, 35)}
+                    </Text>
+                  </View>
+                  {/* Effort */}
+                  <View style={{ paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3,
+                    backgroundColor:
+                      rec.effort === "LOW" ? "#14532d" :
+                      rec.effort === "MEDIUM" ? "#713f12" : "#450a0a",
+                  }}>
+                    <Text style={{ fontSize: 7, color:
+                      rec.effort === "LOW" ? C.compliant :
+                      rec.effort === "MEDIUM" ? C.partial : C.nonCompliant,
+                      fontFamily: "Helvetica-Bold",
+                    }}>
+                      {rec.effort} EFFORT
+                    </Text>
+                  </View>
+                  {/* Category */}
+                  {rec.category && (
+                    <Text style={{ fontSize: 7, color: C.slate, paddingTop: 3 }}>
+                      {rec.category}
+                    </Text>
+                  )}
+                </View>
+                {/* Description */}
+                {rec.description && (
+                  <Text style={{ fontSize: 8, color: C.slate, lineHeight: 1.4, marginBottom: 4 }}>
+                    {rec.description.slice(0, 200)}{rec.description.length > 200 ? "..." : ""}
+                  </Text>
+                )}
+                {/* NIST controls */}
+                {rec.nistControls.length > 0 && (
+                  <View style={{ flexDirection: "row", gap: 4 }}>
+                    <Text style={{ fontSize: 7, color: C.slate, marginTop: 2 }}>NIST:</Text>
+                    {rec.nistControls.map((n) => (
+                      <View key={n} style={{
+                        paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3,
+                        backgroundColor: C.blueDim,
+                      }}>
+                        <Text style={{ fontSize: 7, color: C.blueLight, fontFamily: "Helvetica-Bold" }}>{n}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+    </Page>
+  );
+
+  return (
+    <Document
+      title={`SpaceGuard Threat Briefing - ${org.name}`}
+      author="SpaceGuard"
+      subject="Space Threat Landscape Briefing"
+    >
+      <TitlePage />
+      <OverviewPage />
+      <TopThreatsPage />
+      <ActivityRecsPage />
+    </Document>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Exported: PDF generator
+// ---------------------------------------------------------------------------
+
+export async function generateThreatBriefingPdf(
+  organizationId: string
+): Promise<Buffer> {
+  const data = await buildThreatBriefingData(organizationId);
+  const buffer = await renderToBuffer(<ThreatBriefingReport data={data} />);
   return buffer;
 }

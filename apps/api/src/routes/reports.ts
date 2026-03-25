@@ -3,6 +3,7 @@ import {
   generateCompliancePdf,
   generateIncidentSummaryPdf,
   getIncidentSummaryStats,
+  generateThreatBriefingPdf,
 } from "../services/report.service";
 
 export const reportRoutes = new Hono();
@@ -106,6 +107,32 @@ reportRoutes.get("/reports/incident-summary/pdf", async (c) => {
   const fromStr = range.from.toISOString().slice(0, 10);
   const toStr = range.to.toISOString().slice(0, 10);
   const filename = `spaceguard-incidents-${fromStr}-to-${toStr}.pdf`;
+
+  return new Response(buffer as unknown as BodyInit, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Length": buffer.byteLength.toString(),
+      "Cache-Control": "no-store",
+    },
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/reports/threat-briefing/pdf?organizationId=xxx
+//
+// Returns a downloadable PDF Threat Landscape Briefing for the given org.
+// ---------------------------------------------------------------------------
+reportRoutes.get("/reports/threat-briefing/pdf", async (c) => {
+  const organizationId = c.req.query("organizationId");
+  if (!organizationId) return c.json({ error: "organizationId is required" }, 400);
+  if (!UUID_RE.test(organizationId)) return c.json({ error: "organizationId must be a valid UUID" }, 400);
+
+  const buffer = await generateThreatBriefingPdf(organizationId);
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const filename = `spaceguard-threat-briefing-${dateStr}.pdf`;
 
   return new Response(buffer as unknown as BodyInit, {
     status: 200,

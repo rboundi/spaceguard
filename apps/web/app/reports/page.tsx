@@ -13,12 +13,14 @@ import {
   TrendingDown,
   BarChart2,
   CheckCircle2,
+  Target,
 } from "lucide-react";
 import {
   getDashboard,
   getCompliancePdf,
   getIncidentSummaryStats,
   getIncidentSummaryPdf,
+  getThreatBriefingPdf,
   type IncidentSummaryStats,
 } from "@/lib/api";
 import { useOrg } from "@/lib/context";
@@ -392,6 +394,125 @@ function IncidentSummaryCard({ orgId }: { orgId: string | null }) {
 }
 
 // ---------------------------------------------------------------------------
+// Threat Landscape Briefing card
+// ---------------------------------------------------------------------------
+
+function ThreatBriefingCard({ orgId }: { orgId: string | null }) {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  async function handleDownload() {
+    if (!orgId) return;
+    setDownloading(true);
+    setDownloadError(null);
+    let url: string | null = null;
+    const a = document.createElement("a");
+    try {
+      const blob = await getThreatBriefingPdf(orgId);
+      url = URL.createObjectURL(blob);
+      a.href = url;
+      a.download = `spaceguard-threat-briefing-${today()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "Failed to generate report");
+    } finally {
+      if (document.body.contains(a)) document.body.removeChild(a);
+      if (url) setTimeout(() => URL.revokeObjectURL(url!), 100);
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <Card className="border-slate-700 bg-slate-900">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-violet-500/10 p-2 text-violet-400">
+              <Target size={20} />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold text-slate-100">
+                Threat Landscape Briefing
+              </CardTitle>
+              <p className="text-xs text-slate-500 mt-0.5">
+                SPARTA-mapped threats tailored to your asset profile - PDF
+              </p>
+            </div>
+          </div>
+          <Badge variant="success" className="text-[10px] px-2 shrink-0">
+            Available
+          </Badge>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <p className="text-sm text-slate-400 leading-relaxed">
+          Periodic threat intelligence briefing scoped to your organisation's
+          specific asset types. Filters the full SPARTA matrix to the techniques
+          most relevant to your space and ground segment, scores them by
+          detection coverage and recent alert activity, and generates targeted
+          countermeasure recommendations with NIST SP 800-53 references.
+        </p>
+
+        <div className="rounded-lg border border-slate-700/30 bg-slate-800/20 px-4 py-3 space-y-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            Report Contents
+          </p>
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
+            {[
+              "Asset profile + segment mapping",
+              "Coverage heat map by tactic",
+              "Top 10 ranked threats",
+              "Detection vs. countermeasure gaps",
+              "Alert activity last 30 days",
+              "Top 5 recommended actions + NIST",
+            ].map((item) => (
+              <li key={item} className="text-xs text-slate-400 flex items-center gap-1.5">
+                <span className="text-violet-500 text-[10px]">▸</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {downloadError && (
+          <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            <AlertTriangle size={12} className="shrink-0" />
+            {downloadError}
+          </div>
+        )}
+
+        <Button
+          onClick={handleDownload}
+          disabled={!orgId || downloading}
+          suppressHydrationWarning
+          className="w-full bg-violet-700 hover:bg-violet-600 text-white font-medium disabled:opacity-50"
+        >
+          {downloading ? (
+            <>
+              <Loader2 size={16} className="mr-2 animate-spin" />
+              Generating PDF...
+            </>
+          ) : (
+            <>
+              <Download size={16} className="mr-2" />
+              Download Threat Briefing PDF
+            </>
+          )}
+        </Button>
+
+        {!orgId && (
+          <p className="text-center text-xs text-slate-600">
+            Set up your organization to enable report generation.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -600,14 +721,13 @@ export default function ReportsPage() {
         </div>
 
         {/* ---------------------------------------------------------------- */}
+        {/* Active: Threat Landscape Briefing */}
+        {/* ---------------------------------------------------------------- */}
+        <ThreatBriefingCard orgId={orgId} />
+
+        {/* ---------------------------------------------------------------- */}
         {/* Placeholder cards */}
         {/* ---------------------------------------------------------------- */}
-        <PlaceholderCard
-          icon={<Layers size={18} />}
-          title="Threat Landscape Briefing"
-          description="Curated threat intelligence briefing covering active threat actors targeting space operators, SPARTA technique mapping, and recommended mitigations for your asset profile."
-        />
-
         <PlaceholderCard
           icon={<ShieldCheck size={18} />}
           title="Supply Chain Risk Assessment"

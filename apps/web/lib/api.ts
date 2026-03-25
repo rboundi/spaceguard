@@ -705,6 +705,26 @@ export const getCountermeasuresByNist = (controlId: string) =>
     `/api/v1/intel/countermeasures/nist/${encodeURIComponent(controlId)}`
   );
 
+// ---------------------------------------------------------------------------
+// Threat Landscape Briefing Report
+// ---------------------------------------------------------------------------
+
+export const getThreatBriefingPdf = async (
+  organizationId: string
+): Promise<Blob> => {
+  const params = new URLSearchParams({ organizationId });
+  const res = await fetch(
+    `${API_URL}/api/v1/reports/threat-briefing/pdf?${params.toString()}`,
+    { method: "GET" }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const msg = typeof body.error === "string" ? body.error : (body.message ?? res.statusText);
+    throw new ApiError(res.status, msg);
+  }
+  return res.blob();
+};
+
 /** Upload a STIX 2.1 JSON file via multipart form data */
 export async function uploadSpartaBundle(
   file: File
