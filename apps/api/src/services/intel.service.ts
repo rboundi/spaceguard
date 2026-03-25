@@ -287,3 +287,245 @@ export async function searchIntel(
 
   return rows.map(intelToResponse);
 }
+
+// ---------------------------------------------------------------------------
+// listTechniques
+// ---------------------------------------------------------------------------
+
+/**
+ * Return all SPARTA attack-pattern objects for a given tactic.
+ * tacticId can be either the tactic STIX ID (x-sparta-tactic--...) or
+ * the tactic short name / kill-chain phase name (e.g. "reconnaissance").
+ */
+export async function listTechniques(
+  tacticId: string
+): Promise<IntelResponse[]> {
+  const trimmed = tacticId.trim().toLowerCase();
+
+  // Match via kill_chain_phases[*].phase_name in the JSONB data
+  const rows = await db
+    .select()
+    .from(threatIntel)
+    .where(
+      and(
+        eq(threatIntel.stixType, "attack-pattern"),
+        eq(threatIntel.source, "SPARTA"),
+        sql`EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements(${threatIntel.data}->'kill_chain_phases') AS kc
+          WHERE (kc->>'phase_name') ILIKE ${"%" + trimmed + "%"}
+             OR (kc->>'phase_name') ILIKE ${trimmed}
+        )`
+      )
+    )
+    .orderBy(
+      sql`(${threatIntel.data}->>'x_sparta_is_subtechnique')::boolean`,
+      threatIntel.name
+    );
+
+  return rows.map(intelToResponse);
+}
+
+// ---------------------------------------------------------------------------
+// searchTechniques
+// ---------------------------------------------------------------------------
+
+/**
+ * Full-text search restricted to attack-pattern objects, across name and
+ * description. Returns up to `limit` results ordered by name.
+ */
+export async function searchTechniques(
+  query: string,
+  limit = 20
+): Promise<IntelResponse[]> {
+  const trimmed = query.trim().slice(0, 500);
+  if (!trimmed) return [];
+
+  const pattern = `%${trimmed}%`;
+
+  const rows = await db
+    .select()
+    .from(threatIntel)
+    .where(
+      and(
+        eq(threatIntel.stixType, "attack-pattern"),
+        eq(threatIntel.source, "SPARTA"),
+        or(
+          ilike(threatIntel.name, pattern),
+          ilike(threatIntel.description, pattern)
+        )
+      )
+    )
+    .orderBy(threatIntel.name)
+    .limit(limit);
+
+  return rows.map(intelToResponse);
+}
+
+// ---------------------------------------------------------------------------
+// getTechniqueWithCountermeasures
+// ---------------------------------------------------------------------------
+
+/**
+ * Return a technique by STIX ID or SpaceGuard UUID, together with:
+ *   - its sub-techniques (attack-patterns that link back via related-to)
+ *   - its mapped countermeasures (course-of-action objects that point to it)
+ */
+export interface TechniqueDetail {
+  technique: IntelResponse;
+  subTechniques: IntelResponse[];
+  countermeasures: IntelResponse[];
+}
+
+export async function getTechniqueWithCountermeasures(
+  id: string
+): Promise<TechniqueDetail> {
+  // Accept either a SpaceGuard UUID or a STIX ID
+  const isUuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+  const [techniqueRow] = await db
+    .select()
+    .from(threatIntel)
+    .where(
+      isUuid
+        ? and(eq(threatIntel.id, id), eq(threatIntel.stixType, "attack-pattern"))
+        : and(eq(threatIntel.stixId, id), eq(threatIntel.stixType, "attack-pattern"))
+    )
+    .limit(1);
+
+  if (!techniqueRow) {
+    throw new HTTPException(404, {
+      message: `Technique ${id} not found`,
+    });
+  }
+
+  const stixId = techniqueRow.stixId;
+
+  // Find sub-techniques: relationships where target_ref = this technique
+  // and the source is also an attack-pattern (subtechnique -> parent)
+  const subRows = await db
+    .select()
+    .from(threatIntel)
+    .where(
+      and(
+        eq(threatIntel.stixType, "attack-pattern"),
+        eq(threatIntel.source, "SPARTA"),
+        sql`(${threatIntel.data}->>'x_sparta_is_subtechnique')::boolean = true`,
+        sql`EXISTS (
+          SELECT 1
+          FROM threat_intel rel
+          WHERE rel.stix_type = 'relationship'
+            AND (rel.data->>'relationship_type') = 'related-to'
+            AND (rel.data->>'source_ref') = ${threatIntel.stixId}
+            AND (rel.data->>'target_ref') = ${stixId}
+        )`
+      )
+    )
+    .orderBy(threatIntel.name);
+
+  // Find countermeasures: course-of-action objects whose relationships
+  // point (source_ref = course-of-action, target_ref = this technique)
+  const cmRows = await db
+    .select()
+    .from(threatIntel)
+    .where(
+      and(
+        eq(threatIntel.stixType, "course-of-action"),
+        eq(threatIntel.source, "SPARTA"),
+        sql`EXISTS (
+          SELECT 1
+          FROM threat_intel rel
+          WHERE rel.stix_type = 'relationship'
+            AND (rel.data->>'relationship_type') = 'related-to'
+            AND (rel.data->>'source_ref') = ${threatIntel.stixId}
+            AND (rel.data->>'target_ref') = ${stixId}
+        )`
+      )
+    )
+    .orderBy(threatIntel.name);
+
+  return {
+    technique: intelToResponse(techniqueRow),
+    subTechniques: subRows.map(intelToResponse),
+    countermeasures: cmRows.map(intelToResponse),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// getCountermeasures
+// ---------------------------------------------------------------------------
+
+/**
+ * Return all countermeasures (course-of-action) mapped to a technique STIX ID.
+ */
+export async function getCountermeasures(
+  techniqueStixId: string
+): Promise<IntelResponse[]> {
+  const rows = await db
+    .select()
+    .from(threatIntel)
+    .where(
+      and(
+        eq(threatIntel.stixType, "course-of-action"),
+        eq(threatIntel.source, "SPARTA"),
+        sql`EXISTS (
+          SELECT 1
+          FROM threat_intel rel
+          WHERE rel.stix_type = 'relationship'
+            AND (rel.data->>'relationship_type') = 'related-to'
+            AND (rel.data->>'source_ref') = ${threatIntel.stixId}
+            AND (rel.data->>'target_ref') = ${techniqueStixId}
+        )`
+      )
+    )
+    .orderBy(threatIntel.name);
+
+  return rows.map(intelToResponse);
+}
+
+// ---------------------------------------------------------------------------
+// getCountermeasuresByNist
+// ---------------------------------------------------------------------------
+
+/**
+ * Find all SPARTA countermeasures that map to a given NIST control ID.
+ * NIST control IDs are stored in data->>'x_nist_rev5' or nested in
+ * external_references with source_name = 'NIST 800-53'.
+ * controlId examples: "AC-2", "SI-3", "SC-7"
+ */
+export async function getCountermeasuresByNist(
+  controlId: string
+): Promise<IntelResponse[]> {
+  const normalised = controlId.trim().toUpperCase();
+
+  const rows = await db
+    .select()
+    .from(threatIntel)
+    .where(
+      and(
+        eq(threatIntel.stixType, "course-of-action"),
+        eq(threatIntel.source, "SPARTA"),
+        or(
+          // Check x_nist_rev5 field (string or array)
+          sql`(${threatIntel.data}->>'x_nist_rev5') ILIKE ${"%" + normalised + "%"}`,
+          // Check external_references array for NIST source
+          sql`EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(
+              CASE
+                WHEN jsonb_typeof(${threatIntel.data}->'external_references') = 'array'
+                THEN ${threatIntel.data}->'external_references'
+                ELSE '[]'::jsonb
+              END
+            ) AS ref
+            WHERE (ref->>'source_name') ILIKE '%nist%'
+              AND (ref->>'external_id') ILIKE ${normalised + "%"}
+          )`
+        )
+      )
+    )
+    .orderBy(threatIntel.name);
+
+  return rows.map(intelToResponse);
+}

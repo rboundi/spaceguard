@@ -12,6 +12,11 @@ import {
   createIntel,
   enrichAlert,
   searchIntel,
+  listTechniques,
+  searchTechniques,
+  getTechniqueWithCountermeasures,
+  getCountermeasures,
+  getCountermeasuresByNist,
 } from "../services/intel.service";
 
 export const intelRoutes = new Hono();
@@ -98,4 +103,73 @@ intelRoutes.get("/intel/enrich/alert/:alertId", async (c) => {
   assertUUID(alertId, "alertId");
   const enrichment = await enrichAlert(alertId);
   return c.json(enrichment);
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/intel/tactics/:tacticId/techniques
+// Return all SPARTA techniques for a given tactic (by STIX ID or phase name)
+// ---------------------------------------------------------------------------
+
+intelRoutes.get("/intel/tactics/:tacticId/techniques", async (c) => {
+  const tacticId = c.req.param("tacticId");
+  const techniques = await listTechniques(tacticId);
+  return c.json({ data: techniques, total: techniques.length });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/intel/techniques/search?q=<text>&limit=<n>
+// Full-text search restricted to SPARTA attack-pattern objects
+// ---------------------------------------------------------------------------
+
+intelRoutes.get(
+  "/intel/techniques/search",
+  zValidator(
+    "query",
+    z.object({
+      q:     z.string().min(1).max(200),
+      limit: z.coerce.number().int().positive().max(100).default(20),
+    })
+  ),
+  async (c) => {
+    const { q, limit } = c.req.valid("query");
+    const results = await searchTechniques(q, limit);
+    return c.json({ data: results, total: results.length });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/intel/techniques/:id
+// Return a technique with its sub-techniques and countermeasures
+// Accepts a SpaceGuard UUID or a STIX ID (attack-pattern--<uuid>)
+// ---------------------------------------------------------------------------
+
+intelRoutes.get("/intel/techniques/:id", async (c) => {
+  const id = c.req.param("id");
+  const detail = await getTechniqueWithCountermeasures(id);
+  return c.json(detail);
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/intel/techniques/:stixId/countermeasures
+// Return all countermeasures mapped to a technique (by STIX ID)
+// ---------------------------------------------------------------------------
+
+intelRoutes.get("/intel/techniques/:stixId/countermeasures", async (c) => {
+  const stixId = c.req.param("stixId");
+  const countermeasures = await getCountermeasures(stixId);
+  return c.json({ data: countermeasures, total: countermeasures.length });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/intel/countermeasures/nist/:controlId
+// Find countermeasures mapped to a NIST SP 800-53 control (e.g. "AC-2")
+// ---------------------------------------------------------------------------
+
+intelRoutes.get("/intel/countermeasures/nist/:controlId", async (c) => {
+  const controlId = c.req.param("controlId");
+  if (!controlId || controlId.length > 20) {
+    throw new HTTPException(400, { message: "controlId must be 1-20 characters" });
+  }
+  const countermeasures = await getCountermeasuresByNist(controlId);
+  return c.json({ data: countermeasures, total: countermeasures.length });
 });
