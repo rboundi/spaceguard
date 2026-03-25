@@ -21,6 +21,8 @@ import type {
 // strings. The frontend receives these as string literals, so the local types
 // use string literal unions to match the JSON wire format.
 
+import { getAuthToken } from "@/lib/auth-context";
+
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -38,15 +40,32 @@ async function request<T>(
   path: string,
   options?: RequestInit
 ): Promise<T> {
+  const authHeaders: Record<string, string> = {};
+  const token = getAuthToken();
+  if (token) {
+    authHeaders["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
       ...options?.headers,
     },
     ...options,
   });
 
   if (!res.ok) {
+    // If 401 and we have a token, it may be expired: clear it
+    if (res.status === 401 && token) {
+      try {
+        localStorage.removeItem("spaceguard_token");
+        localStorage.removeItem("spaceguard_user");
+      } catch { /* ignore */ }
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+    }
     const body = await res.json().catch(() => ({ error: res.statusText }));
     const msg = typeof body.error === "string" ? body.error : (body.message ?? res.statusText);
     throw new ApiError(res.status, msg);
