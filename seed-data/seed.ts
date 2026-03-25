@@ -19,6 +19,23 @@ interface NIS2Requirement {
   applicabilityNotes?: string;
 }
 
+interface EnisaControl {
+  regulation: string;
+  articleReference: string;
+  title: string;
+  category: string;
+  description: string;
+  controlStatement: string;
+  evidenceGuidance: string;
+  applicabilityNotes?: string;
+  lifecyclePhases: string[];
+  segments: string[];
+  threatsAddressed: string[];
+  referenceFrameworks: string[];
+  spartaTechniques: string[];
+  nis2Mapping?: string;
+}
+
 interface SpartaTactic {
   id: string;
   type: string;
@@ -161,6 +178,69 @@ async function seedNis2Requirements(sql: postgres.Sql): Promise<void> {
   >`SELECT count(*)::text FROM compliance_requirements`;
 
   console.log(`  Total requirements in database: ${count}`);
+}
+
+// ---------------------------------------------------------------------------
+// Seed ENISA controls
+// ---------------------------------------------------------------------------
+
+async function seedEnisaControls(sql: postgres.Sql): Promise<void> {
+  const raw = readFileSync(
+    join(__dirname, "enisa-controls.json"),
+    "utf-8"
+  );
+  const controls: EnisaControl[] = JSON.parse(raw);
+
+  console.log(`\nSeeding ${controls.length} ENISA controls...`);
+
+  let inserted = 0;
+  let skipped = 0;
+
+  for (const control of controls) {
+    // Pack metadata into JSON string for applicability_notes
+    const metadata = {
+      lifecyclePhases: control.lifecyclePhases,
+      segments: control.segments,
+      threatsAddressed: control.threatsAddressed,
+      referenceFrameworks: control.referenceFrameworks,
+      spartaTechniques: control.spartaTechniques,
+      nis2Mapping: control.nis2Mapping,
+    };
+    const metadataJson = JSON.stringify(metadata, null, 2);
+
+    const result = await sql`
+      INSERT INTO compliance_requirements
+        (regulation, article_reference, title, description,
+         evidence_guidance, category, applicability_notes)
+      VALUES (
+        ${'ENISA_SPACE'}::regulation,
+        ${control.articleReference},
+        ${control.title},
+        ${control.description},
+        ${control.evidenceGuidance},
+        ${control.category},
+        ${metadataJson}
+      )
+      ON CONFLICT (title) DO NOTHING
+      RETURNING id
+    `;
+
+    if (result.length > 0) {
+      inserted++;
+    } else {
+      skipped++;
+    }
+  }
+
+  console.log(
+    `  Inserted ${inserted} ENISA controls, skipped ${skipped} duplicates.`
+  );
+
+  const [{ enisaCount }] = await sql<
+    [{ enisaCount: string }]
+  >`SELECT count(*)::text FROM compliance_requirements WHERE regulation = 'ENISA_SPACE'`;
+
+  console.log(`  Total ENISA controls in database: ${enisaCount}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -442,6 +522,7 @@ async function seed() {
 
   try {
     await seedNis2Requirements(sql);
+    await seedEnisaControls(sql);
     await seedSpartaFullMatrix(sql);
 
     console.log("\nSeed complete.");

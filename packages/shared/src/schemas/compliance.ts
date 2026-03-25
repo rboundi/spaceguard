@@ -62,6 +62,14 @@ export const dashboardResponseSchema = z.object({
       score: z.number(),
     })
   ),
+  byRegulation: z.array(
+    z.object({
+      regulation: z.string(),
+      total: z.number(),
+      compliant: z.number(),
+      score: z.number(),
+    })
+  ),
   gaps: z.array(
     z.object({
       requirementId: z.string(),

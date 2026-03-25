@@ -881,6 +881,85 @@ export default function DashboardPage() {
         </span>
       </div>
 
+      {/* Compliance by Regulation */}
+      {dashboard && dashboard.byRegulation && dashboard.byRegulation.length > 0 && (
+        <Card className="bg-slate-900 border-slate-800">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm font-semibold text-slate-200">
+              Compliance by Regulation
+            </CardTitle>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Individual scores for each regulatory framework
+            </p>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Overall Score */}
+              <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-blue-400">
+                    Overall Score
+                  </span>
+                  <span className={`text-2xl font-bold ${scoreTextClass(dashboard.overallScore)}`}>
+                    {dashboard.overallScore}%
+                  </span>
+                </div>
+                <div className="w-full bg-slate-700 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full ${
+                      dashboard.overallScore >= 70
+                        ? "bg-emerald-500"
+                        : dashboard.overallScore >= 40
+                        ? "bg-amber-500"
+                        : "bg-red-500"
+                    }`}
+                    style={{ width: `${dashboard.overallScore}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Per-regulation scores */}
+              {dashboard.byRegulation.map((reg) => {
+                const regLabel =
+                  reg.regulation === "NIS2"
+                    ? "NIS2"
+                    : reg.regulation === "ENISA_SPACE"
+                    ? "ENISA Space"
+                    : reg.regulation;
+                const score = reg.total > 0 ? Math.round((reg.compliant / reg.total) * 100) : 0;
+                return (
+                  <div key={reg.regulation} className="rounded-lg border border-slate-700/50 bg-slate-800/30 p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                        {regLabel}
+                      </span>
+                      <span className={`text-2xl font-bold ${scoreTextClass(score)}`}>
+                        {score}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-700 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${
+                          score >= 70
+                            ? "bg-emerald-500"
+                            : score >= 40
+                            ? "bg-amber-500"
+                            : "bg-red-500"
+                        }`}
+                        style={{ width: `${score}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      {reg.compliant} of {reg.total} requirements
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Row 1 - Key metric cards */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <MetricCard

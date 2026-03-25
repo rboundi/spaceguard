@@ -19,6 +19,7 @@ import { auditRoutes } from "./routes/audit";
 import { authRoutes } from "./routes/auth";
 import { exportRoutes } from "./routes/exports";
 import { settingsRoutes } from "./routes/settings";
+import { enisaRoutes } from "./routes/enisa";
 import { auditMiddleware } from "./middleware/audit";
 import { authMiddleware } from "./middleware/auth-guard";
 
@@ -82,6 +83,8 @@ app.use("/api/v1/export/*", authMiddleware);
 app.use("/api/v1/export", authMiddleware);
 app.use("/api/v1/settings/*", authMiddleware);
 app.use("/api/v1/settings", authMiddleware);
+app.use("/api/v1/enisa/*", authMiddleware);
+app.use("/api/v1/enisa", authMiddleware);
 app.use("/api/v1/admin/*", authMiddleware);
 
 // Module 1 routes
@@ -113,6 +116,9 @@ app.route("/api/v1", exportRoutes);
 
 // Settings routes
 app.route("/api/v1", settingsRoutes);
+
+// ENISA routes
+app.route("/api/v1", enisaRoutes);
 
 // Admin routes
 app.route("/api/v1", adminSpartaRoutes);

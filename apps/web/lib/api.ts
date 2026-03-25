@@ -176,6 +176,37 @@ export const getDashboard = (organizationId: string) => {
 };
 
 // ---------------------------------------------------------------------------
+// ENISA Controls
+// ---------------------------------------------------------------------------
+
+export interface EnisaControlResponse {
+  id: string;
+  articleReference: string;
+  title: string;
+  category: string;
+  description: string;
+  controlStatement: string;
+  evidenceGuidance: string;
+  lifecyclePhases: string[];
+  segments: string[];
+  threatsAddressed: string[];
+  referenceFrameworks: string[];
+  spartaTechniques: string[];
+  nis2Mapping: string;
+}
+
+export interface EnisaSpartaMappingEntry {
+  spartaTechniqueId: string;
+  controls: Array<{ articleReference: string; title: string; category: string }>;
+}
+
+export const getEnisaControls = () =>
+  api.get<{ data: EnisaControlResponse[] }>("/api/v1/enisa/controls");
+
+export const getEnisaSpartaMapping = () =>
+  api.get<{ data: EnisaSpartaMappingEntry[] }>("/api/v1/enisa/sparta-mapping");
+
+// ---------------------------------------------------------------------------
 // Incident Summary Report
 // ---------------------------------------------------------------------------
 

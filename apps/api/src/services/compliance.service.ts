@@ -468,7 +468,25 @@ export async function getDashboard(
     }))
     .sort((a, b) => a.category.localeCompare(b.category));
 
-  // 9. Gaps: NOT_ASSESSED or NON_COMPLIANT requirements
+  // 9. Score by regulation
+  const regulationMap = new Map<string, { total: number; compliant: number }>();
+  for (const { effectiveStatus, requirement } of reqSummaries) {
+    const reg = requirement.regulation;
+    if (!regulationMap.has(reg)) regulationMap.set(reg, { total: 0, compliant: 0 });
+    const entry = regulationMap.get(reg)!;
+    entry.total++;
+    if (effectiveStatus === ComplianceStatus.COMPLIANT) entry.compliant++;
+  }
+  const byRegulation = Array.from(regulationMap.entries())
+    .map(([regulation, { total, compliant }]) => ({
+      regulation,
+      total,
+      compliant,
+      score: total > 0 ? Math.round((compliant / total) * 100) : 0,
+    }))
+    .sort((a, b) => a.regulation.localeCompare(b.regulation));
+
+  // 10. Gaps: NOT_ASSESSED or NON_COMPLIANT requirements
   const gaps = reqSummaries
     .filter(
       ({ effectiveStatus }) =>
@@ -485,7 +503,7 @@ export async function getDashboard(
       affectedAssets: assetNames,
     }));
 
-  // 10. Asset summary
+  // 11. Asset summary
   const byType: Record<string, number> = {};
   const byCriticality: Record<string, number> = {};
   for (const asset of orgAssets) {
@@ -499,6 +517,7 @@ export async function getDashboard(
     totalRequirements,
     byStatus: byStatus as DashboardResponse["byStatus"],
     byCategory,
+    byRegulation,
     gaps,
     assetsSummary: {
       total: orgAssets.length,

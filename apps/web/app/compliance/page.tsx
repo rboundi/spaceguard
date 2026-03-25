@@ -541,6 +541,12 @@ function RequirementCard({
   onClick,
 }: RequirementCardProps) {
   const effectiveStatus = getEffectiveStatus(requirement.id, mappings);
+  const regulationLabel =
+    requirement.regulation === "NIS2"
+      ? "NIS2"
+      : requirement.regulation === "ENISA_SPACE"
+      ? "ENISA"
+      : requirement.regulation;
 
   return (
     <button
@@ -555,18 +561,23 @@ function RequirementCard({
         <p className="text-xs text-slate-200 line-clamp-2 flex-1 leading-relaxed">
           {requirement.title}
         </p>
-        <Badge
-          variant={STATUS_VARIANT[effectiveStatus] ?? "muted"}
-          className="text-[9px] px-1 py-0 shrink-0 mt-0.5"
-        >
-          {effectiveStatus === ComplianceStatus.NOT_ASSESSED
-            ? "N/A"
-            : effectiveStatus === ComplianceStatus.COMPLIANT
-            ? "OK"
-            : effectiveStatus === ComplianceStatus.PARTIALLY_COMPLIANT
-            ? "Partial"
-            : "Fail"}
-        </Badge>
+        <div className="flex items-center gap-1 shrink-0 mt-0.5">
+          <Badge variant="muted" className="text-[8px] px-1.5 py-0 bg-slate-700 text-slate-300">
+            {regulationLabel}
+          </Badge>
+          <Badge
+            variant={STATUS_VARIANT[effectiveStatus] ?? "muted"}
+            className="text-[9px] px-1 py-0"
+          >
+            {effectiveStatus === ComplianceStatus.NOT_ASSESSED
+              ? "N/A"
+              : effectiveStatus === ComplianceStatus.COMPLIANT
+              ? "OK"
+              : effectiveStatus === ComplianceStatus.PARTIALLY_COMPLIANT
+              ? "Partial"
+              : "Fail"}
+          </Badge>
+        </div>
       </div>
       {requirement.articleReference && (
         <p className="text-[10px] text-slate-600 mt-0.5">
@@ -663,17 +674,24 @@ export default function CompliancePage() {
   const [selectedReq, setSelectedReq] = useState<ComplianceRequirement | null>(
     null
   );
+  const [regulationFilter, setRegulationFilter] = useState<string>("ALL");
 
-  // Group requirements by category
+  // Filter requirements by selected regulation
+  const filteredRequirements = useMemo(() => {
+    if (regulationFilter === "ALL") return requirements;
+    return requirements.filter((r) => r.regulation === regulationFilter);
+  }, [requirements, regulationFilter]);
+
+  // Group filtered requirements by category
   const categoryGroups = useMemo(() => {
     const groups = new Map<string, ComplianceRequirement[]>();
-    for (const req of requirements) {
+    for (const req of filteredRequirements) {
       const cat = req.category ?? "Uncategorized";
       if (!groups.has(cat)) groups.set(cat, []);
       groups.get(cat)!.push(req);
     }
     return groups;
-  }, [requirements]);
+  }, [filteredRequirements]);
 
   // Reload whenever org changes
   useEffect(() => {
@@ -776,9 +794,9 @@ export default function CompliancePage() {
     );
   }
 
-  // Stats for header
-  const totalReqs = requirements.length;
-  const compliantReqs = requirements.filter(
+  // Stats for header (based on filtered requirements)
+  const totalReqs = filteredRequirements.length;
+  const compliantReqs = filteredRequirements.filter(
     (r) => getEffectiveStatus(r.id, mappings) === ComplianceStatus.COMPLIANT
   ).length;
   const score =
@@ -788,15 +806,40 @@ export default function CompliancePage() {
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="px-6 py-4 border-b border-slate-800 shrink-0">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold text-slate-50">
               Compliance Mapper
             </h1>
             <p className="text-slate-500 text-xs mt-0.5">
-              NIS2 Article 21 requirements - map to assets and track status
+              Map requirements to assets and track compliance status
             </p>
           </div>
+        </div>
+
+        {/* Regulation filter tabs */}
+        <div className="flex gap-2 mb-4">
+          {["ALL", "NIS2", "ENISA_SPACE"].map((reg) => (
+            <button
+              key={reg}
+              onClick={() => setRegulationFilter(reg)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                regulationFilter === reg
+                  ? "bg-blue-600 text-white"
+                  : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+              }`}
+            >
+              {reg === "ALL"
+                ? "All Regulations"
+                : reg === "NIS2"
+                ? "NIS2"
+                : "ENISA Space"}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div />
           <div className="flex items-center gap-4">
             {orgId && (
               <button
