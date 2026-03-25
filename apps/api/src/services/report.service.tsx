@@ -7,7 +7,7 @@ import {
   StyleSheet,
   renderToBuffer,
 } from "@react-pdf/renderer";
-import { eq, and, ne, gte, lte, avg, isNotNull, sql } from "drizzle-orm";
+import { eq, and, ne, gte, lte, avg, isNotNull, sql, inArray } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db/client";
 import {
@@ -1898,7 +1898,7 @@ async function buildIncidentSummaryData(
     const assetRows = await db
       .select({ id: spaceAssets.id, assetType: spaceAssets.assetType })
       .from(spaceAssets)
-      .where(sql`${spaceAssets.id} = ANY(${uniqueAssetIds})`);
+      .where(inArray(spaceAssets.id, uniqueAssetIds));
     for (const row of assetRows) assetMap.set(row.id, row.assetType);
   }
 
@@ -1974,7 +1974,7 @@ async function buildIncidentSummaryData(
       .select({ ruleId: alerts.ruleId })
       .from(incidentAlerts)
       .innerJoin(alerts, eq(incidentAlerts.alertId, alerts.id))
-      .where(sql`${incidentAlerts.incidentId} = ANY(${incidentIds})`);
+      .where(inArray(incidentAlerts.incidentId, incidentIds));
     totalLinkedAlerts = linkedAlerts.length;
     for (const a of linkedAlerts) ruleCount.set(a.ruleId, (ruleCount.get(a.ruleId) ?? 0) + 1);
   }
