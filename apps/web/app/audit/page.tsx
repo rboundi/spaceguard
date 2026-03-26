@@ -355,7 +355,10 @@ export default function AuditPage() {
       setPdfError(err instanceof Error ? err.message : "Failed to generate PDF");
     } finally {
       if (document.body.contains(a)) document.body.removeChild(a);
-      if (url) setTimeout(() => URL.revokeObjectURL(url!), 100);
+      if (url) {
+        const urlToRevoke = url;
+        setTimeout(() => URL.revokeObjectURL(urlToRevoke), 100);
+      }
       setPdfLoading(false);
     }
   }

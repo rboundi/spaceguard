@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AssetType,
   AssetStatus,
@@ -142,6 +142,24 @@ export function AssetForm({
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync form state when the asset prop changes (e.g. switching between edit targets)
+  useEffect(() => {
+    if (asset) {
+      setName(asset.name);
+      setAssetType((asset.assetType as AssetType) ?? AssetType.LEO_SATELLITE);
+      setDescription(asset.description ?? "");
+      setStatus((asset.status as AssetStatus) ?? AssetStatus.OPERATIONAL);
+      setCriticality((asset.criticality as Criticality) ?? Criticality.MEDIUM);
+      setMetadata(
+        asset.metadata
+          ? Object.fromEntries(
+              Object.entries(asset.metadata).map(([k, v]) => [k, String(v)])
+            )
+          : {}
+      );
+    }
+  }, [asset]);
 
   const metadataFields = METADATA_FIELDS[assetType] ?? [];
 

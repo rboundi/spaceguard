@@ -109,7 +109,7 @@ function StatusCard({ status }: { status: SpartaStatusResponse }) {
               <>
                 {" "}
                 - Last updated{" "}
-                {new Date(status.lastImportedAt).toLocaleDateString("en-GB", {
+                {new Date(status.lastImportedAt).toLocaleString("en-GB", {
                   day: "numeric",
                   month: "short",
                   year: "numeric",
@@ -203,7 +203,7 @@ function ImportHistory({ imports }: { imports: SpartaStatusResponse["recentImpor
                 </p>
               </div>
               <p className="text-xs text-slate-600 shrink-0">
-                {new Date(imp.importedAt).toLocaleDateString("en-GB", {
+                {new Date(imp.importedAt).toLocaleString("en-GB", {
                   day: "numeric",
                   month: "short",
                   hour: "2-digit",

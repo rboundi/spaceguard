@@ -538,6 +538,7 @@ function TelemetryTab() {
                         value={String(stream.sampleRateHz ? Math.round(stream.sampleRateHz * 60) : 6000)}
                         onChange={() => {}}
                         placeholder="6000"
+                        disabled
                       />
                     </div>
                     <div className="pt-5">

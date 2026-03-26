@@ -162,7 +162,10 @@ function IncidentSummaryCard({ orgId }: { orgId: string | null }) {
       setDownloadError(err instanceof Error ? err.message : "Failed to generate report");
     } finally {
       if (document.body.contains(a)) document.body.removeChild(a);
-      if (url) setTimeout(() => URL.revokeObjectURL(url!), 100);
+      if (url) {
+        const urlToRevoke = url;
+        setTimeout(() => URL.revokeObjectURL(urlToRevoke), 100);
+      }
       setDownloading(false);
     }
   }
@@ -421,7 +424,10 @@ function ThreatBriefingCard({ orgId }: { orgId: string | null }) {
       setDownloadError(err instanceof Error ? err.message : "Failed to generate report");
     } finally {
       if (document.body.contains(a)) document.body.removeChild(a);
-      if (url) setTimeout(() => URL.revokeObjectURL(url!), 100);
+      if (url) {
+        const urlToRevoke = url;
+        setTimeout(() => URL.revokeObjectURL(urlToRevoke), 100);
+      }
       setDownloading(false);
     }
   }
@@ -540,7 +546,10 @@ function SupplyChainCard({ orgId }: { orgId: string | null }) {
       setDownloadError(err instanceof Error ? err.message : "Failed to generate report");
     } finally {
       if (document.body.contains(a)) document.body.removeChild(a);
-      if (url) setTimeout(() => URL.revokeObjectURL(url!), 100);
+      if (url) {
+        const urlToRevoke = url;
+        setTimeout(() => URL.revokeObjectURL(urlToRevoke), 100);
+      }
       setDownloading(false);
     }
   }
@@ -660,7 +669,10 @@ function AuditTrailCard({ orgId }: { orgId: string | null }) {
       setDownloadError(err instanceof Error ? err.message : "Failed to generate report");
     } finally {
       if (document.body.contains(a)) document.body.removeChild(a);
-      if (url) setTimeout(() => URL.revokeObjectURL(url!), 100);
+      if (url) {
+        const urlToRevoke = url;
+        setTimeout(() => URL.revokeObjectURL(urlToRevoke), 100);
+      }
       setDownloading(false);
     }
   }
@@ -834,7 +846,10 @@ export default function ReportsPage() {
       );
     } finally {
       if (document.body.contains(a)) document.body.removeChild(a);
-      if (url) setTimeout(() => URL.revokeObjectURL(url!), 100);
+      if (url) {
+        const urlToRevoke = url;
+        setTimeout(() => URL.revokeObjectURL(urlToRevoke), 100);
+      }
       setDownloading(false);
     }
   }

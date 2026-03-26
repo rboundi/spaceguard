@@ -1028,9 +1028,7 @@ function downloadBlob(data: Blob, filename: string) {
 }
 
 function exportHeaders(): Record<string, string> {
-  const token = typeof window !== "undefined"
-    ? localStorage.getItem("spaceguard_token")
-    : null;
+  const token = getAuthToken();
   const h: Record<string, string> = {};
   if (token) h["Authorization"] = `Bearer ${token}`;
   return h;

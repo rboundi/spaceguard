@@ -175,6 +175,7 @@ function Step1Organization({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     if (!form.name.trim()) {
       setError("Organization name is required");
       return;
