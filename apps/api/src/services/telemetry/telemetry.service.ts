@@ -11,6 +11,11 @@ import { organizations, spaceAssets } from "../../db/schema/index";
 import { parseCcsdsStream } from "./ccsds-parser";
 import { evaluatePoint } from "../detection/engine";
 import { createAlert } from "../detection/alert.service";
+import {
+  updateBaselineAndDetect,
+  isInLearningMode,
+  buildAnomalyAlert,
+} from "../detection/anomaly-detector";
 import type {
   CreateStream,
   UpdateStream,
@@ -36,6 +41,7 @@ function streamToResponse(
     sampleRateHz: row.sampleRateHz ?? undefined,
     status: row.status as StreamResponse["status"],
     apiKey: row.apiKey,
+    learningModeUntil: row.learningModeUntil?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -86,6 +92,7 @@ export async function createStream(data: CreateStream): Promise<StreamResponse> 
       sampleRateHz: data.sampleRateHz ?? null,
       status: data.status ?? "ACTIVE",
       apiKey: randomUUID().replace(/-/g, ""),
+      learningModeUntil: new Date(Date.now() + 24 * 60 * 60 * 1000),
     })
     .returning();
 
@@ -237,14 +244,16 @@ export async function ingestPoints(
 }
 
 /**
- * Internal: looks up stream context then evaluates each point against rules.
+ * Internal: looks up stream context then evaluates each point against
+ * rule-based detection AND statistical anomaly detection.
  */
 async function runDetection(streamId: string, points: IngestPoint[]): Promise<void> {
-  // Fetch stream to get organizationId and assetId
+  // Fetch stream to get organizationId, assetId, and learning mode
   const [stream] = await db
     .select({
       organizationId: telemetryStreams.organizationId,
       assetId: telemetryStreams.assetId,
+      learningModeUntil: telemetryStreams.learningModeUntil,
     })
     .from(telemetryStreams)
     .where(eq(telemetryStreams.id, streamId))
@@ -252,7 +261,12 @@ async function runDetection(streamId: string, points: IngestPoint[]): Promise<vo
 
   if (!stream) return; // Stream deleted between ingest and detection - skip
 
+  const inLearningMode = stream.learningModeUntil
+    ? stream.learningModeUntil.getTime() > Date.now()
+    : false;
+
   for (const point of points) {
+    // 1. Rule-based detection (always runs)
     const alertPayloads = evaluatePoint(streamId, stream.organizationId, stream.assetId, {
       parameterName: point.parameterName,
       valueNumeric: point.valueNumeric ?? null,
@@ -260,6 +274,31 @@ async function runDetection(streamId: string, points: IngestPoint[]): Promise<vo
       time: point.time,
     });
 
+    // 2. Statistical anomaly detection (always updates baselines)
+    if (point.valueNumeric !== undefined && point.valueNumeric !== null) {
+      const anomalyResult = updateBaselineAndDetect(
+        streamId,
+        point.parameterName,
+        point.valueNumeric,
+        new Date(point.time)
+      );
+
+      // Only generate anomaly alerts if NOT in learning mode
+      if (anomalyResult.isAnomaly && !inLearningMode && anomalyResult.confidence > 0.3) {
+        alertPayloads.push(
+          buildAnomalyAlert(
+            streamId,
+            stream.organizationId,
+            stream.assetId,
+            point.parameterName,
+            point.valueNumeric,
+            anomalyResult
+          )
+        );
+      }
+    }
+
+    // 3. Create alerts for anything that triggered
     for (const payload of alertPayloads) {
       try {
         const created = await createAlert(payload);

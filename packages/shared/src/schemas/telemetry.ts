@@ -27,6 +27,7 @@ export const updateStreamSchema = createStreamSchema
 export const streamResponseSchema = createStreamSchema.extend({
   id: z.string().uuid(),
   apiKey: z.string(),
+  learningModeUntil: z.string().datetime().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

@@ -19,6 +19,7 @@ import { auditRoutes } from "./routes/audit";
 import { authRoutes } from "./routes/auth";
 import { exportRoutes } from "./routes/exports";
 import { settingsRoutes } from "./routes/settings";
+import { anomalyRoutes } from "./routes/anomaly";
 import { enisaRoutes } from "./routes/enisa";
 import { auditMiddleware } from "./middleware/audit";
 import { authMiddleware, adminOnly } from "./middleware/auth-guard";
@@ -85,6 +86,8 @@ app.use("/api/v1/settings/*", authMiddleware);
 app.use("/api/v1/settings", authMiddleware);
 app.use("/api/v1/enisa/*", authMiddleware);
 app.use("/api/v1/enisa", authMiddleware);
+app.use("/api/v1/anomaly/*", authMiddleware);
+app.use("/api/v1/anomaly", authMiddleware);
 app.use("/api/v1/admin/*", authMiddleware);
 app.use("/api/v1/admin/*", adminOnly);
 
@@ -120,6 +123,9 @@ app.route("/api/v1", settingsRoutes);
 
 // ENISA routes
 app.route("/api/v1", enisaRoutes);
+
+// Anomaly Detection routes
+app.route("/api/v1", anomalyRoutes);
 
 // Admin routes
 app.route("/api/v1", adminSpartaRoutes);

@@ -66,6 +66,8 @@ export const telemetryStreams = pgTable(
     sampleRateHz: real("sample_rate_hz"),
     status: streamStatusEnum("status").notNull().default("ACTIVE"),
     apiKey: varchar("api_key", { length: 64 }).notNull(),
+    /** Anomaly detection is suppressed until this timestamp (24h after creation by default). */
+    learningModeUntil: timestamp("learning_mode_until", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

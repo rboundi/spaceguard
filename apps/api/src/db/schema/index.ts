@@ -12,6 +12,9 @@ export * from "./compliance";
 // Module 2: Telemetry
 export * from "./telemetry";
 
+// Anomaly Detection Baselines
+export * from "./baselines";
+
 // Module 3: Detection Engine
 export * from "./alerts";
 
