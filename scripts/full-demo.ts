@@ -366,8 +366,16 @@ async function run() {
     for (const { org, assets, mappings, suppliers: orgSuppliers } of ORGS) {
       log(`Creating: ${org.name}`);
 
-      // Idempotent: delete existing
-      await sql`DELETE FROM organizations WHERE name = ${org.name}`;
+      // Idempotent: delete existing (respect FK order: sessions -> users -> audit_log -> org)
+      const [existingOrg] = await sql<Array<{ id: string }>>`
+        SELECT id FROM organizations WHERE name = ${org.name}
+      `;
+      if (existingOrg) {
+        await sql`DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE organization_id = ${existingOrg.id})`;
+        await sql`DELETE FROM users WHERE organization_id = ${existingOrg.id}`;
+        await sql`DELETE FROM audit_log WHERE organization_id = ${existingOrg.id}`;
+        await sql`DELETE FROM organizations WHERE id = ${existingOrg.id}`;
+      }
 
       const [orgRow] = await sql<Array<{ id: string }>>`
         INSERT INTO organizations (name, nis2_classification, country, sector, contact_email, contact_name)
