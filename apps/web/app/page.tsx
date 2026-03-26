@@ -32,8 +32,10 @@ import {
   getIncidents,
   getTelemetryStreams,
   getDetectionRules,
+  getAnomalyBaselines,
+  getAnomalyStats,
 } from "@/lib/api";
-import type { AlertResponse, AlertStats, IncidentResponse } from "@/lib/api";
+import type { AlertResponse, AlertStats, IncidentResponse, BaselineResponse, AnomalyStatsResponse } from "@/lib/api";
 import type { StreamResponse } from "@spaceguard/shared";
 import { useOrg } from "@/lib/context";
 import type { DashboardResponse } from "@spaceguard/shared";
@@ -51,6 +53,7 @@ import {
   BookOpen,
   Rocket,
   Link2,
+  Brain,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -860,6 +863,72 @@ function GettingStartedCards({ assetCount, streamCount, complianceScore }: Getti
 }
 
 // ---------------------------------------------------------------------------
+// Row - AI Detection Card
+// ---------------------------------------------------------------------------
+
+interface AiDetectionCardProps {
+  streams: StreamResponse[];
+  aiData: Map<string, { baselines: BaselineResponse[]; stats: AnomalyStatsResponse | null }>;
+}
+
+function AiDetectionCard({ streams, aiData }: AiDetectionCardProps) {
+  // Aggregate anomaly data across all streams
+  let totalAnomalies = 0;
+  let totalBaselines = 0;
+  let totalParams = 0;
+  let trainedBaselines = 0;
+  let mostAnomalousParam = "";
+  let highestAnomalyCount = 0;
+
+  for (const [, data] of aiData) {
+    totalBaselines += data.baselines.length;
+    trainedBaselines += data.baselines.filter((b) => b.sampleCount >= 1000).length;
+    totalParams += data.baselines.length;
+
+    if (data.stats) {
+      for (const p of data.stats.topAnomalousParameters) {
+        totalAnomalies += p.anomalyCount;
+        if (p.anomalyCount > highestAnomalyCount) {
+          highestAnomalyCount = p.anomalyCount;
+          mostAnomalousParam = p.parameterName;
+        }
+      }
+    }
+  }
+
+  return (
+    <Card className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors group">
+      <CardContent className="px-4 py-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            AI Detection
+          </span>
+          <span className="text-slate-600 group-hover:text-slate-500 transition-colors">
+            <Brain size={16} />
+          </span>
+        </div>
+        <p className={`text-3xl font-bold ${totalAnomalies > 0 ? "text-violet-400" : "text-emerald-400"}`}>
+          {totalAnomalies}
+        </p>
+        <p className="text-xs text-slate-500 mt-1">
+          anomalies today
+        </p>
+        <div className="mt-2 space-y-1">
+          {mostAnomalousParam && (
+            <p className="text-[10px] text-slate-500 truncate">
+              Top: <span className="text-slate-400 font-mono">{mostAnomalousParam}</span>
+            </p>
+          )}
+          <p className="text-[10px] text-slate-500">
+            Baselines: {trainedBaselines}/{totalBaselines} trained
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main dashboard page
 // ---------------------------------------------------------------------------
 
@@ -871,6 +940,7 @@ export default function DashboardPage() {
   const [incidents, setIncidents] = useState<IncidentResponse[]>([]);
   const [streams, setStreams] = useState<StreamResponse[]>([]);
   const [rulesCount, setRulesCount] = useState(0);
+  const [aiData, setAiData] = useState<Map<string, { baselines: BaselineResponse[]; stats: AnomalyStatsResponse | null }>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -903,6 +973,27 @@ export default function DashboardPage() {
         setIncidents(inc.data);
         setStreams(str.data);
         setRulesCount(rulesRes.total);
+
+        // Fetch anomaly data for each active stream (fire and forget, non-blocking)
+        const activeStreams = str.data.filter((s) => s.status === "ACTIVE").slice(0, 10);
+        if (activeStreams.length > 0) {
+          const aiResults = await Promise.all(
+            activeStreams.map(async (s) => {
+              const [bl, st] = await Promise.all([
+                getAnomalyBaselines(s.id).catch(() => ({ data: [] as BaselineResponse[], total: 0 })),
+                getAnomalyStats(s.id).catch(() => null),
+              ]);
+              return { streamId: s.id, baselines: bl.data, stats: st };
+            })
+          ).catch(() => []);
+          if (!cancelled) {
+            const map = new Map<string, { baselines: BaselineResponse[]; stats: AnomalyStatsResponse | null }>();
+            for (const r of aiResults) {
+              map.set(r.streamId, { baselines: r.baselines, stats: r.stats });
+            }
+            setAiData(map);
+          }
+        }
       } catch (err) {
         if (cancelled) return;
         setError(
@@ -924,7 +1015,8 @@ export default function DashboardPage() {
           <Skeleton className="h-7 w-48 mb-2" />
           <Skeleton className="h-4 w-64" />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-7 gap-4">
+          <MetricCardSkeleton />
           <MetricCardSkeleton />
           <MetricCardSkeleton />
           <MetricCardSkeleton />
@@ -1077,7 +1169,7 @@ export default function DashboardPage() {
       />
 
       {/* Row 1 - Key metric cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-7 gap-4">
         <MetricCard
           icon={<ShieldCheck size={16} />}
           label="Compliance Score"
@@ -1139,6 +1231,9 @@ export default function DashboardPage() {
           subtitle={`${dashboard.assetsSummary.byCriticality?.CRITICAL ?? 0} critical assets`}
           href="/assets"
         />
+        <Link href="/alerts" className="block">
+          <AiDetectionCard streams={streams} aiData={aiData} />
+        </Link>
       </div>
 
       {/* Row 2 - Recent Alerts (60%) + Incidents/Deadlines (40%) */}

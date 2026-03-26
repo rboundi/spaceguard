@@ -1170,3 +1170,43 @@ export const updateStreamRateLimit = (streamId: string, pointsPerMinute: number)
     `/api/v1/settings/telemetry/streams/${streamId}/rate-limit`,
     { pointsPerMinute }
   );
+
+// ---------------------------------------------------------------------------
+// Anomaly Detection
+// ---------------------------------------------------------------------------
+
+export interface BaselineResponse {
+  id: string;
+  parameterName: string;
+  mean: number;
+  stdDeviation: number;
+  minValue: number;
+  maxValue: number;
+  sampleCount: number;
+  windowStart: string;
+  windowEnd: string;
+  updatedAt: string;
+}
+
+export interface AnomalyStatsResponse {
+  streamId: string;
+  totalBaselines: number;
+  anomalyRate: number;
+  topAnomalousParameters: Array<{
+    parameterName: string;
+    anomalyCount: number;
+    lastZScore: number;
+  }>;
+  learningMode: boolean;
+  learningModeUntil: string | null;
+}
+
+export const getAnomalyBaselines = (streamId: string) =>
+  api.get<{ data: BaselineResponse[]; total: number }>(
+    `/api/v1/anomaly/baselines?streamId=${streamId}`
+  );
+
+export const getAnomalyStats = (streamId: string) =>
+  api.get<AnomalyStatsResponse>(
+    `/api/v1/anomaly/stats?streamId=${streamId}`
+  );

@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   FileWarning,
   ExternalLink,
+  Brain,
 } from "lucide-react";
 import {
   Card,
@@ -450,6 +451,7 @@ export default function AlertsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const perPage = 50;
+  const [activeTab, setActiveTab] = useState<"all" | "ai">("all");
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -601,16 +603,26 @@ export default function AlertsPage() {
   // Derived: sorted
   // ---------------------------------------------------------------------------
 
-  const sorted = useMemo(() => [...alerts].sort((a, b) => {
-    // Sort NEW/INVESTIGATING first, then by severity, then by time desc
-    const statusWeight = (s: AlertResponse["status"]) =>
-      s === "NEW" ? 0 : s === "INVESTIGATING" ? 1 : 2;
-    const sw = statusWeight(a.status) - statusWeight(b.status);
-    if (sw !== 0) return sw;
-    const sevDiff = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
-    if (sevDiff !== 0) return sevDiff;
-    return new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime();
-  }), [alerts]);
+  const sorted = useMemo(() => {
+    const filtered = activeTab === "ai"
+      ? alerts.filter((a) => a.ruleId.startsWith("ML-"))
+      : alerts;
+    return [...filtered].sort((a, b) => {
+      // Sort NEW/INVESTIGATING first, then by severity, then by time desc
+      const statusWeight = (s: AlertResponse["status"]) =>
+        s === "NEW" ? 0 : s === "INVESTIGATING" ? 1 : 2;
+      const sw = statusWeight(a.status) - statusWeight(b.status);
+      if (sw !== 0) return sw;
+      const sevDiff = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+      if (sevDiff !== 0) return sevDiff;
+      return new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime();
+    });
+  }, [alerts, activeTab]);
+
+  const mlAlertCount = useMemo(
+    () => alerts.filter((a) => a.ruleId.startsWith("ML-")).length,
+    [alerts]
+  );
 
   // ---------------------------------------------------------------------------
   // Render
@@ -698,6 +710,40 @@ export default function AlertsPage() {
         </div>
       </div>
 
+      {/* Tabs: All Alerts | AI Detection */}
+      <div className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 p-1 w-fit">
+        <button
+          onClick={() => { setActiveTab("all"); setPage(1); }}
+          className={[
+            "px-4 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5",
+            activeTab === "all"
+              ? "bg-slate-700 text-slate-100"
+              : "text-slate-500 hover:text-slate-300",
+          ].join(" ")}
+        >
+          <Shield size={12} />
+          All Alerts
+          <span className="text-[10px] text-slate-500 ml-0.5">({total})</span>
+        </button>
+        <button
+          onClick={() => { setActiveTab("ai"); setPage(1); }}
+          className={[
+            "px-4 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5",
+            activeTab === "ai"
+              ? "bg-violet-500/20 text-violet-300 border-violet-500/30"
+              : "text-slate-500 hover:text-slate-300",
+          ].join(" ")}
+        >
+          <Brain size={12} />
+          AI Detection
+          {mlAlertCount > 0 && (
+            <span className="text-[10px] bg-violet-500/20 text-violet-300 px-1.5 py-0.5 rounded-full">
+              {mlAlertCount}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Filters */}
       <Card className="bg-slate-900 border-slate-800">
         <CardContent className="px-4 py-3 flex flex-wrap items-center gap-3">
@@ -738,8 +784,9 @@ export default function AlertsPage() {
             </Select>
           </div>
           <span className="ml-auto text-xs text-slate-600">
-            {total} alert{total !== 1 ? "s" : ""}
-            {(severityFilter || statusFilter) ? " (filtered)" : ""}
+            {sorted.length} alert{sorted.length !== 1 ? "s" : ""}
+            {(severityFilter || statusFilter || activeTab === "ai") ? " (filtered)" : ""}
+            {activeTab === "ai" && " - ML-generated only"}
           </span>
         </CardContent>
       </Card>
