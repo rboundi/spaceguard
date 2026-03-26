@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -15,6 +15,8 @@ import {
   BookOpen,
   Download,
   ShieldCheck,
+  FileWarning,
+  ExternalLink,
 } from "lucide-react";
 import {
   Card,
@@ -38,8 +40,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getAlerts, updateAlert, getAsset, enrichAlert, exportAlertsCsv } from "@/lib/api";
+import { getAlerts, updateAlert, getAsset, enrichAlert, exportAlertsCsv, createIncident, addAlertToIncident } from "@/lib/api";
 import type { AlertEnrichment, AlertResponse } from "@/lib/api";
+import { useRouter } from "next/navigation";
 import { useOrg } from "@/lib/context";
 
 // ---------------------------------------------------------------------------
@@ -263,11 +266,12 @@ function IntelContextCard({ alertId }: IntelContextCardProps) {
 interface ExpandedRowProps {
   alert: AlertResponse;
   onAction: (id: string, status: AlertResponse["status"]) => Promise<void>;
+  onCreateIncident: (alert: AlertResponse) => void;
   actionLoading: boolean;
   assetName: string | null;
 }
 
-function ExpandedRow({ alert, onAction, actionLoading, assetName }: ExpandedRowProps) {
+function ExpandedRow({ alert, onAction, onCreateIncident, actionLoading, assetName }: ExpandedRowProps) {
   const isOpen = alert.status === "NEW" || alert.status === "INVESTIGATING";
 
   return (
@@ -363,39 +367,61 @@ function ExpandedRow({ alert, onAction, actionLoading, assetName }: ExpandedRowP
       )}
 
       {/* Actions */}
-      {isOpen && (
-        <div className="flex items-center gap-2 pt-1">
-          {alert.status === "NEW" && (
+      <div className="flex items-center gap-2 pt-1">
+        {isOpen && (
+          <>
+            {alert.status === "NEW" && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={actionLoading}
+                onClick={() => onAction(alert.id, "INVESTIGATING")}
+                className="h-7 text-xs border-amber-500/40 text-amber-300 hover:bg-amber-500/10"
+              >
+                Investigate
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
               disabled={actionLoading}
-              onClick={() => onAction(alert.id, "INVESTIGATING")}
-              className="h-7 text-xs border-amber-500/40 text-amber-300 hover:bg-amber-500/10"
+              onClick={() => onAction(alert.id, "RESOLVED")}
+              className="h-7 text-xs border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
             >
-              Investigate
+              Resolve
             </Button>
-          )}
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={actionLoading}
-            onClick={() => onAction(alert.id, "RESOLVED")}
-            className="h-7 text-xs border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={actionLoading}
+              onClick={() => onAction(alert.id, "FALSE_POSITIVE")}
+              className="h-7 text-xs border-slate-500/40 text-slate-400 hover:bg-slate-700/40"
+            >
+              False Positive
+            </Button>
+            <div className="w-px h-5 bg-slate-700 mx-1" />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={actionLoading}
+              onClick={() => onCreateIncident(alert)}
+              className="h-7 text-xs border-red-500/40 text-red-300 hover:bg-red-500/10 gap-1.5"
+            >
+              <FileWarning size={12} />
+              Create Incident
+            </Button>
+          </>
+        )}
+        {alert.spartaTechnique && (
+          <Link
+            href={`/admin/sparta?search=${encodeURIComponent(alert.spartaTechnique)}`}
+            className="inline-flex items-center gap-1 h-7 px-2.5 text-xs text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-md hover:bg-blue-500/10 transition-colors"
           >
-            Resolve
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={actionLoading}
-            onClick={() => onAction(alert.id, "FALSE_POSITIVE")}
-            className="h-7 text-xs border-slate-500/40 text-slate-400 hover:bg-slate-700/40"
-          >
-            False Positive
-          </Button>
-        </div>
-      )}
+            <ExternalLink size={11} />
+            SPARTA
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
@@ -409,6 +435,7 @@ const STATUS_OPTIONS = ["", "NEW", "INVESTIGATING", "RESOLVED", "FALSE_POSITIVE"
 
 export default function AlertsPage() {
   const { orgId, loading: orgLoading } = useOrg();
+  const router = useRouter();
 
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [total, setTotal] = useState(0);
@@ -421,6 +448,8 @@ export default function AlertsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [assetNames, setAssetNames] = useState<Record<string, string>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const perPage = 50;
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -452,7 +481,8 @@ export default function AlertsPage() {
         organizationId: orgId,
         severity: severityFilter || undefined,
         status: statusFilter || undefined,
-        perPage: 50,
+        page,
+        perPage,
       });
       if (!mountedRef.current) return;
       setAlerts(result.data);
@@ -465,7 +495,7 @@ export default function AlertsPage() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [orgId, severityFilter, statusFilter]);
+  }, [orgId, severityFilter, statusFilter, page]);
 
   useEffect(() => {
     if (!orgLoading) void fetchAlerts();
@@ -538,10 +568,40 @@ export default function AlertsPage() {
   };
 
   // ---------------------------------------------------------------------------
+  // Create incident from alert
+  // ---------------------------------------------------------------------------
+
+  const handleCreateIncident = useCallback(async (alert: AlertResponse) => {
+    if (!orgId) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const incident = await createIncident({
+        organizationId: orgId,
+        title: `Incident: ${alert.title}`,
+        description: `Auto-created from alert: ${alert.description}`,
+        severity: alert.severity,
+        spartaTechniques: alert.spartaTechnique
+          ? [{ tactic: alert.spartaTactic || "unknown", technique: alert.spartaTechnique }]
+          : [],
+        affectedAssetIds: alert.affectedAssetId ? [alert.affectedAssetId] : [],
+        detectedAt: alert.triggeredAt,
+      });
+      await addAlertToIncident(incident.id, alert.id);
+      router.push(`/incidents/${incident.id}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to create incident";
+      setActionError(msg);
+    } finally {
+      setActionLoading(false);
+    }
+  }, [orgId, router]);
+
+  // ---------------------------------------------------------------------------
   // Derived: sorted
   // ---------------------------------------------------------------------------
 
-  const sorted = [...alerts].sort((a, b) => {
+  const sorted = useMemo(() => [...alerts].sort((a, b) => {
     // Sort NEW/INVESTIGATING first, then by severity, then by time desc
     const statusWeight = (s: AlertResponse["status"]) =>
       s === "NEW" ? 0 : s === "INVESTIGATING" ? 1 : 2;
@@ -550,7 +610,7 @@ export default function AlertsPage() {
     const sevDiff = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
     if (sevDiff !== 0) return sevDiff;
     return new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime();
-  });
+  }), [alerts]);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -645,7 +705,7 @@ export default function AlertsPage() {
             <span className="text-xs text-slate-500">Severity</span>
             <Select
               value={severityFilter}
-              onValueChange={(v) => setSeverityFilter(v === "all" ? "" : v)}
+              onValueChange={(v) => { setSeverityFilter(v === "all" ? "" : v); setPage(1); }}
             >
               <SelectTrigger className="h-7 w-32 text-xs bg-slate-800 border-slate-700 text-slate-300">
                 <SelectValue placeholder="All" />
@@ -662,7 +722,7 @@ export default function AlertsPage() {
             <span className="text-xs text-slate-500">Status</span>
             <Select
               value={statusFilter}
-              onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}
+              onValueChange={(v) => { setStatusFilter(v === "all" ? "" : v); setPage(1); }}
             >
               <SelectTrigger className="h-7 w-36 text-xs bg-slate-800 border-slate-700 text-slate-300">
                 <SelectValue placeholder="All" />
@@ -856,6 +916,7 @@ export default function AlertsPage() {
                             <ExpandedRow
                               alert={alert}
                               onAction={handleAction}
+                              onCreateIncident={handleCreateIncident}
                               actionLoading={actionLoading}
                               assetName={
                                 alert.affectedAssetId
@@ -871,6 +932,35 @@ export default function AlertsPage() {
                 })}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination */}
+          {total > perPage && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-800">
+              <span className="text-xs text-slate-500">
+                Page {page} of {Math.ceil(total / perPage)} ({total} total)
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="h-7 text-xs border-slate-700 text-slate-400 hover:text-slate-200"
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= Math.ceil(total / perPage)}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="h-7 text-xs border-slate-700 text-slate-400 hover:text-slate-200"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

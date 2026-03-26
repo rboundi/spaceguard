@@ -102,6 +102,15 @@ export const alerts = pgTable(
       table.organizationId,
       table.triggeredAt
     ),
+    // Composite indexes for common filter patterns
+    orgStatusIdx: index("alerts_org_status_idx").on(
+      table.organizationId,
+      table.status
+    ),
+    orgSeverityIdx: index("alerts_org_severity_idx").on(
+      table.organizationId,
+      table.severity
+    ),
   })
 );
 
