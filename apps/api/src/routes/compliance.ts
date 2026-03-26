@@ -80,6 +80,7 @@ complianceRoutes.get(
   zValidator("query", mappingQuerySchema),
   async (c) => {
     const filters = c.req.valid("query");
+    if (filters.organizationId) assertTenant(c, filters.organizationId);
     const mappings = await listMappings(filters);
     return c.json({ data: mappings });
   }

@@ -416,9 +416,83 @@ requests.
 Several dialog submit handlers catch errors silently without displaying feedback
 to the user. The dialogs close with no indication that the operation failed.
 
-### IntelContextCard error state not rendered
+### ~~IntelContextCard error state not rendered~~ (Resolved)
 
-**File**: `apps/web/app/alerts/page.tsx`
+Already fixed: the component renders the error at line 200 via
+`{error ?? "No matched SPARTA techniques found..."}`.
 
-The IntelContextCard component sets an `error` state when enrichment fails but
-the error message is never rendered in the JSX.
+## Fixed in Code Review (2026-03-26, Part 9)
+
+### Missing tenant isolation on supply-chain single-resource endpoints
+
+**Files**: `apps/api/src/routes/supply-chain.ts`
+
+**Severity**: HIGH (security)
+
+GET, PUT, and DELETE endpoints for individual suppliers did not verify the
+supplier belonged to the requesting user's organization. Added `assertTenant()`
+checks using the fetch-then-verify pattern on all three endpoints.
+
+### Missing tenant isolation on organization GET/:id and PUT/:id
+
+**File**: `apps/api/src/routes/organizations.ts`
+
+**Severity**: HIGH (security)
+
+The `GET /organizations/:id` and `PUT /organizations/:id` endpoints did not
+verify the requested organization matched the user's JWT organizationId. A user
+could read or update any organization by guessing its UUID. Added
+`assertTenant(c, org.id)` and `assertTenant(c, id)` respectively.
+
+### Missing tenant isolation on compliance mappings list
+
+**File**: `apps/api/src/routes/compliance.ts`
+
+**Severity**: MEDIUM (security)
+
+The `GET /compliance/mappings` endpoint accepted an optional `organizationId`
+filter but did not verify the user belonged to that organization. Added
+`assertTenant()` when organizationId is provided.
+
+### Audit route does not default to user's organization
+
+**File**: `apps/api/src/routes/audit.ts`
+
+**Severity**: MEDIUM (data leakage)
+
+When no `organizationId` query parameter was provided, the audit list endpoint
+returned logs from all organizations. Now defaults to the authenticated user's
+`organizationId` from the JWT token.
+
+### Generic error messages in export functions
+
+**File**: `apps/web/lib/api.ts`
+
+**Severity**: MEDIUM (user experience)
+
+All 5 export functions (alerts CSV, incidents CSV, compliance CSV, audit CSV,
+STIX bundle) threw a generic "Export failed" error without parsing the response
+body. Users got no context for why an export failed (e.g., 403 from tenant
+check). Updated all 5 functions to parse the error response body using the same
+pattern as the PDF export functions.
+
+## Open: Architecture Decisions (Intentional)
+
+### GET /organizations returns all organizations
+
+The `GET /organizations` endpoint returns all organizations without tenant
+filtering. This is intentional: the org-switcher in the frontend header needs
+to list available orgs. In production, this should be scoped to orgs the user
+has access to via a membership/role table.
+
+### Threat intel endpoints are globally scoped
+
+Intel endpoints (`GET /intel`, `GET /intel/:id`, `GET /intel/tactics/*`) return
+data without organization filtering. This is intentional: threat intelligence
+(SPARTA techniques, IOCs) is reference data shared across all tenants.
+
+### Telemetry ingest uses API-key auth, not JWT
+
+The `POST /telemetry/ingest/:streamId` endpoint authenticates via `X-API-Key`
+header rather than JWT. This is intentional: telemetry data comes from ground
+station systems, not browser sessions.

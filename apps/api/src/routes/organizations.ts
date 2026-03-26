@@ -8,10 +8,9 @@ import {
   updateOrganization,
 } from "../services/organization.service";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
+import { assertUUID, assertTenant } from "../middleware/validate";
 
 export const organizationRoutes = new Hono();
-
-import { assertUUID } from "../middleware/validate";
 
 // POST /api/v1/organizations
 organizationRoutes.post(
@@ -44,6 +43,7 @@ organizationRoutes.get("/organizations/:id", async (c) => {
   const id = c.req.param("id");
   assertUUID(id, "id");
   const org = await getOrganization(id);
+  assertTenant(c, org.id);
   return c.json(org);
 });
 
@@ -54,6 +54,7 @@ organizationRoutes.put(
   async (c) => {
     const id = c.req.param("id");
     assertUUID(id, "id");
+    assertTenant(c, id);
     const data = c.req.valid("json");
     const org = await updateOrganization(id, data);
     logAudit({

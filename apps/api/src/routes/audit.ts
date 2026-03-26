@@ -23,7 +23,9 @@ auditRoutes.get(
   zValidator("query", auditQuerySchema),
   async (c) => {
     const q = c.req.valid("query");
-    if (q.organizationId) assertTenant(c, q.organizationId);
+    const user = c.get("user");
+    const organizationId = q.organizationId ?? user?.organizationId;
+    if (organizationId) assertTenant(c, organizationId);
 
     let from: Date | undefined;
     let to: Date | undefined;
@@ -39,7 +41,7 @@ auditRoutes.get(
     }
 
     const result = await listAuditLogs({
-      organizationId: q.organizationId,
+      organizationId,
       from,
       to,
       actor:        q.actor,

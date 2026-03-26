@@ -1033,7 +1033,11 @@ export async function exportAlertsCsv(organizationId: string, from?: string, to?
   const res = await fetch(`${API_URL}/api/v1/export/alerts/csv?${params}`, {
     headers: exportHeaders(),
   });
-  if (!res.ok) throw new ApiError(res.status, "Export failed");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const msg = typeof body.error === "string" ? body.error : (body.message ?? res.statusText);
+    throw new ApiError(res.status, msg);
+  }
   const blob = await res.blob();
   downloadBlob(blob, `spaceguard-alerts-${organizationId.slice(0, 8)}.csv`);
 }
@@ -1045,7 +1049,11 @@ export async function exportIncidentsCsv(organizationId: string, from?: string, 
   const res = await fetch(`${API_URL}/api/v1/export/incidents/csv?${params}`, {
     headers: exportHeaders(),
   });
-  if (!res.ok) throw new ApiError(res.status, "Export failed");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const msg = typeof body.error === "string" ? body.error : (body.message ?? res.statusText);
+    throw new ApiError(res.status, msg);
+  }
   const blob = await res.blob();
   downloadBlob(blob, `spaceguard-incidents-${organizationId.slice(0, 8)}.csv`);
 }
@@ -1055,7 +1063,11 @@ export async function exportComplianceCsv(organizationId: string) {
   const res = await fetch(`${API_URL}/api/v1/export/compliance/csv?${params}`, {
     headers: exportHeaders(),
   });
-  if (!res.ok) throw new ApiError(res.status, "Export failed");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const msg = typeof body.error === "string" ? body.error : (body.message ?? res.statusText);
+    throw new ApiError(res.status, msg);
+  }
   const blob = await res.blob();
   downloadBlob(blob, `spaceguard-compliance-${organizationId.slice(0, 8)}.csv`);
 }
@@ -1067,7 +1079,11 @@ export async function exportAuditCsv(organizationId: string, from?: string, to?:
   const res = await fetch(`${API_URL}/api/v1/export/audit/csv?${params}`, {
     headers: exportHeaders(),
   });
-  if (!res.ok) throw new ApiError(res.status, "Export failed");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const msg = typeof body.error === "string" ? body.error : (body.message ?? res.statusText);
+    throw new ApiError(res.status, msg);
+  }
   const blob = await res.blob();
   downloadBlob(blob, `spaceguard-audit-${organizationId.slice(0, 8)}.csv`);
 }
@@ -1088,7 +1104,11 @@ export async function exportStixBundle(options: StixExportOptions) {
     headers: { "Content-Type": "application/json", ...exportHeaders() },
     body: JSON.stringify(options),
   });
-  if (!res.ok) throw new ApiError(res.status, "Export failed");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const msg = typeof body.error === "string" ? body.error : (body.message ?? res.statusText);
+    throw new ApiError(res.status, msg);
+  }
   const blob = await res.blob();
   downloadBlob(blob, `spaceguard-stix-bundle-${options.organizationId.slice(0, 8)}.json`);
 }

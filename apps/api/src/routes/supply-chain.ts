@@ -57,6 +57,7 @@ supplyChainRoutes.get("/supply-chain/suppliers/:id", async (c) => {
   const id = c.req.param("id");
   assertUUID(id, "id");
   const supplier = await getSupplier(id);
+  assertTenant(c, supplier.organizationId);
   return c.json(supplier);
 });
 
@@ -67,6 +68,8 @@ supplyChainRoutes.put(
   async (c) => {
     const id = c.req.param("id");
     assertUUID(id, "id");
+    const existing = await getSupplier(id);
+    assertTenant(c, existing.organizationId);
     const data = c.req.valid("json");
     const supplier = await updateSupplier(id, data);
     logAudit({
@@ -86,6 +89,8 @@ supplyChainRoutes.put(
 supplyChainRoutes.delete("/supply-chain/suppliers/:id", async (c) => {
   const id = c.req.param("id");
   assertUUID(id, "id");
+  const existing = await getSupplier(id);
+  assertTenant(c, existing.organizationId);
   const supplier = await deleteSupplier(id);
   logAudit({
     organizationId: supplier.organizationId,
