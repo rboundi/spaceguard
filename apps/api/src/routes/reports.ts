@@ -8,6 +8,7 @@ import {
   generateAuditTrailPdf,
 } from "../services/report.service";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
+import { assertTenant } from "../middleware/validate";
 
 export const reportRoutes = new Hono();
 
@@ -31,6 +32,7 @@ reportRoutes.get("/reports/compliance/pdf", async (c) => {
   if (!UUID_RE.test(organizationId)) {
     return c.json({ error: "organizationId must be a valid UUID" }, 400);
   }
+  assertTenant(c, organizationId);
 
   const buffer = await generateCompliancePdf(organizationId);
   logAudit({
@@ -90,6 +92,7 @@ reportRoutes.get("/reports/incident-summary/stats", async (c) => {
   const organizationId = c.req.query("organizationId");
   if (!organizationId) return c.json({ error: "organizationId is required" }, 400);
   if (!UUID_RE.test(organizationId)) return c.json({ error: "organizationId must be a valid UUID" }, 400);
+  assertTenant(c, organizationId);
 
   const range = parseDateRange(c.req.query("from"), c.req.query("to"));
   if ("error" in range) return c.json({ error: range.error }, 400);
@@ -108,6 +111,7 @@ reportRoutes.get("/reports/incident-summary/pdf", async (c) => {
   const organizationId = c.req.query("organizationId");
   if (!organizationId) return c.json({ error: "organizationId is required" }, 400);
   if (!UUID_RE.test(organizationId)) return c.json({ error: "organizationId must be a valid UUID" }, 400);
+  assertTenant(c, organizationId);
 
   const range = parseDateRange(c.req.query("from"), c.req.query("to"));
   if ("error" in range) return c.json({ error: range.error }, 400);
@@ -147,6 +151,7 @@ reportRoutes.get("/reports/threat-briefing/pdf", async (c) => {
   const organizationId = c.req.query("organizationId");
   if (!organizationId) return c.json({ error: "organizationId is required" }, 400);
   if (!UUID_RE.test(organizationId)) return c.json({ error: "organizationId must be a valid UUID" }, 400);
+  assertTenant(c, organizationId);
 
   const buffer = await generateThreatBriefingPdf(organizationId);
 
@@ -182,6 +187,7 @@ reportRoutes.get("/reports/supply-chain/pdf", async (c) => {
   const organizationId = c.req.query("organizationId");
   if (!organizationId) return c.json({ error: "organizationId is required" }, 400);
   if (!UUID_RE.test(organizationId)) return c.json({ error: "organizationId must be a valid UUID" }, 400);
+  assertTenant(c, organizationId);
 
   const buffer = await generateSupplyChainPdf(organizationId);
 
@@ -218,6 +224,7 @@ reportRoutes.get("/reports/audit-trail/pdf", async (c) => {
   const organizationId = c.req.query("organizationId");
   if (!organizationId) return c.json({ error: "organizationId is required" }, 400);
   if (!UUID_RE.test(organizationId)) return c.json({ error: "organizationId must be a valid UUID" }, 400);
+  assertTenant(c, organizationId);
 
   const range = parseDateRange(c.req.query("from"), c.req.query("to"));
   if ("error" in range) return c.json({ error: range.error }, 400);

@@ -28,6 +28,7 @@ import { telemetryStreams } from "../../db/schema/telemetry";
 import { eq, and } from "drizzle-orm";
 import { AlertSeverity } from "@spaceguard/shared";
 import type { CreateAlert } from "@spaceguard/shared";
+import { HTTPException } from "hono/http-exception";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -314,6 +315,21 @@ export function buildAnomalyAlert(
 // ---------------------------------------------------------------------------
 
 /**
+ * Look up the streamId that owns a baseline (for tenant validation).
+ */
+export async function getBaselineStreamId(baselineId: string): Promise<string> {
+  const [row] = await db
+    .select({ streamId: telemetryBaselines.streamId })
+    .from(telemetryBaselines)
+    .where(eq(telemetryBaselines.id, baselineId))
+    .limit(1);
+  if (!row) {
+    throw new HTTPException(404, { message: `Baseline ${baselineId} not found` });
+  }
+  return row.streamId;
+}
+
+/**
  * Returns all baselines for a given stream (from DB).
  */
 export async function getBaselines(
@@ -388,7 +404,6 @@ export async function updateBaselineManual(
     .returning();
 
   if (!row) {
-    const { HTTPException } = await import("hono/http-exception");
     throw new HTTPException(404, { message: `Baseline ${baselineId} not found` });
   }
 

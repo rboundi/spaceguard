@@ -16,6 +16,7 @@ import {
   listMappings,
   getDashboard,
   initializeComplianceMappings,
+  getMappingOrgId,
 } from "../services/compliance.service";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
@@ -94,9 +95,10 @@ complianceRoutes.put(
   async (c) => {
     const id = c.req.param("id");
     assertUUID(id, "id");
+    const orgId = await getMappingOrgId(id);
+    assertTenant(c, orgId);
     const data = c.req.valid("json");
     const mapping = await updateMapping(id, data);
-    assertTenant(c, mapping.organizationId);
     logAudit({
       organizationId: mapping.organizationId,
       actor: extractActor(c),
@@ -119,8 +121,9 @@ complianceRoutes.put(
 complianceRoutes.delete("/compliance/mappings/:id", async (c) => {
   const id = c.req.param("id");
   assertUUID(id, "id");
-  const { organizationId } = await deleteMapping(id);
+  const organizationId = await getMappingOrgId(id);
   assertTenant(c, organizationId);
+  await deleteMapping(id);
   logAudit({
     organizationId,
     actor: extractActor(c),

@@ -438,8 +438,8 @@ export async function sendWeeklyDigest(organizationId: string): Promise<void> {
       SELECT id FROM incidents WHERE organization_id = ${organizationId}
     )
     AND status = 'DRAFT'
-    AND deadline_at IS NOT NULL
-    AND deadline_at <= ${nextWeek}
+    AND deadline IS NOT NULL
+    AND deadline <= ${nextWeek}
   `);
 
   const stats = {

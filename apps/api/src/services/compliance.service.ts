@@ -193,6 +193,19 @@ export async function createMapping(data: CreateMapping): Promise<MappingRespons
   return mappingToResponse(row);
 }
 
+export async function getMappingOrgId(id: string): Promise<string> {
+  const [existing] = await db
+    .select({ organizationId: complianceMappings.organizationId })
+    .from(complianceMappings)
+    .where(eq(complianceMappings.id, id))
+    .limit(1);
+
+  if (!existing) {
+    throw new HTTPException(404, { message: `Mapping ${id} not found` });
+  }
+  return existing.organizationId;
+}
+
 export async function updateMapping(
   id: string,
   data: UpdateMapping

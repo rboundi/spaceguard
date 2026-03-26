@@ -286,6 +286,10 @@ export async function updateAlert(
     .where(eq(alerts.id, id))
     .returning();
 
+  if (!row) {
+    throw new HTTPException(404, { message: `Alert ${id} not found after update` });
+  }
+
   return alertToResponse(row);
 }
 

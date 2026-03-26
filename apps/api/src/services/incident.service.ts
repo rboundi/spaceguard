@@ -353,6 +353,11 @@ export async function addAlertToIncident(
         )
       )
       .limit(1);
+    if (!existing) {
+      throw new HTTPException(500, {
+        message: `Failed to create or find link between incident ${incidentId} and alert ${alertId}`,
+      });
+    }
     return {
       id: existing.id,
       incidentId: existing.incidentId,
