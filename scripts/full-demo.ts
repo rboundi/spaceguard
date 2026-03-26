@@ -363,6 +363,18 @@ async function run() {
     const orgMap = new Map<string, string>();
     const assetMap = new Map<string, string>();
 
+    /** Safe Map.get() that throws a clear error instead of returning undefined */
+    function requireOrg(name: string): string {
+      const id = orgMap.get(name);
+      if (!id) throw new Error(`Organization "${name}" not found in orgMap. Check ORGS array.`);
+      return id;
+    }
+    function requireAsset(name: string): string {
+      const id = assetMap.get(name);
+      if (!id) throw new Error(`Asset "${name}" not found in assetMap. Check ORGS array.`);
+      return id;
+    }
+
     for (const { org, assets, mappings, suppliers: orgSuppliers } of ORGS) {
       log(`Creating: ${org.name}`);
 
@@ -414,7 +426,7 @@ async function run() {
     logSection("Step 3: Users for Proba Space Systems");
     // ==================================================================
 
-    const probaOrgId = orgMap.get("Proba Space Systems")!;
+    const probaOrgId = requireOrg("Proba Space Systems");
 
     // Delete existing users for this org first
     await sql`DELETE FROM users WHERE organization_id = ${probaOrgId}`;
@@ -432,12 +444,12 @@ async function run() {
     logSection("Step 6: Telemetry Streams & Simulation");
     // ==================================================================
 
-    const probaEO1 = assetMap.get("Proba-EO-1")!;
-    const nordAlpha = assetMap.get("NordSat-Alpha")!;
+    const probaEO1 = requireAsset("Proba-EO-1");
+    const nordAlpha = requireAsset("NordSat-Alpha");
 
     // Delete existing streams for Proba and NordSat
     await sql`DELETE FROM telemetry_streams WHERE organization_id = ${probaOrgId}`;
-    const nordOrgId = orgMap.get("NordSat IoT")!;
+    const nordOrgId = requireOrg("NordSat IoT");
     await sql`DELETE FROM telemetry_streams WHERE organization_id = ${nordOrgId}`;
 
     // Create streams
@@ -448,8 +460,8 @@ async function run() {
       ["Proba Space Systems", "Proba-EO-1", "Proba-EO-1 COMMS", 300, 0.1],
       ["NordSat IoT", "NordSat-Alpha", "NordSat-Alpha HK", 100, 1],
     ] as const) {
-      const oId = orgMap.get(orgName)!;
-      const aId = assetMap.get(assetName)!;
+      const oId = requireOrg(orgName);
+      const aId = requireAsset(assetName);
       const key = generateApiKey();
 
       const [row] = await sql<Array<{ id: string }>>`
@@ -581,9 +593,9 @@ async function run() {
     const nordStreamId = streams[2]?.id ?? null;
 
     // Svalbard Ground Station asset
-    const svalbardAssetId = assetMap.get("Svalbard Ground Station")!;
-    const brusselsMCCId = assetMap.get("Brussels Mission Control")!;
-    const probaEO3Id = assetMap.get("Proba-EO-3")!;
+    const svalbardAssetId = requireAsset("Svalbard Ground Station");
+    const brusselsMCCId = requireAsset("Brussels Mission Control");
+    const probaEO3Id = requireAsset("Proba-EO-3");
 
     interface AlertInsert {
       orgId: string;

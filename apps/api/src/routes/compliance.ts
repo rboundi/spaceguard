@@ -21,7 +21,7 @@ import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const complianceRoutes = new Hono();
 
-import { assertUUID } from "../middleware/validate";
+import { assertUUID, assertTenant } from "../middleware/validate";
 
 // -------------------------------------------------------------------------
 // Requirements (read-only)
@@ -140,6 +140,7 @@ complianceRoutes.get("/compliance/dashboard", async (c) => {
     return c.json({ error: "organizationId query parameter is required" }, 400);
   }
   assertUUID(organizationId, "organizationId");
+  assertTenant(c, organizationId);
   const dashboard = await getDashboard(organizationId);
   return c.json(dashboard);
 });
@@ -151,6 +152,7 @@ complianceRoutes.post(
   zValidator("json", z.object({ organizationId: z.string().uuid() })),
   async (c) => {
   const body = c.req.valid("json");
+  assertTenant(c, body.organizationId);
   const result = await initializeComplianceMappings(body.organizationId);
   logAudit({
     organizationId: body.organizationId,

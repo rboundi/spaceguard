@@ -17,7 +17,7 @@ import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const supplyChainRoutes = new Hono();
 
-import { assertUUID, UUID_RE } from "../middleware/validate";
+import { assertUUID, assertTenant, UUID_RE } from "../middleware/validate";
 
 // POST /api/v1/supply-chain/suppliers
 supplyChainRoutes.post(
@@ -25,6 +25,7 @@ supplyChainRoutes.post(
   zValidator("json", createSupplierSchema),
   async (c) => {
     const data = c.req.valid("json");
+    assertTenant(c, data.organizationId);
     const supplier = await createSupplier(data);
     logAudit({
       organizationId: supplier.organizationId,
@@ -45,6 +46,7 @@ supplyChainRoutes.get(
   zValidator("query", supplierQuerySchema),
   async (c) => {
     const query = c.req.valid("query");
+    if (query.organizationId) assertTenant(c, query.organizationId);
     const result = await listSuppliers(query);
     return c.json(result);
   }

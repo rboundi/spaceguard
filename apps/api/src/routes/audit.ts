@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { listAuditLogs } from "../services/audit.service";
+import { assertTenant } from "../middleware/validate";
 
 export const auditRoutes = new Hono();
 
@@ -22,6 +23,7 @@ auditRoutes.get(
   zValidator("query", auditQuerySchema),
   async (c) => {
     const q = c.req.valid("query");
+    if (q.organizationId) assertTenant(c, q.organizationId);
 
     let from: Date | undefined;
     let to: Date | undefined;

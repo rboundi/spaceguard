@@ -21,7 +21,7 @@ import { exportRoutes } from "./routes/exports";
 import { settingsRoutes } from "./routes/settings";
 import { enisaRoutes } from "./routes/enisa";
 import { auditMiddleware } from "./middleware/audit";
-import { authMiddleware } from "./middleware/auth-guard";
+import { authMiddleware, adminOnly } from "./middleware/auth-guard";
 
 const app = new Hono();
 
@@ -86,6 +86,7 @@ app.use("/api/v1/settings", authMiddleware);
 app.use("/api/v1/enisa/*", authMiddleware);
 app.use("/api/v1/enisa", authMiddleware);
 app.use("/api/v1/admin/*", authMiddleware);
+app.use("/api/v1/admin/*", adminOnly);
 
 // Module 1 routes
 app.route("/api/v1", organizationRoutes);

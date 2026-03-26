@@ -22,6 +22,7 @@ import {
 } from "../services/detection/alert.service";
 import { loadRules } from "../services/detection/rule-loader";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
+import { assertTenant } from "../middleware/validate";
 
 export const alertRoutes = new Hono();
 
@@ -63,6 +64,7 @@ alertRoutes.get(
   ),
   async (c) => {
     const { organizationId } = c.req.valid("query");
+    assertTenant(c, organizationId);
     const stats = await getAlertStats(organizationId);
     return c.json(stats);
   }
@@ -77,6 +79,7 @@ alertRoutes.get(
   zValidator("query", alertQuerySchema),
   async (c) => {
     const query = c.req.valid("query");
+    assertTenant(c, query.organizationId);
     const result = await listAlerts(query);
     return c.json(result);
   }

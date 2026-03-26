@@ -47,6 +47,7 @@ import {
   getActiveIncidentCount,
 } from "../services/incident.service";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
+import { assertTenant } from "../middleware/validate";
 
 export const incidentRoutes = new Hono();
 
@@ -66,6 +67,7 @@ incidentRoutes.get(
   zValidator("query", z.object({ organizationId: z.string().uuid() })),
   async (c) => {
     const { organizationId } = c.req.valid("query");
+    assertTenant(c, organizationId);
     const activeCount = await getActiveIncidentCount(organizationId);
     return c.json({ activeCount });
   }
@@ -77,6 +79,7 @@ incidentRoutes.post(
   zValidator("json", createIncidentSchema),
   async (c) => {
     const body = c.req.valid("json");
+    assertTenant(c, body.organizationId);
     const incident = await createIncident(body);
     logAudit({
       organizationId: incident.organizationId,
@@ -97,6 +100,7 @@ incidentRoutes.get(
   zValidator("query", incidentQuerySchema),
   async (c) => {
     const query = c.req.valid("query");
+    assertTenant(c, query.organizationId);
     const result = await listIncidents(query);
     return c.json(result);
   }

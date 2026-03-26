@@ -16,7 +16,7 @@ import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const assetRoutes = new Hono();
 
-import { assertUUID } from "../middleware/validate";
+import { assertUUID, assertTenant } from "../middleware/validate";
 
 // POST /api/v1/assets
 assetRoutes.post(
@@ -24,6 +24,7 @@ assetRoutes.post(
   zValidator("json", createAssetSchema),
   async (c) => {
     const data = c.req.valid("json");
+    assertTenant(c, data.organizationId);
     const asset = await createAsset(data);
     logAudit({
       organizationId: asset.organizationId,
@@ -44,6 +45,7 @@ assetRoutes.get(
   zValidator("query", assetQuerySchema),
   async (c) => {
     const query = c.req.valid("query");
+    if (query.organizationId) assertTenant(c, query.organizationId);
     const result = await listAssets(query);
     return c.json(result);
   }

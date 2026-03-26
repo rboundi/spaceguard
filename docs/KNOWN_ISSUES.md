@@ -302,3 +302,44 @@ Used em dash character in `fmtDateShort()` fallback, violating the project's
 Now that users/sessions cascade from organization deletion, simplified the
 idempotent cleanup from 4 explicit DELETE statements to 2 (audit_log +
 organization). All other dependent tables cascade automatically.
+
+## Fixed in Code Review (2026-03-26, Part 7)
+
+### Missing tenant isolation on data listing endpoints
+
+**Files**: `apps/api/src/routes/alerts.ts`, `apps/api/src/routes/incidents.ts`,
+`apps/api/src/routes/assets.ts`, `apps/api/src/routes/compliance.ts`,
+`apps/api/src/routes/telemetry.ts`, `apps/api/src/routes/supply-chain.ts`,
+`apps/api/src/routes/audit.ts`
+
+**Severity**: HIGH (security)
+
+All list/stats endpoints accepted an `organizationId` query parameter but never
+verified the requesting user belonged to that organization. Any authenticated
+user could query another org's data by guessing UUIDs. Added `assertTenant()`
+checks across all affected routes.
+
+### Missing admin guard on admin-sparta routes
+
+**File**: `apps/api/src/index.ts`
+
+The `/api/v1/admin/*` route group had `authMiddleware` but no `adminOnly` guard.
+Any authenticated user could access admin SPARTA management endpoints. Added
+`adminOnly` middleware to the admin route group.
+
+### Audit log actor set to raw Authorization header
+
+**File**: `apps/api/src/routes/auth.ts`
+
+The register endpoint's audit log used the raw `Authorization` header as actor
+instead of the user's email. Changed to use `extractActor(c)` for consistent
+audit trail formatting.
+
+### Non-null assertions in full-demo.ts
+
+**File**: `scripts/full-demo.ts`
+
+All `orgMap.get("...")!` and `assetMap.get("...")!` calls used TypeScript non-null
+assertions, which bypass null checks and crash at runtime with unhelpful errors.
+Replaced with `requireOrg()` and `requireAsset()` helper functions that throw
+descriptive error messages.

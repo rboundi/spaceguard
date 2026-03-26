@@ -12,7 +12,7 @@ import {
   updateUser,
 } from "../services/auth.service";
 import { authMiddleware, adminOnly } from "../middleware/auth-guard";
-import { logAudit, extractIp } from "../middleware/audit";
+import { logAudit, extractActor, extractIp } from "../middleware/audit";
 import { db } from "../db/client";
 import { users } from "../db/schema/users";
 
@@ -145,7 +145,7 @@ authRoutes.post("/auth/register", async (c) => {
 
   logAudit({
     organizationId: user.organizationId,
-    actor: existingUser ? c.req.header("Authorization") ? "admin" : "system" : "bootstrap",
+    actor: existingUser ? extractActor(c) : "bootstrap",
     action: "CREATE",
     resourceType: "user",
     resourceId: user.id,

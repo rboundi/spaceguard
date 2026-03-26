@@ -25,7 +25,7 @@ import {
 
 export const telemetryRoutes = new Hono();
 
-import { assertUUID } from "../middleware/validate";
+import { assertUUID, assertTenant } from "../middleware/validate";
 
 /**
  * Validates the X-API-Key header against the stream's stored key.
@@ -74,6 +74,7 @@ telemetryRoutes.get(
         message: "organizationId query parameter is required",
       });
     }
+    assertTenant(c, query.organizationId);
     const result = await listStreams(query.organizationId, {
       protocol: query.protocol,
       status: query.status,
