@@ -526,3 +526,73 @@ export async function getDashboard(
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Initialize compliance mappings (used by onboarding wizard)
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates NOT_ASSESSED org-level mappings for all requirements that do not
+ * already have one. Returns the count of newly created mappings.
+ */
+export async function initializeComplianceMappings(
+  organizationId: string
+): Promise<{ created: number; total: number }> {
+  // Verify org exists
+  const [org] = await db
+    .select({ id: organizations.id })
+    .from(organizations)
+    .where(eq(organizations.id, organizationId))
+    .limit(1);
+
+  if (!org) {
+    throw new HTTPException(404, {
+      message: `Organization ${organizationId} not found`,
+    });
+  }
+
+  // Fetch all requirements
+  const allRequirements = await db
+    .select({ id: complianceRequirements.id })
+    .from(complianceRequirements);
+
+  // Fetch existing org-level mappings
+  const existingMappings = await db
+    .select({ requirementId: complianceMappings.requirementId })
+    .from(complianceMappings)
+    .where(
+      and(
+        eq(complianceMappings.organizationId, organizationId),
+        isNull(complianceMappings.assetId)
+      )
+    );
+
+  const mappedReqIds = new Set(existingMappings.map((m) => m.requirementId));
+  const unseeded = allRequirements.filter((r) => !mappedReqIds.has(r.id));
+
+  if (unseeded.length > 0) {
+    await db
+      .insert(complianceMappings)
+      .values(
+        unseeded.map((req) => ({
+          organizationId,
+          requirementId: req.id,
+          status: ComplianceStatus.NOT_ASSESSED,
+        }))
+      )
+      .onConflictDoNothing();
+  }
+
+  // Count total mappings after initialization
+  const [{ mappingCount }] = await db
+    .select({ mappingCount: count() })
+    .from(complianceMappings)
+    .where(
+      and(
+        eq(complianceMappings.organizationId, organizationId),
+        isNull(complianceMappings.assetId)
+      )
+    );
+
+  return { created: unseeded.length, total: Number(mappingCount) };
+}

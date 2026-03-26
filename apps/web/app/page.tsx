@@ -49,6 +49,8 @@ import {
   CheckCircle2,
   XCircle,
   BookOpen,
+  Rocket,
+  Link2,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -138,11 +140,11 @@ function SetupPrompt() {
         Welcome to SpaceGuard
       </h2>
       <p className="text-slate-400 text-sm text-center max-w-sm">
-        Set up your organization to start tracking NIS2 compliance for your
-        space infrastructure.
+        Set up your organization to start tracking NIS2 and ENISA compliance
+        for your space infrastructure.
       </p>
       <Link
-        href="/assets"
+        href="/onboarding"
         className="mt-2 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
       >
         Get started
@@ -751,6 +753,113 @@ function GapTable({ gaps }: { gaps: DashboardResponse["gaps"] }) {
 }
 
 // ---------------------------------------------------------------------------
+// Getting Started cards (shown when data is sparse)
+// ---------------------------------------------------------------------------
+
+interface GettingStartedProps {
+  assetCount: number;
+  streamCount: number;
+  complianceScore: number;
+}
+
+function GettingStartedCards({ assetCount, streamCount, complianceScore }: GettingStartedProps) {
+  const cards = [
+    {
+      done: assetCount >= 1,
+      icon: <Satellite size={18} />,
+      title: "Register your satellites",
+      desc: "Add your space assets to the registry for compliance tracking and threat monitoring.",
+      href: "/assets",
+      cta: "Add assets",
+    },
+    {
+      done: streamCount >= 1,
+      icon: <Waves size={18} />,
+      title: "Connect telemetry",
+      desc: "Set up a telemetry stream to start ingesting housekeeping data from your spacecraft.",
+      href: "/telemetry",
+      cta: "Configure stream",
+    },
+    {
+      done: complianceScore > 0,
+      icon: <ShieldCheck size={18} />,
+      title: "Complete compliance assessments",
+      desc: "Work through NIS2 and ENISA requirements to improve your compliance posture.",
+      href: "/compliance",
+      cta: "Open mapper",
+    },
+    {
+      done: false, // supply chain is never "done" in this basic check
+      icon: <Link2 size={18} />,
+      title: "Map your supply chain",
+      desc: "Register suppliers and track third-party risk for NIS2 Article 21(2)(d) compliance.",
+      href: "/supply-chain",
+      cta: "Add suppliers",
+    },
+  ];
+
+  // If all primary tasks are done, don't show the section
+  const pendingCards = cards.filter((c) => !c.done);
+  if (pendingCards.length === 0) return null;
+
+  return (
+    <Card className="bg-slate-900 border-slate-800">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <div className="flex items-center gap-2">
+          <Rocket size={16} className="text-blue-400" />
+          <CardTitle className="text-sm font-semibold text-slate-200">
+            Getting Started
+          </CardTitle>
+        </div>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Complete these steps to get the most out of SpaceGuard
+        </p>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {cards.map((card) => (
+            <Link
+              key={card.href}
+              href={card.href}
+              className={`group rounded-lg border p-3 transition-colors ${
+                card.done
+                  ? "border-emerald-500/20 bg-emerald-500/5"
+                  : "border-slate-700/50 bg-slate-800/30 hover:border-blue-500/30 hover:bg-blue-500/5"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span
+                  className={
+                    card.done ? "text-emerald-400" : "text-slate-500 group-hover:text-blue-400"
+                  }
+                >
+                  {card.done ? <CheckCircle2 size={18} /> : card.icon}
+                </span>
+                <span
+                  className={`text-xs font-medium ${
+                    card.done ? "text-emerald-400" : "text-slate-300 group-hover:text-blue-400"
+                  } transition-colors`}
+                >
+                  {card.title}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed mb-2">
+                {card.desc}
+              </p>
+              {!card.done && (
+                <span className="text-[10px] font-medium text-blue-400 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {card.cta} <ArrowRight size={10} />
+                </span>
+              )}
+            </Link>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main dashboard page
 // ---------------------------------------------------------------------------
 
@@ -959,6 +1068,13 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Getting Started cards (shown when data is sparse) */}
+      <GettingStartedCards
+        assetCount={dashboard.assetsSummary.total}
+        streamCount={streams.length}
+        complianceScore={dashboard.overallScore}
+      />
 
       {/* Row 1 - Key metric cards */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">

@@ -175,6 +175,10 @@ export const getDashboard = (organizationId: string) => {
   return api.get<DashboardResponse>(`/api/v1/compliance/dashboard?${params.toString()}`);
 };
 
+// Initialize compliance mappings (onboarding)
+export const initializeCompliance = (organizationId: string) =>
+  api.post<{ created: number; total: number }>("/api/v1/compliance/initialize", { organizationId });
+
 // ---------------------------------------------------------------------------
 // ENISA Controls
 // ---------------------------------------------------------------------------

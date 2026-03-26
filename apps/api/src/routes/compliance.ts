@@ -14,6 +14,7 @@ import {
   deleteMapping,
   listMappings,
   getDashboard,
+  initializeComplianceMappings,
 } from "../services/compliance.service";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
@@ -140,4 +141,25 @@ complianceRoutes.get("/compliance/dashboard", async (c) => {
   assertUUID(organizationId, "organizationId");
   const dashboard = await getDashboard(organizationId);
   return c.json(dashboard);
+});
+
+// POST /api/v1/compliance/initialize
+// Creates NOT_ASSESSED org-level mappings for all requirements (onboarding)
+complianceRoutes.post("/compliance/initialize", async (c) => {
+  const body = await c.req.json<{ organizationId: string }>();
+  if (!body.organizationId) {
+    return c.json({ error: "organizationId is required" }, 400);
+  }
+  assertUUID(body.organizationId, "organizationId");
+  const result = await initializeComplianceMappings(body.organizationId);
+  logAudit({
+    organizationId: body.organizationId,
+    actor: extractActor(c),
+    action: "CREATE",
+    resourceType: "compliance_mapping",
+    resourceId: body.organizationId,
+    details: { created: result.created, total: result.total },
+    ipAddress: extractIp(c),
+  });
+  return c.json(result);
 });
