@@ -116,6 +116,9 @@ intelRoutes.get("/intel/enrich/alert/:alertId", async (c) => {
 
 intelRoutes.get("/intel/tactics/:tacticId/techniques", async (c) => {
   const tacticId = c.req.param("tacticId");
+  if (!tacticId || !tacticId.trim()) {
+    throw new HTTPException(400, { message: "tacticId is required" });
+  }
   const techniques = await listTechniques(tacticId);
   return c.json({ data: techniques, total: techniques.length });
 });
@@ -149,6 +152,9 @@ intelRoutes.get(
 
 intelRoutes.get("/intel/techniques/:id", async (c) => {
   const id = c.req.param("id");
+  if (!id || !id.trim()) {
+    throw new HTTPException(400, { message: "id parameter is required" });
+  }
   const detail = await getTechniqueWithCountermeasures(id);
   return c.json(detail);
 });

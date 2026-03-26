@@ -8,7 +8,7 @@ import type {
   AssetQuery,
   AssetResponse,
 } from "@spaceguard/shared";
-import { AssetStatus } from "@spaceguard/shared";
+import { AssetStatus, Criticality } from "@spaceguard/shared";
 
 function toResponse(row: typeof spaceAssets.$inferSelect): AssetResponse {
   return {
@@ -48,7 +48,7 @@ export async function createAsset(data: CreateAsset): Promise<AssetResponse> {
       description: data.description,
       metadata: data.metadata,
       status: data.status ?? AssetStatus.OPERATIONAL,
-      criticality: data.criticality ?? "MEDIUM",
+      criticality: data.criticality ?? Criticality.MEDIUM,
     })
     .returning();
 

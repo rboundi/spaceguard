@@ -1389,7 +1389,7 @@ function fmtMinutes(minutes: number | null): string {
 }
 
 function fmtDateShort(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "N/A";
   return iso.slice(0, 10);
 }
 

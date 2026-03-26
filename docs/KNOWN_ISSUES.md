@@ -1,6 +1,6 @@
 # Known Issues and Intentional Limitations
 
-Last updated: 2026-03-25
+Last updated: 2026-03-26
 
 ## Architecture
 
@@ -243,3 +243,62 @@ Most routes return `{ error: string }`, some use `{ error: string, cause: unknow
 - `apps/web/app/compliance/page.tsx`: `handleSave` catch reverts state silently with no toast or error message
 - `apps/web/app/compliance/page.tsx`: `MapAssetDialog` createMapping catch is empty
 - `apps/web/app/alerts/page.tsx`: IntelContextCard error state set but never rendered
+
+### Race Conditions on Rapid Org/Filter Changes
+
+Several pages (incidents, alerts, assets) fetch data on org/filter change without
+aborting previous in-flight requests. If a user switches organization rapidly,
+stale responses could overwrite newer data. Pages use `mountedRef` to prevent
+unmount updates but do not cancel mid-flight requests.
+
+**Resolution path**: Use AbortController in fetch calls and cancel previous
+requests when dependencies change.
+
+## Fixed in Code Review (2026-03-26, Part 6)
+
+### Missing onDelete cascade on users and sessions
+
+**Files**: `apps/api/src/db/schema/users.ts`
+
+The `users.organization_id` and `sessions.user_id` foreign keys lacked
+`onDelete: "cascade"`. Deleting an organization would fail with FK constraint
+violations because user and session rows were not automatically removed.
+Added `{ onDelete: "cascade" }` to both references.
+
+### Unvalidated JSON body in compliance initialize endpoint
+
+**File**: `apps/api/src/routes/compliance.ts`
+
+The `POST /compliance/initialize` endpoint used raw `c.req.json()` without
+Zod validation. Malformed JSON would throw an unhandled exception. Replaced
+with `zValidator("json", ...)` for consistent error handling.
+
+### Hardcoded criticality string instead of enum
+
+**File**: `apps/api/src/services/asset.service.ts`
+
+The default criticality was hardcoded as `"MEDIUM"` string literal instead of
+using `Criticality.MEDIUM` from the shared enum. Fixed to use the enum constant.
+
+### Missing parameter validation in intel routes
+
+**File**: `apps/api/src/routes/intel.ts`
+
+The `GET /intel/tactics/:tacticId/techniques` and `GET /intel/techniques/:id`
+endpoints accepted parameters without validation. Added empty/whitespace checks
+with proper 400 error responses.
+
+### Em dash character in PDF report service
+
+**File**: `apps/api/src/services/report.service.tsx`
+
+Used em dash character in `fmtDateShort()` fallback, violating the project's
+"no em dashes" convention. Replaced with "N/A".
+
+### Simplified full-demo.ts cleanup with cascades
+
+**File**: `scripts/full-demo.ts`
+
+Now that users/sessions cascade from organization deletion, simplified the
+idempotent cleanup from 4 explicit DELETE statements to 2 (audit_log +
+organization). All other dependent tables cascade automatically.

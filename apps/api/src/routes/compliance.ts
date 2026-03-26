@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import {
   requirementQuerySchema,
@@ -145,12 +146,11 @@ complianceRoutes.get("/compliance/dashboard", async (c) => {
 
 // POST /api/v1/compliance/initialize
 // Creates NOT_ASSESSED org-level mappings for all requirements (onboarding)
-complianceRoutes.post("/compliance/initialize", async (c) => {
-  const body = await c.req.json<{ organizationId: string }>();
-  if (!body.organizationId) {
-    return c.json({ error: "organizationId is required" }, 400);
-  }
-  assertUUID(body.organizationId, "organizationId");
+complianceRoutes.post(
+  "/compliance/initialize",
+  zValidator("json", z.object({ organizationId: z.string().uuid() })),
+  async (c) => {
+  const body = c.req.valid("json");
   const result = await initializeComplianceMappings(body.organizationId);
   logAudit({
     organizationId: body.organizationId,
