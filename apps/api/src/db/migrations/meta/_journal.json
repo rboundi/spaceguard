@@ -15,6 +15,13 @@
       "when": 1742904000000,
       "tag": "0005_threat_intelligence",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1743004800000,
+      "tag": "0012_anomaly_baselines",
+      "breakpoints": true
     }
   ]
 }
