@@ -121,6 +121,8 @@ export const incidentResponseSchema = z.object({
   resolvedAt: z.string().datetime().nullable(),
   timeToDetectMinutes: z.number().nullable(),
   timeToRespondMinutes: z.number().nullable(),
+  correlationRule: z.string().nullable(),
+  correlationScore: z.number().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

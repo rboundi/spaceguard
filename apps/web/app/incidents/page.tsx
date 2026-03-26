@@ -14,6 +14,7 @@ import {
   TrendingDown,
   ShieldCheck,
   Download,
+  GitMerge,
 } from "lucide-react";
 import {
   Card,
@@ -88,6 +89,13 @@ const ACTIVE_STATUSES: Status[] = [
   "DETECTED", "TRIAGING", "INVESTIGATING",
   "CONTAINING", "ERADICATING", "RECOVERING",
 ];
+
+const CORRELATION_RULE_LABELS: Record<string, string> = {
+  "CORR-TEMPORAL-CLUSTER": "Temporal Cluster",
+  "CORR-KILL-CHAIN":       "Kill Chain",
+  "CORR-CROSS-ASSET":      "Cross-Asset",
+  "CORR-ANOMALY-RULE":     "ML + Rule",
+};
 
 function SeverityIcon({ s }: { s: Severity }) {
   switch (s) {
@@ -610,12 +618,28 @@ export default function IncidentsPage() {
                   >
                     <TableCell className="py-3">
                       <Link href={`/incidents/${inc.id}`} className="block group-hover:text-blue-400 transition-colors">
-                        <span className="text-sm font-medium text-slate-200 line-clamp-1">
-                          {inc.title}
-                        </span>
-                        <span className="text-xs text-slate-500 mt-0.5 line-clamp-1">
-                          {inc.description}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-slate-200 line-clamp-1">
+                            {inc.title}
+                          </span>
+                          {inc.correlationRule && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
+                              <GitMerge size={10} />
+                              Auto-Correlated
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-slate-500 line-clamp-1">
+                            {inc.description}
+                          </span>
+                          {inc.correlationRule && (
+                            <span className="text-[10px] text-purple-400/70 shrink-0">
+                              {CORRELATION_RULE_LABELS[inc.correlationRule] ?? inc.correlationRule}
+                              {inc.correlationScore != null && ` (${Math.round(inc.correlationScore * 100)}%)`}
+                            </span>
+                          )}
+                        </div>
                       </Link>
                     </TableCell>
                     <TableCell>

@@ -86,6 +86,8 @@ function incidentToResponse(row: Incident): IncidentResponse {
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
     timeToDetectMinutes: row.timeToDetectMinutes ?? null,
     timeToRespondMinutes: row.timeToRespondMinutes ?? null,
+    correlationRule: row.correlationRule ?? null,
+    correlationScore: row.correlationScore ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

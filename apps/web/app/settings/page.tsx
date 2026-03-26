@@ -14,9 +14,12 @@ import {
   regenerateStreamKey,
   updateStreamRateLimit,
   updateProfile,
+  getCorrelationRules,
+  updateCorrelationRuleSettings,
 } from "@/lib/api";
 import type {
   SettingsDetectionRule,
+  CorrelationRuleConfig,
 } from "@/lib/api";
 import type { OrganizationResponse, StreamResponse } from "@spaceguard/shared";
 import {
@@ -46,6 +49,7 @@ import {
   Lock,
   Webhook,
   MessageSquare,
+  GitMerge,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -551,6 +555,129 @@ function TelemetryTab() {
 }
 
 // ===========================================================================
+// Correlation Rules sub-section
+// ===========================================================================
+
+function CorrelationRulesSection() {
+  const [rules, setRules] = useState<CorrelationRuleConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    getCorrelationRules()
+      .then((res) => setRules(res.rules))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function toggleRule(ruleId: string, enabled: boolean) {
+    setUpdating((prev) => new Set(prev).add(ruleId));
+    try {
+      await updateCorrelationRuleSettings(ruleId, { enabled });
+      setRules((prev) => prev.map((r) => r.id === ruleId ? { ...r, enabled } : r));
+    } catch {
+      // revert silently
+    } finally {
+      setUpdating((prev) => { const n = new Set(prev); n.delete(ruleId); return n; });
+    }
+  }
+
+  async function saveThreshold(ruleId: string, key: string, value: number) {
+    setUpdating((prev) => new Set(prev).add(ruleId));
+    try {
+      await updateCorrelationRuleSettings(ruleId, { thresholds: { [key]: value } });
+      setRules((prev) => prev.map((r) =>
+        r.id === ruleId
+          ? { ...r, thresholds: { ...r.thresholds, [key]: value } }
+          : r
+      ));
+    } catch {
+      // silently fail
+    } finally {
+      setUpdating((prev) => { const n = new Set(prev); n.delete(ruleId); return n; });
+    }
+  }
+
+  function toggleExpand(id: string) {
+    setExpanded((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+
+  const enabledCount = rules.filter((r) => r.enabled).length;
+
+  if (loading) return <div className="text-sm text-slate-500 flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Loading correlation rules...</div>;
+
+  return (
+    <SectionCard>
+      <SectionHeader
+        icon={<GitMerge size={15} />}
+        title="Correlation Rules"
+        description={`${enabledCount} of ${rules.length} rules enabled. Auto-groups related alerts into incidents.`}
+      />
+
+      <div className="space-y-1">
+        {rules.map((rule) => {
+          const isExpanded = expanded.has(rule.id);
+          const isUpdating = updating.has(rule.id);
+
+          return (
+            <div key={rule.id} className={`rounded-lg border transition-colors ${rule.enabled ? "bg-slate-800/30 border-slate-700/50" : "bg-slate-800/10 border-slate-800 opacity-60"}`}>
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <Toggle enabled={rule.enabled} onChange={(v) => toggleRule(rule.id, v)} size="small" />
+
+                <button onClick={() => toggleExpand(rule.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
+                  {isExpanded ? <ChevronDown size={12} className="text-slate-500 shrink-0" /> : <ChevronRight size={12} className="text-slate-500 shrink-0" />}
+                  <span className="text-xs text-slate-200 truncate flex-1">{rule.name}</span>
+                </button>
+
+                <span className="text-[10px] font-mono text-purple-400/70 shrink-0">{rule.id}</span>
+
+                {isUpdating && <Loader2 size={12} className="animate-spin text-blue-400 shrink-0" />}
+              </div>
+
+              {isExpanded && (
+                <div className="px-3 pb-3 pl-14 space-y-3">
+                  <p className="text-[11px] text-slate-400 leading-relaxed">{rule.description}</p>
+
+                  {/* Threshold editors */}
+                  {Object.entries(rule.thresholds).map(([key, val]) => (
+                    <div key={key} className="flex items-center gap-3">
+                      <FieldLabel>{key.replace(/_/g, " ")}</FieldLabel>
+                      <input
+                        type="number"
+                        step="any"
+                        value={val}
+                        onChange={(e) => {
+                          const numVal = Number(e.target.value);
+                          if (!isNaN(numVal)) {
+                            setRules((prev) => prev.map((r) =>
+                              r.id === rule.id
+                                ? { ...r, thresholds: { ...r.thresholds, [key]: numVal } }
+                                : r
+                            ));
+                          }
+                        }}
+                        className="w-24 h-7 px-2 rounded bg-slate-900 border border-slate-700 text-xs text-slate-200 font-mono focus:outline-none focus:border-blue-500"
+                      />
+                      <button
+                        onClick={() => saveThreshold(rule.id, key, val)}
+                        className="h-7 px-2 rounded bg-slate-800 border border-slate-700 text-[11px] text-slate-400 hover:text-slate-200 transition-colors"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </SectionCard>
+  );
+}
+
+// ===========================================================================
 // Detection Tab
 // ===========================================================================
 
@@ -747,6 +874,9 @@ function DetectionTab() {
           })}
         </div>
       </SectionCard>
+
+      {/* Correlation Rules */}
+      <CorrelationRulesSection />
     </div>
   );
 }

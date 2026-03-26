@@ -16,6 +16,7 @@ import { z } from "zod";
 import { updateOrganizationSchema } from "@spaceguard/shared";
 import { updateOrganization, getOrganization } from "../services/organization.service";
 import { loadRules } from "../services/detection/rule-loader";
+import { getCorrelationRules, updateCorrelationRule } from "../services/detection/correlator";
 import { db } from "../db/client";
 import { telemetryStreams } from "../db/schema";
 import { users } from "../db/schema/users";
@@ -196,6 +197,52 @@ settingsRoutes.put(
     });
 
     return c.json({ ruleId, ...existing });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// GET /settings/correlation/rules - list correlation rules
+// ---------------------------------------------------------------------------
+
+settingsRoutes.get("/settings/correlation/rules", async (c) => {
+  const rules = getCorrelationRules();
+  return c.json({ rules, total: rules.length });
+});
+
+// ---------------------------------------------------------------------------
+// PUT /settings/correlation/rules/:ruleId - update correlation rule
+// ---------------------------------------------------------------------------
+
+const updateCorrelationRuleSchema = z.object({
+  enabled: z.boolean().optional(),
+  thresholds: z.record(z.number()).optional(),
+});
+
+settingsRoutes.put(
+  "/settings/correlation/rules/:ruleId",
+  requireRole("ADMIN", "OPERATOR"),
+  zValidator("json", updateCorrelationRuleSchema),
+  async (c) => {
+    const ruleId = c.req.param("ruleId");
+    const body = c.req.valid("json");
+    const user = c.get("user");
+
+    const updated = updateCorrelationRule(ruleId, body);
+    if (!updated) {
+      return c.json({ error: `Correlation rule ${ruleId} not found` }, 404);
+    }
+
+    logAudit({
+      organizationId: user.organizationId,
+      actor: extractActor(c),
+      action: "UPDATE",
+      resourceType: "correlation_rule",
+      resourceId: ruleId,
+      details: { enabled: updated.enabled, thresholds: updated.thresholds },
+      ipAddress: extractIp(c),
+    });
+
+    return c.json(updated);
   }
 );
 

@@ -7,6 +7,7 @@ import {
   pgEnum,
   jsonb,
   integer,
+  doublePrecision,
   index,
   foreignKey,
   unique,
@@ -88,6 +89,10 @@ export const incidents = pgTable(
     // Calculated response-time metrics (nullable until incident closes)
     timeToDetectMinutes: integer("time_to_detect_minutes"),
     timeToRespondMinutes: integer("time_to_respond_minutes"),
+
+    // Correlation engine metadata (nullable: only set for auto-correlated incidents)
+    correlationRule: varchar("correlation_rule", { length: 100 }),
+    correlationScore: doublePrecision("correlation_score"),
 
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

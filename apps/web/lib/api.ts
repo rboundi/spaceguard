@@ -451,8 +451,18 @@ export interface IncidentResponse {
   resolvedAt: string | null;
   timeToDetectMinutes: number | null;
   timeToRespondMinutes: number | null;
+  correlationRule: string | null;
+  correlationScore: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CorrelationRuleConfig {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  thresholds: Record<string, number>;
 }
 
 export interface IncidentNoteResponse {
@@ -1210,3 +1220,14 @@ export const getAnomalyStats = (streamId: string) =>
   api.get<AnomalyStatsResponse>(
     `/api/v1/anomaly/stats?streamId=${streamId}`
   );
+
+// Correlation rules
+export const getCorrelationRules = () =>
+  api.get<{ rules: CorrelationRuleConfig[]; total: number }>(
+    "/api/v1/settings/correlation/rules"
+  );
+
+export const updateCorrelationRuleSettings = (
+  ruleId: string,
+  data: { enabled?: boolean; thresholds?: Record<string, number> }
+) => api.put<CorrelationRuleConfig>(`/api/v1/settings/correlation/rules/${ruleId}`, data);
