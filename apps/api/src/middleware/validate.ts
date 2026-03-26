@@ -20,7 +20,11 @@ export function assertUUID(value: string, label = "id"): void {
 
 /**
  * Verify the authenticated user belongs to the requested organization.
- * Throws 403 if the user's JWT organizationId does not match.
+ *
+ * In the current MVP, users with the ADMIN role are allowed to access any
+ * organization's data (required by the org-switcher UI). Non-admin users
+ * are restricted to their own JWT organizationId.
+ *
  * Call this in any route that accepts an organizationId from the client.
  */
 export function assertTenant(c: Context, requestedOrgId: string): void {
@@ -28,6 +32,8 @@ export function assertTenant(c: Context, requestedOrgId: string): void {
   if (!user) {
     throw new HTTPException(401, { message: "Authentication required" });
   }
+  // Admins can access any organization (org-switcher use case)
+  if (user.role === "ADMIN") return;
   if (user.organizationId !== requestedOrgId) {
     throw new HTTPException(403, {
       message: "Access denied: you cannot access another organization's data",
