@@ -476,6 +476,54 @@ body. Users got no context for why an export failed (e.g., 403 from tenant
 check). Updated all 5 functions to parse the error response body using the same
 pattern as the PDF export functions.
 
+## Fixed: Part 10 - Tenant Validation & Data Integrity (2026-03-26)
+
+### Missing tenant validation on compliance mapping mutations
+
+**Files**: `apps/api/src/routes/compliance.ts`
+
+**Severity**: CRITICAL (security)
+
+Three compliance mapping endpoints (POST, PUT, DELETE) were missing
+`assertTenant()` calls, allowing any authenticated user to create, modify, or
+delete compliance mappings belonging to other organizations. Added tenant
+validation to all three handlers.
+
+### Missing tenant validation on telemetry routes
+
+**Files**: `apps/api/src/routes/telemetry.ts`
+
+**Severity**: CRITICAL (security)
+
+Five telemetry endpoints were missing `assertTenant()` calls: POST streams,
+GET stream by ID, PUT stream, POST logs, and GET logs. This allowed
+cross-tenant access to telemetry stream management and log ingestion/querying.
+Added tenant validation to all five handlers.
+
+### Incorrect organizationId in incident sub-resource audit logs
+
+**Files**: `apps/api/src/routes/incidents.ts`
+
+**Severity**: MEDIUM (audit accuracy)
+
+Four incident sub-resource handlers (link alert, add note, generate report,
+submit report) were logging the authenticated user's home organizationId
+instead of the incident's actual organizationId. This produced incorrect audit
+trails when ADMIN users operated on incidents belonging to other organizations
+via the org-switcher. Fixed all four to use `incident.organizationId`.
+
+### Missing streamId in baseline API response
+
+**Files**: `packages/shared/src/schemas/anomaly.ts`,
+`apps/api/src/services/detection/anomaly-detector.ts`, `apps/web/lib/api.ts`
+
+**Severity**: LOW (data completeness)
+
+The baseline response schema and service return types were missing `streamId`,
+making it impossible for clients to identify which stream a baseline belonged
+to without extra context. Added `streamId` to the Zod schema, both service
+functions (`getBaselines` and `updateBaselineManual`), and the frontend type.
+
 ## Open: Architecture Decisions (Intentional)
 
 ### GET /organizations returns all organizations

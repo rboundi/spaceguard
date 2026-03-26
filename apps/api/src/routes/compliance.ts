@@ -56,6 +56,7 @@ complianceRoutes.post(
   zValidator("json", createMappingSchema),
   async (c) => {
     const data = c.req.valid("json");
+    assertTenant(c, data.organizationId);
     const mapping = await createMapping(data);
     logAudit({
       organizationId: mapping.organizationId,
@@ -95,6 +96,7 @@ complianceRoutes.put(
     assertUUID(id, "id");
     const data = c.req.valid("json");
     const mapping = await updateMapping(id, data);
+    assertTenant(c, mapping.organizationId);
     logAudit({
       organizationId: mapping.organizationId,
       actor: extractActor(c),
@@ -118,6 +120,7 @@ complianceRoutes.delete("/compliance/mappings/:id", async (c) => {
   const id = c.req.param("id");
   assertUUID(id, "id");
   const { organizationId } = await deleteMapping(id);
+  assertTenant(c, organizationId);
   logAudit({
     organizationId,
     actor: extractActor(c),

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 export const baselineResponseSchema = z.object({
   id: z.string().uuid(),
+  streamId: z.string().uuid(),
   parameterName: z.string(),
   mean: z.number(),
   stdDeviation: z.number(),

@@ -320,6 +320,7 @@ export async function getBaselines(
   streamId: string
 ): Promise<Array<{
   id: string;
+  streamId: string;
   parameterName: string;
   mean: number;
   stdDeviation: number;
@@ -337,6 +338,7 @@ export async function getBaselines(
 
   return rows.map((r) => ({
     id: r.id,
+    streamId: r.streamId,
     parameterName: r.parameterName,
     mean: r.mean,
     stdDeviation: r.stdDeviation,
@@ -362,6 +364,7 @@ export async function updateBaselineManual(
   }
 ): Promise<{
   id: string;
+  streamId: string;
   parameterName: string;
   mean: number;
   stdDeviation: number;
@@ -404,6 +407,7 @@ export async function updateBaselineManual(
 
   return {
     id: row.id,
+    streamId: row.streamId,
     parameterName: row.parameterName,
     mean: row.mean,
     stdDeviation: row.stdDeviation,

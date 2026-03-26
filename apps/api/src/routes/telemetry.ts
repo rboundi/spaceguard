@@ -58,6 +58,7 @@ telemetryRoutes.post(
   zValidator("json", createStreamSchema),
   async (c) => {
     const data = c.req.valid("json");
+    assertTenant(c, data.organizationId);
     const stream = await createStream(data);
     return c.json(stream, 201);
   }
@@ -90,6 +91,7 @@ telemetryRoutes.get("/telemetry/streams/:id", async (c) => {
   const id = c.req.param("id");
   assertUUID(id, "id");
   const stream = await getStream(id);
+  assertTenant(c, stream.organizationId);
   return c.json(stream);
 });
 
@@ -101,6 +103,8 @@ telemetryRoutes.put(
     const id = c.req.param("id");
     assertUUID(id, "id");
     const data = c.req.valid("json");
+    const existing = await getStream(id);
+    assertTenant(c, existing.organizationId);
     const stream = await updateStream(id, data);
     return c.json(stream);
   }
@@ -210,6 +214,7 @@ telemetryRoutes.post(
   zValidator("json", logEntrySchema),
   async (c) => {
     const entry = c.req.valid("json");
+    assertTenant(c, entry.organizationId);
     const log = await ingestLog(entry.organizationId, entry);
     return c.json(log, 201);
   }
@@ -221,6 +226,7 @@ telemetryRoutes.get(
   zValidator("query", logQuerySchema),
   async (c) => {
     const q = c.req.valid("query");
+    assertTenant(c, q.organizationId);
     const result = await queryLogs(q.organizationId, {
       severity: q.severity,
       source: q.source,

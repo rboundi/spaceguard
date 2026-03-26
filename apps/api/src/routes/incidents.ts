@@ -160,9 +160,8 @@ incidentRoutes.post(
     assertTenant(c, incident.organizationId);
     const { alertId } = c.req.valid("json");
     const link = await addAlertToIncident(id, alertId);
-    const user = c.get("user");
     logAudit({
-      organizationId: user.organizationId,
+      organizationId: incident.organizationId,
       actor: extractActor(c),
       action: "UPDATE",
       resourceType: "incident",
@@ -202,9 +201,8 @@ incidentRoutes.post(
     assertTenant(c, incident.organizationId);
     const body = c.req.valid("json");
     const note = await addNote(id, body);
-    const user = c.get("user");
     logAudit({
-      organizationId: user.organizationId,
+      organizationId: incident.organizationId,
       actor: extractActor(c),
       action: "UPDATE",
       resourceType: "incident",
@@ -244,9 +242,8 @@ incidentRoutes.post(
     assertTenant(c, incident.organizationId);
     const body = c.req.valid("json");
     const report = await generateNis2Report(id, body);
-    const user = c.get("user");
     logAudit({
-      organizationId: user.organizationId,
+      organizationId: incident.organizationId,
       actor: extractActor(c),
       action: "CREATE",
       resourceType: "incident",
@@ -285,9 +282,8 @@ incidentRoutes.put(
     assertTenant(c, incident.organizationId);
     const { submittedTo } = c.req.valid("json");
     const report = await markReportSubmitted(reportId, submittedTo);
-    const user = c.get("user");
     logAudit({
-      organizationId: user.organizationId,
+      organizationId: incident.organizationId,
       actor: extractActor(c),
       action: "STATUS_CHANGE",
       resourceType: "incident",

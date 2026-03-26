@@ -1187,6 +1187,7 @@ export const updateStreamRateLimit = (streamId: string, pointsPerMinute: number)
 
 export interface BaselineResponse {
   id: string;
+  streamId: string;
   parameterName: string;
   mean: number;
   stdDeviation: number;
