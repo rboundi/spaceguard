@@ -505,7 +505,7 @@ async function run() {
           await sql`
             INSERT INTO telemetry_points (time, stream_id, parameter_name, value_numeric, quality)
             SELECT (p->>'time')::timestamptz, ${hkStream.id}::uuid, p->>'parameterName', (p->>'valueNumeric')::double precision, (p->>'quality')::telemetry_quality
-            FROM jsonb_array_elements(${JSON.stringify(hkBatch)}::jsonb) AS p
+            FROM jsonb_array_elements(${sql.json(hkBatch)}::jsonb) AS p
           `;
           hkBatch = [];
         }
@@ -514,7 +514,7 @@ async function run() {
         await sql`
           INSERT INTO telemetry_points (time, stream_id, parameter_name, value_numeric, quality)
           SELECT (p->>'time')::timestamptz, ${hkStream.id}::uuid, p->>'parameterName', (p->>'valueNumeric')::double precision, (p->>'quality')::telemetry_quality
-          FROM jsonb_array_elements(${JSON.stringify(hkBatch)}::jsonb) AS p
+          FROM jsonb_array_elements(${sql.json(hkBatch)}::jsonb) AS p
         `;
       }
       log(`  Proba-EO-1 HK: ${DURATION_S * 3} points ingested`);
@@ -530,7 +530,7 @@ async function run() {
           await sql`
             INSERT INTO telemetry_points (time, stream_id, parameter_name, value_numeric, quality)
             SELECT (p->>'time')::timestamptz, ${commsStream.id}::uuid, p->>'parameterName', (p->>'valueNumeric')::double precision, (p->>'quality')::telemetry_quality
-            FROM jsonb_array_elements(${JSON.stringify(commsBatch)}::jsonb) AS p
+            FROM jsonb_array_elements(${sql.json(commsBatch)}::jsonb) AS p
           `;
           commsBatch = [];
         }
@@ -539,7 +539,7 @@ async function run() {
         await sql`
           INSERT INTO telemetry_points (time, stream_id, parameter_name, value_numeric, quality)
           SELECT (p->>'time')::timestamptz, ${commsStream.id}::uuid, p->>'parameterName', (p->>'valueNumeric')::double precision, (p->>'quality')::telemetry_quality
-          FROM jsonb_array_elements(${JSON.stringify(commsBatch)}::jsonb) AS p
+          FROM jsonb_array_elements(${sql.json(commsBatch)}::jsonb) AS p
         `;
       }
       log(`  Proba-EO-1 COMMS: ${Math.ceil(DURATION_S / 10)} points ingested`);
@@ -558,7 +558,7 @@ async function run() {
           await sql`
             INSERT INTO telemetry_points (time, stream_id, parameter_name, value_numeric, quality)
             SELECT (p->>'time')::timestamptz, ${nordStream.id}::uuid, p->>'parameterName', (p->>'valueNumeric')::double precision, (p->>'quality')::telemetry_quality
-            FROM jsonb_array_elements(${JSON.stringify(nordBatch)}::jsonb) AS p
+            FROM jsonb_array_elements(${sql.json(nordBatch)}::jsonb) AS p
           `;
           nordBatch = [];
         }
@@ -567,7 +567,7 @@ async function run() {
         await sql`
           INSERT INTO telemetry_points (time, stream_id, parameter_name, value_numeric, quality)
           SELECT (p->>'time')::timestamptz, ${nordStream.id}::uuid, p->>'parameterName', (p->>'valueNumeric')::double precision, (p->>'quality')::telemetry_quality
-          FROM jsonb_array_elements(${JSON.stringify(nordBatch)}::jsonb) AS p
+          FROM jsonb_array_elements(${sql.json(nordBatch)}::jsonb) AS p
         `;
       }
       log(`  NordSat-Alpha HK: ${DURATION_S * 2} points ingested`);
