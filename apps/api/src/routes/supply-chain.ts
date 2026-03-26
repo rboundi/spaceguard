@@ -108,6 +108,7 @@ supplyChainRoutes.get("/supply-chain/risk-summary", async (c) => {
   if (!UUID_RE.test(organizationId)) {
     return c.json({ error: "organizationId must be a valid UUID" }, 400);
   }
+  assertTenant(c, organizationId);
   const summary = await getSupplierRiskSummary(organizationId);
   return c.json(summary);
 });

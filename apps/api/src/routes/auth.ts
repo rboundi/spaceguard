@@ -213,6 +213,7 @@ authRoutes.put("/auth/me", async (c) => {
 // GET /users
 authRoutes.get("/users", adminOnly, async (c) => {
   const orgId = c.req.query("organizationId");
+  if (orgId) assertUUID(orgId, "organizationId");
   const result = await listUsers(orgId);
   return c.json({ data: result, total: result.length }, 200);
 });

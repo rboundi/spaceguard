@@ -56,6 +56,7 @@ assetRoutes.get("/assets/:id", async (c) => {
   const id = c.req.param("id");
   assertUUID(id, "id");
   const asset = await getAsset(id);
+  assertTenant(c, asset.organizationId);
   return c.json(asset);
 });
 
@@ -66,6 +67,8 @@ assetRoutes.put(
   async (c) => {
     const id = c.req.param("id");
     assertUUID(id, "id");
+    const existing = await getAsset(id);
+    assertTenant(c, existing.organizationId);
     const data = c.req.valid("json");
     const asset = await updateAsset(id, data);
     logAudit({
@@ -85,6 +88,8 @@ assetRoutes.put(
 assetRoutes.delete("/assets/:id", async (c) => {
   const id = c.req.param("id");
   assertUUID(id, "id");
+  const existing = await getAsset(id);
+  assertTenant(c, existing.organizationId);
   const asset = await deleteAsset(id);
   logAudit({
     organizationId: asset.organizationId,

@@ -95,6 +95,7 @@ alertRoutes.get(
   async (c) => {
     const { id } = c.req.valid("param");
     const alert = await getAlert(id);
+    assertTenant(c, alert.organizationId);
     return c.json(alert);
   }
 );
@@ -110,6 +111,8 @@ alertRoutes.put(
   async (c) => {
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
+    const existing = await getAlert(id);
+    assertTenant(c, existing.organizationId);
     const updated = await updateAlert(id, body);
     const isAck = body.status === "RESOLVED" || body.status === "FALSE_POSITIVE";
     logAudit({

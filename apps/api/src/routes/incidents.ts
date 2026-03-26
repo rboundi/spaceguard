@@ -113,6 +113,7 @@ incidentRoutes.get(
   async (c) => {
     const { id } = c.req.valid("param");
     const incident = await getIncident(id);
+    assertTenant(c, incident.organizationId);
     return c.json(incident);
   }
 );
@@ -124,6 +125,8 @@ incidentRoutes.put(
   zValidator("json", updateIncidentSchema),
   async (c) => {
     const { id } = c.req.valid("param");
+    const existing = await getIncident(id);
+    assertTenant(c, existing.organizationId);
     const body = c.req.valid("json");
     const incident = await updateIncident(id, body);
     const isStatusChange = "status" in body;
@@ -153,6 +156,8 @@ incidentRoutes.post(
   zValidator("json", addAlertToIncidentSchema),
   async (c) => {
     const { id } = c.req.valid("param");
+    const incident = await getIncident(id);
+    assertTenant(c, incident.organizationId);
     const { alertId } = c.req.valid("json");
     const link = await addAlertToIncident(id, alertId);
     const user = c.get("user");
@@ -175,6 +180,8 @@ incidentRoutes.get(
   zValidator("param", uuidParam),
   async (c) => {
     const { id } = c.req.valid("param");
+    const incident = await getIncident(id);
+    assertTenant(c, incident.organizationId);
     const links = await listIncidentAlerts(id);
     return c.json({ data: links });
   }
@@ -191,6 +198,8 @@ incidentRoutes.post(
   zValidator("json", createIncidentNoteSchema),
   async (c) => {
     const { id } = c.req.valid("param");
+    const incident = await getIncident(id);
+    assertTenant(c, incident.organizationId);
     const body = c.req.valid("json");
     const note = await addNote(id, body);
     const user = c.get("user");
@@ -213,6 +222,8 @@ incidentRoutes.get(
   zValidator("param", uuidParam),
   async (c) => {
     const { id } = c.req.valid("param");
+    const incident = await getIncident(id);
+    assertTenant(c, incident.organizationId);
     const notes = await listNotes(id);
     return c.json({ data: notes });
   }
@@ -229,6 +240,8 @@ incidentRoutes.post(
   zValidator("json", createIncidentReportSchema),
   async (c) => {
     const { id } = c.req.valid("param");
+    const incident = await getIncident(id);
+    assertTenant(c, incident.organizationId);
     const body = c.req.valid("json");
     const report = await generateNis2Report(id, body);
     const user = c.get("user");
@@ -251,6 +264,8 @@ incidentRoutes.get(
   zValidator("param", uuidParam),
   async (c) => {
     const { id } = c.req.valid("param");
+    const incident = await getIncident(id);
+    assertTenant(c, incident.organizationId);
     const reports = await listReports(id);
     return c.json({ data: reports });
   }
@@ -266,6 +281,8 @@ incidentRoutes.put(
   ),
   async (c) => {
     const { id, reportId } = c.req.valid("param");
+    const incident = await getIncident(id);
+    assertTenant(c, incident.organizationId);
     const { submittedTo } = c.req.valid("json");
     const report = await markReportSubmitted(reportId, submittedTo);
     const user = c.get("user");

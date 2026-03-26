@@ -12,6 +12,7 @@ import {
   exportStixBundle,
 } from "../services/export.service";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
+import { assertTenant } from "../middleware/validate";
 
 export const exportRoutes = new Hono();
 
@@ -38,6 +39,7 @@ exportRoutes.get("/export/alerts/csv", async (c) => {
   }
 
   const { organizationId, from, to } = parsed.data;
+  assertTenant(c, organizationId);
   const csv = await exportAlertsCsv(organizationId, { from, to });
 
   logAudit({
@@ -66,6 +68,7 @@ exportRoutes.get("/export/incidents/csv", async (c) => {
   }
 
   const { organizationId, from, to } = parsed.data;
+  assertTenant(c, organizationId);
   const csv = await exportIncidentsCsv(organizationId, { from, to });
 
   logAudit({
@@ -94,6 +97,7 @@ exportRoutes.get("/export/compliance/csv", async (c) => {
   }
 
   const { organizationId } = parsed.data;
+  assertTenant(c, organizationId);
   const csv = await exportComplianceCsv(organizationId);
 
   logAudit({
@@ -122,6 +126,7 @@ exportRoutes.get("/export/audit/csv", async (c) => {
   }
 
   const { organizationId, from, to } = parsed.data;
+  assertTenant(c, organizationId);
   const csv = await exportAuditCsv(organizationId, { from, to });
 
   logAudit({
@@ -166,6 +171,7 @@ exportRoutes.post("/export/stix", async (c) => {
   }
 
   const { organizationId, ...options } = parsed.data;
+  assertTenant(c, organizationId);
   const bundle = await exportStixBundle(organizationId, options);
 
   logAudit({

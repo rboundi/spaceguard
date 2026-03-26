@@ -343,3 +343,82 @@ All `orgMap.get("...")!` and `assetMap.get("...")!` calls used TypeScript non-nu
 assertions, which bypass null checks and crash at runtime with unhelpful errors.
 Replaced with `requireOrg()` and `requireAsset()` helper functions that throw
 descriptive error messages.
+
+## Fixed in Code Review (2026-03-26, Part 8)
+
+### Missing tenant isolation on export endpoints
+
+**File**: `apps/api/src/routes/exports.ts`
+
+**Severity**: HIGH (security)
+
+All 5 export endpoints (alerts CSV, incidents CSV, compliance CSV, audit CSV,
+STIX bundle) accepted an `organizationId` parameter but never verified the
+requesting user belonged to that organization. Any authenticated user could
+export another org's data. Added `assertTenant()` checks to all 5 endpoints.
+
+### Missing tenant isolation on single-resource endpoints
+
+**Files**: `apps/api/src/routes/alerts.ts`, `apps/api/src/routes/assets.ts`,
+`apps/api/src/routes/incidents.ts`
+
+**Severity**: HIGH (security)
+
+GET, PUT, and DELETE endpoints for individual alerts, assets, and incidents did
+not verify the resource belonged to the requesting user's organization. A user
+could read, modify, or delete any resource by guessing its UUID. Added
+`assertTenant()` checks after fetching the resource (fetch-then-verify pattern).
+
+### Missing tenant isolation on incident sub-resource endpoints
+
+**File**: `apps/api/src/routes/incidents.ts`
+
+**Severity**: HIGH (security)
+
+All incident sub-resource endpoints (GET/POST alerts, notes, reports, and
+PUT submit report) did not verify the parent incident belonged to the user's
+organization. Added `assertTenant()` checks that verify the parent incident's
+`organizationId` before proceeding.
+
+### Missing tenant isolation on supply-chain risk-summary
+
+**File**: `apps/api/src/routes/supply-chain.ts`
+
+**Severity**: HIGH (security)
+
+The `/supply-chain/risk-summary` endpoint accepted an `organizationId` but
+did not verify the user belonged to that organization. Added `assertTenant()`.
+
+### Missing UUID validation on GET /users organizationId
+
+**File**: `apps/api/src/routes/auth.ts`
+
+**Severity**: MEDIUM (validation)
+
+The admin GET `/users` endpoint accepted an optional `organizationId` query
+parameter without validating it was a valid UUID. Added `assertUUID()` guard.
+
+## Open: Frontend Improvements (Deferred)
+
+### Missing AbortController on data fetching
+
+**Pages**: dashboard, alerts, incidents, assets, telemetry, supply-chain
+
+Most pages fetch data in useEffect hooks without using AbortController. If the
+user switches organizations rapidly, stale responses could overwrite newer data.
+Pages use `mountedRef` to prevent unmount updates but do not cancel in-flight
+requests.
+
+### Silent error handling in several dialogs
+
+**Pages**: compliance (MapAssetDialog), incidents (CreateIncidentDialog)
+
+Several dialog submit handlers catch errors silently without displaying feedback
+to the user. The dialogs close with no indication that the operation failed.
+
+### IntelContextCard error state not rendered
+
+**File**: `apps/web/app/alerts/page.tsx`
+
+The IntelContextCard component sets an `error` state when enrichment fails but
+the error message is never rendered in the JSX.
