@@ -366,6 +366,31 @@ GET    /api/v1/reports/compliance/pdf?organizationId=
 
 The `seed-data/nis2-requirements.json` file is already created with 18 space-specific NIS2 requirements covering all 10 categories from Article 21(2).
 
+## Database Migrations
+
+When you need to run raw SQL against the database (e.g. creating tables, adding columns), always provide the command as a Node.js one-liner using the project's `postgres` driver. The user does not have `psql` installed. Format:
+
+```bash
+node -e "
+const postgres = require('postgres');
+const sql = postgres('postgresql://spaceguard:spaceguard_dev@localhost:5432/spaceguard');
+const fs = require('fs');
+const migration = fs.readFileSync('path/to/migration.sql', 'utf8');
+sql.unsafe(migration).then(() => { console.log('Done'); return sql.end(); }).catch(e => { console.error(e); sql.end(); });
+"
+```
+
+Or for inline SQL:
+
+```bash
+node -e "
+const sql = require('postgres')('postgresql://spaceguard:spaceguard_dev@localhost:5432/spaceguard');
+sql.unsafe(\`YOUR SQL HERE\`).then(() => { console.log('Done'); return sql.end(); }).catch(e => { console.error(e); sql.end(); });
+"
+```
+
+Never suggest `psql`, `docker exec psql`, or other tools the user may not have. Always use Node.js + the `postgres` package that is already installed in the project.
+
 ## Git Workflow
 
 After completing any meaningful unit of work:
