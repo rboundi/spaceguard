@@ -231,6 +231,7 @@ function Nis2DeadlineCard({
   const reportTypes: ReportType[] = [
     "EARLY_WARNING",
     "INCIDENT_NOTIFICATION",
+    "INTERMEDIATE_REPORT",
     "FINAL_REPORT",
   ];
 

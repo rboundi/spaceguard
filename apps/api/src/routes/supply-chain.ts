@@ -46,7 +46,13 @@ supplyChainRoutes.get(
   zValidator("query", supplierQuerySchema),
   async (c) => {
     const query = c.req.valid("query");
-    if (query.organizationId) assertTenant(c, query.organizationId);
+    const user = c.get("user");
+    // Enforce tenant isolation: non-admin users must filter by their own org
+    if (query.organizationId) {
+      assertTenant(c, query.organizationId);
+    } else if (user.role !== "ADMIN") {
+      query.organizationId = user.organizationId;
+    }
     const result = await listSuppliers(query);
     return c.json(result);
   }

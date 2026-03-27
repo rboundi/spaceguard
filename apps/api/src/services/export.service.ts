@@ -81,7 +81,8 @@ export async function exportAlertsCsv(
   if (assetIds.length > 0) {
     const assetRows = await db
       .select({ id: spaceAssets.id, name: spaceAssets.name })
-      .from(spaceAssets);
+      .from(spaceAssets)
+      .where(eq(spaceAssets.organizationId, organizationId));
     for (const a of assetRows) {
       assetMap.set(a.id, a.name);
     }

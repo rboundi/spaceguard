@@ -544,3 +544,52 @@ data without organization filtering. This is intentional: threat intelligence
 The `POST /telemetry/ingest/:streamId` endpoint authenticates via `X-API-Key`
 header rather than JWT. This is intentional: telemetry data comes from ground
 station systems, not browser sessions.
+
+## Fixed: Part 11 - Cross-tenant Data Leaks and Missing UI State (2026-03-27)
+
+### Missing tenant isolation on telemetry stream settings endpoints
+
+**Files**: `apps/api/src/routes/settings.ts`
+
+**Severity**: CRITICAL (security)
+
+The `POST /settings/telemetry/streams/:id/regenerate-key` and
+`PUT /settings/telemetry/streams/:id/rate-limit` endpoints did not verify the
+stream belonged to the requesting user's organization. Any authenticated ADMIN
+or OPERATOR could regenerate API keys or change rate limits for streams in
+other organizations. Added pre-mutation tenant checks that fetch the stream's
+organizationId and call `assertTenant()` before proceeding.
+
+### Cross-tenant asset name leak in alerts CSV export
+
+**File**: `apps/api/src/services/export.service.ts`
+
+**Severity**: HIGH (security)
+
+The `exportAlertsCsv()` function resolved asset IDs to names by querying ALL
+assets in the database without filtering by organizationId. This leaked asset
+names from other organizations into CSV exports. Added
+`.where(eq(spaceAssets.organizationId, organizationId))` to scope the lookup.
+
+### Missing INTERMEDIATE_REPORT in incident detail report types
+
+**File**: `apps/web/app/incidents/[id]/page.tsx`
+
+**Severity**: MEDIUM (functionality)
+
+The NIS2 reporting panel listed only EARLY_WARNING, INCIDENT_NOTIFICATION, and
+FINAL_REPORT. The INTERMEDIATE_REPORT type (7-day deadline per NIS2 Article 23)
+was missing from the `reportTypes` array despite being defined in the label and
+deadline mappings. Users could not generate intermediate reports. Added the
+missing type to the array.
+
+### Supplier list endpoint missing tenant isolation for non-admin users
+
+**File**: `apps/api/src/routes/supply-chain.ts`
+
+**Severity**: HIGH (security)
+
+The `GET /supply-chain/suppliers` endpoint only checked tenant isolation when
+an `organizationId` query parameter was explicitly provided. If omitted, the
+endpoint returned suppliers from all organizations. Now defaults to the
+authenticated user's organizationId for non-admin users.

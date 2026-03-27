@@ -27,7 +27,7 @@ import { requireRole } from "../middleware/auth-guard";
 
 export const settingsRoutes = new Hono();
 
-import { UUID_RE } from "../middleware/validate";
+import { UUID_RE, assertTenant } from "../middleware/validate";
 
 // ---------------------------------------------------------------------------
 // PUT /settings/organization
@@ -259,6 +259,18 @@ settingsRoutes.post(
       return c.json({ error: "Invalid stream ID" }, 400);
     }
 
+    // Verify the stream belongs to the caller's organization
+    const [existing] = await db
+      .select({ organizationId: telemetryStreams.organizationId })
+      .from(telemetryStreams)
+      .where(eq(telemetryStreams.id, id))
+      .limit(1);
+
+    if (!existing) {
+      return c.json({ error: "Stream not found" }, 404);
+    }
+    assertTenant(c, existing.organizationId);
+
     const newKey = randomUUID().replace(/-/g, "");
     const [updated] = await db
       .update(telemetryStreams)
@@ -270,9 +282,8 @@ settingsRoutes.post(
       return c.json({ error: "Stream not found" }, 404);
     }
 
-    const user = c.get("user");
     logAudit({
-      organizationId: user.organizationId,
+      organizationId: existing.organizationId,
       actor: extractActor(c),
       action: "KEY_REGENERATION",
       resourceType: "telemetry_stream",
@@ -303,13 +314,25 @@ settingsRoutes.put(
       return c.json({ error: "Invalid stream ID" }, 400);
     }
 
+    // Verify the stream belongs to the caller's organization
+    const [existing] = await db
+      .select({ organizationId: telemetryStreams.organizationId })
+      .from(telemetryStreams)
+      .where(eq(telemetryStreams.id, id))
+      .limit(1);
+
+    if (!existing) {
+      return c.json({ error: "Stream not found" }, 404);
+    }
+    assertTenant(c, existing.organizationId);
+
     const body = c.req.valid("json");
     const user = c.get("user");
 
     // Rate limits are stored in-memory for now (in production, use Redis or DB column)
     // For the MVP, we just acknowledge the setting and audit-log it
     logAudit({
-      organizationId: user.organizationId,
+      organizationId: existing.organizationId,
       actor: extractActor(c),
       action: "UPDATE",
       resourceType: "telemetry_stream",
