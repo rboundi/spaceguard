@@ -1255,7 +1255,7 @@ async function run() {
         'The correlation engine detected a pattern of thermal and power anomalies across multiple satellites in a 2-hour window. Battery cell failure on Proba-EO-1 and OBC temperature spike on NordSat-Alpha may share a common root cause (e.g., solar storm, shared component batch). Requires cross-operator investigation.',
         'MEDIUM'::incident_severity,
         'DETECTED'::incident_status,
-        'STANDARD'::incident_nis2_classification,
+        'NON_SIGNIFICANT'::incident_nis2_classification,
         ${JSON.stringify([{ tactic: "Denial", technique: "Denial of Service" }])}::jsonb,
         ${JSON.stringify([probaEO1, nordAlpha])}::jsonb,
         ${JSON.stringify(correlatedTimeline)}::jsonb,

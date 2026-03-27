@@ -100,6 +100,7 @@ function MappingRow({ mapping, asset, onUpdated }: MappingRowProps) {
   const [evidence, setEvidence] = useState(mapping.evidenceDescription ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const isDirty =
     status !== mapping.status ||
@@ -107,6 +108,7 @@ function MappingRow({ mapping, asset, onUpdated }: MappingRowProps) {
 
   async function handleSave() {
     setSaving(true);
+    setSaveError(null);
     try {
       const updated = await updateMapping(mapping.id, {
         status: status as ComplianceStatus,
@@ -115,10 +117,12 @@ function MappingRow({ mapping, asset, onUpdated }: MappingRowProps) {
       onUpdated(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch {
-      // revert
+    } catch (err) {
+      // revert and show error
       setStatus(mapping.status);
       setEvidence(mapping.evidenceDescription ?? "");
+      setSaveError(err instanceof Error ? err.message : "Failed to save");
+      setTimeout(() => setSaveError(null), 4000);
     } finally {
       setSaving(false);
     }
@@ -162,6 +166,10 @@ function MappingRow({ mapping, asset, onUpdated }: MappingRowProps) {
         className="text-xs bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-600 focus:border-blue-500 resize-none"
       />
 
+      {saveError && (
+        <p className="text-[10px] text-red-400">{saveError}</p>
+      )}
+
       <div className="flex items-center justify-end">
         <Button
           size="sm"
@@ -203,6 +211,7 @@ function OrgLevelStatus({
     orgMapping?.status ?? ComplianceStatus.NOT_ASSESSED
   );
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Sync when mapping changes externally (e.g., initial load)
   useEffect(() => {
@@ -213,6 +222,7 @@ function OrgLevelStatus({
     const prev = status;
     setStatus(value); // optimistic
     setBusy(true);
+    setSaveError(null);
     try {
       if (orgMapping) {
         const updated = await updateMapping(orgMapping.id, {
@@ -227,8 +237,10 @@ function OrgLevelStatus({
         });
         onCreated(created);
       }
-    } catch {
+    } catch (err) {
       setStatus(prev); // revert
+      setSaveError(err instanceof Error ? err.message : "Failed to save");
+      setTimeout(() => setSaveError(null), 4000);
     } finally {
       setBusy(false);
     }
@@ -255,6 +267,9 @@ function OrgLevelStatus({
           ))}
         </SelectContent>
       </Select>
+      {saveError && (
+        <p className="text-[10px] text-red-400">{saveError}</p>
+      )}
     </div>
   );
 }
@@ -284,6 +299,7 @@ function MapAssetDialog({
 }: MapAssetDialogProps) {
   const [selectedAssetId, setSelectedAssetId] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [dialogError, setDialogError] = useState<string | null>(null);
 
   const unmapped = assets.filter(
     (a) => !mappedAssetIds.includes(a.id) && a.status !== "DECOMMISSIONED"
@@ -292,6 +308,7 @@ function MapAssetDialog({
   async function handleConfirm() {
     if (!selectedAssetId) return;
     setSaving(true);
+    setDialogError(null);
     try {
       const created = await createMapping({
         organizationId,
@@ -302,8 +319,8 @@ function MapAssetDialog({
       onCreated(created);
       setSelectedAssetId("");
       onOpenChange(false);
-    } catch {
-      // ignore: keep dialog open
+    } catch (err) {
+      setDialogError(err instanceof Error ? err.message : "Failed to create mapping");
     } finally {
       setSaving(false);
     }
@@ -344,6 +361,9 @@ function MapAssetDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {dialogError && (
+                <p className="text-xs text-red-400">{dialogError}</p>
+              )}
               <div className="flex gap-2">
                 <Button
                   onClick={handleConfirm}
