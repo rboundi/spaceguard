@@ -3,6 +3,7 @@
 import { Building2, LogOut, User } from "lucide-react";
 import { useOrg, countryFlag } from "@/lib/context";
 import { useAuth } from "@/lib/auth-context";
+import { useConnectionStatus } from "@/lib/ws";
 import {
   Select,
   SelectContent,
@@ -11,9 +12,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const STATUS_META: Record<
+  "connected" | "connecting" | "disconnected",
+  { color: string; label: string }
+> = {
+  connected: { color: "bg-emerald-500", label: "Live" },
+  connecting: { color: "bg-amber-500 animate-pulse", label: "Connecting" },
+  disconnected: { color: "bg-slate-600", label: "Offline" },
+};
+
 export function Header() {
   const { orgs, orgId, setOrgId, loading: orgLoading } = useOrg();
   const { user, logout } = useAuth();
+  const wsStatus = useConnectionStatus();
 
   if (orgLoading || orgs.length === 0) {
     return (
@@ -24,6 +35,7 @@ export function Header() {
   }
 
   const isAdmin = user?.role === "ADMIN";
+  const meta = STATUS_META[wsStatus];
 
   return (
     <header className="h-12 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between px-5 shrink-0 gap-4">
@@ -57,8 +69,14 @@ export function Header() {
         )}
       </div>
 
-      {/* Right: user info + logout */}
+      {/* Right: connection status + user info + logout */}
       <div className="flex items-center gap-3 shrink-0">
+        {/* WebSocket connection indicator */}
+        <div className="flex items-center gap-1.5" title={`Real-time: ${meta.label}`}>
+          <span className={`inline-block h-1.5 w-1.5 rounded-full ${meta.color}`} />
+          <span className="text-[10px] text-slate-500">{meta.label}</span>
+        </div>
+
         {user && (
           <div className="flex items-center gap-2">
             <User size={13} className="text-slate-500" />

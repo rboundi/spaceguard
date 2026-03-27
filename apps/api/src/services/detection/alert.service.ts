@@ -31,6 +31,7 @@ import { sendAlertNotification } from "../notification.service";
 import { forwardAlertToSyslog } from "../syslog.service";
 import { correlateAlert } from "./correlator";
 import { checkPlaybookTriggers } from "../playbook.service";
+import { broadcastEvent } from "../realtime.service";
 
 // ---------------------------------------------------------------------------
 // Redis client (lazily initialised, shared singleton)
@@ -148,6 +149,14 @@ export async function createAlert(data: CreateAlert): Promise<AlertResponse | nu
     .returning();
 
   const response = alertToResponse(row);
+
+  // Broadcast new alert to connected WebSocket clients
+  broadcastEvent(data.organizationId, "alert.new", {
+    id: row.id,
+    title: row.title,
+    severity: row.severity,
+    status: row.status,
+  });
 
   // Auto-create incident for HIGH/CRITICAL alerts (fire-and-forget)
   if (row.severity === "HIGH" || row.severity === "CRITICAL") {
@@ -307,6 +316,14 @@ export async function updateAlert(
   if (!row) {
     throw new HTTPException(404, { message: `Alert ${id} not found after update` });
   }
+
+  // Broadcast alert update to connected WebSocket clients
+  broadcastEvent(row.organizationId, "alert.updated", {
+    id: row.id,
+    title: row.title,
+    severity: row.severity,
+    status: row.status,
+  });
 
   return alertToResponse(row);
 }

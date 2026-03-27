@@ -29,6 +29,7 @@ import { alerts } from "../db/schema/alerts";
 import { organizations } from "../db/schema/organizations";
 import { sendIncidentCreated } from "./notification.service";
 import { forwardIncidentToSyslog } from "./syslog.service";
+import { broadcastEvent } from "./realtime.service";
 import { spaceAssets } from "../db/schema/assets";
 import type {
   Incident,
@@ -180,6 +181,14 @@ export async function createIncident(
 
   const response = incidentToResponse(row);
 
+  // Broadcast new incident to connected WebSocket clients
+  broadcastEvent(data.organizationId, "incident.new", {
+    id: row.id,
+    title: row.title,
+    severity: row.severity,
+    status: row.status,
+  });
+
   // Fire-and-forget syslog SIEM forwarding
   forwardIncidentToSyslog({
     id: response.id,
@@ -321,6 +330,14 @@ export async function updateIncident(
     })
     .where(eq(incidents.id, id))
     .returning();
+
+  // Broadcast incident update to connected WebSocket clients
+  broadcastEvent(row.organizationId, "incident.updated", {
+    id: row.id,
+    title: row.title,
+    severity: row.severity,
+    status: row.status,
+  });
 
   // Append status-change timeline entry
   if (data.status && data.status !== current.status) {

@@ -12,6 +12,7 @@ import { PlaybookExecutionStatus, PlaybookStepType, AlertStatus } from "@spacegu
 import { updateAlert } from "./detection/alert.service";
 import { createIncidentFromAlert } from "./incident.service";
 import { sendEmail } from "./notification.service";
+import { broadcastEvent } from "./realtime.service";
 
 // ---------------------------------------------------------------------------
 // Response mappers
@@ -440,6 +441,18 @@ export async function executePlaybook(
     result.stepIndex = i;
 
     log.push(result);
+
+    // Broadcast step completion to connected WebSocket clients
+    broadcastEvent(context.organizationId, "playbook.step", {
+      executionId: execution.id,
+      playbookId,
+      stepIndex: i,
+      stepType: step.type,
+      stepLabel: step.label,
+      status: result.status,
+      stepsCompleted: i + 1,
+      stepsTotal: playbook.steps.length,
+    });
 
     if (result.status === "failed") {
       finalStatus = "FAILED";

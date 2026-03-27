@@ -29,6 +29,8 @@ import { playbookRoutes } from "./routes/playbooks";
 import { auditMiddleware } from "./middleware/audit";
 import { authMiddleware, adminOnly } from "./middleware/auth-guard";
 import { startScheduler } from "./services/scheduler.service";
+import type { Server } from "node:http";
+import { setupWebSocket } from "./services/realtime.service";
 
 const app = new Hono();
 
@@ -159,7 +161,13 @@ const port = Number(process.env.PORT) || 3001;
 
 console.log(`SpaceGuard API running on http://localhost:${port}`);
 
-serve({ fetch: app.fetch, port });
+const server = serve({ fetch: app.fetch, port });
+
+// Attach WebSocket server to the HTTP server for real-time updates
+// The @hono/node-server serve() returns a ServerType which is a union of
+// http.Server and http2.Server. We cast to http.Server since we're not
+// using HTTP/2.
+setupWebSocket(server as unknown as Server);
 
 // Start the scheduled report checker (runs every 60 min)
 startScheduler();
