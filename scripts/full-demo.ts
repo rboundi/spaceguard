@@ -14,7 +14,13 @@
  * 8. Creates 3 incidents from critical alerts
  * 9. Generates NIS2 reports for the closed incident
  * 10. Generates audit trail entries
- * 11. Sets NIS2 deadlines for active incidents
+ * 11. Creates syslog/webhook endpoint configurations
+ * 12. Creates scheduled report configurations
+ * 13. Creates playbook definitions and execution history
+ * 14. Generates risk scores for all assets (with historical snapshots)
+ * 15. Populates anomaly detection baselines
+ * 16. Creates correlated incidents (simulated auto-creation by engine)
+ * 17. Sets NIS2 deadlines for active incidents
  *
  * Usage:
  *   npx tsx scripts/full-demo.ts              # default (~2 min)
@@ -994,7 +1000,274 @@ async function run() {
     log(`  ${auditEntries.length} audit trail entries created`);
 
     // ==================================================================
-    logSection("Step 11: NIS2 Deadlines for Active Incidents");
+    logSection("Step 11: Syslog/Webhook Endpoint Configurations");
+    // ==================================================================
+
+    // Syslog endpoints for SIEM integration demo
+    await sql`
+      INSERT INTO syslog_endpoints (organization_id, name, host, port, protocol, format, min_severity, is_active)
+      VALUES
+        (${probaOrgId}, 'Splunk SIEM (Brussels NOC)', 'splunk.proba-space.eu', 514, 'TLS'::syslog_protocol, 'CEF'::syslog_format, 'MEDIUM'::syslog_min_severity, true),
+        (${probaOrgId}, 'QRadar Backup', 'qradar.proba-space.eu', 6514, 'TLS'::syslog_protocol, 'LEEF'::syslog_format, 'HIGH'::syslog_min_severity, true),
+        (${probaOrgId}, 'Dev/Test Syslog', 'logstash.dev.proba-space.eu', 5514, 'UDP'::syslog_protocol, 'JSON'::syslog_format, 'LOW'::syslog_min_severity, false)
+    `;
+    log("  3 syslog endpoint configurations created");
+
+    // ==================================================================
+    logSection("Step 12: Scheduled Report Configurations");
+    // ==================================================================
+
+    const nextMonday = new Date(NOW);
+    nextMonday.setDate(nextMonday.getDate() + ((8 - nextMonday.getDay()) % 7 || 7));
+    nextMonday.setHours(8, 0, 0, 0);
+
+    const nextMonth1st = new Date(NOW.getFullYear(), NOW.getMonth() + 1, 1, 8, 0, 0);
+
+    const nextQuarter1st = new Date(NOW.getFullYear(), Math.ceil((NOW.getMonth() + 1) / 3) * 3, 1, 8, 0, 0);
+
+    await sql`
+      INSERT INTO scheduled_reports (organization_id, report_type, schedule, day_of_week, recipients, next_run, is_active, last_generated)
+      VALUES
+        (${probaOrgId}, 'COMPLIANCE'::scheduled_report_type, 'WEEKLY'::report_schedule, 1, ${JSON.stringify(["ops@proba-space.eu", "admin@proba-space.eu"])}::jsonb, ${nextMonday}, true, ${hoursAgo(168)}),
+        (${probaOrgId}, 'INCIDENT_SUMMARY'::scheduled_report_type, 'WEEKLY'::report_schedule, 1, ${JSON.stringify(["ops@proba-space.eu", "ciso@proba-space.eu"])}::jsonb, ${nextMonday}, true, ${hoursAgo(168)}),
+        (${probaOrgId}, 'THREAT_BRIEFING'::scheduled_report_type, 'MONTHLY'::report_schedule, null, ${JSON.stringify(["admin@proba-space.eu", "ciso@proba-space.eu"])}::jsonb, ${nextMonth1st}, true, ${hoursAgo(720)}),
+        (${probaOrgId}, 'SUPPLY_CHAIN'::scheduled_report_type, 'QUARTERLY'::report_schedule, null, ${JSON.stringify(["admin@proba-space.eu", "procurement@proba-space.eu"])}::jsonb, ${nextQuarter1st}, true, null),
+        (${probaOrgId}, 'AUDIT_TRAIL'::scheduled_report_type, 'MONTHLY'::report_schedule, null, ${JSON.stringify(["auditor@proba-space.eu"])}::jsonb, ${nextMonth1st}, true, ${hoursAgo(720)})
+    `;
+    log("  5 scheduled report configurations created");
+
+    // ==================================================================
+    logSection("Step 13: Playbook Definitions & Execution History");
+    // ==================================================================
+
+    // Create 3 playbooks
+    const batteryPlaybookSteps = [
+      { id: "s1", type: "notify", label: "Alert flight dynamics team", config: { channel: "ops-critical", message: "Battery anomaly detected on {asset}" } },
+      { id: "s2", type: "runbook", label: "Execute safe-mode checklist", config: { runbook: "SAT-SM-001", timeout_min: 15 } },
+      { id: "s3", type: "isolate", label: "Switch to backup power bus", config: { action: "switch_power_bus", target: "backup" } },
+      { id: "s4", type: "notify", label: "Notify manufacturer", config: { channel: "email", recipients: ["support@ohb-se.de"] } },
+      { id: "s5", type: "escalate", label: "Create incident if unresolved", config: { severity: "CRITICAL", auto_create_incident: true } },
+    ];
+
+    const [batteryPlaybook] = await sql<Array<{ id: string }>>`
+      INSERT INTO playbooks (organization_id, name, description, trigger, steps, is_active, execution_count, last_executed)
+      VALUES (
+        ${probaOrgId},
+        'Battery Anomaly Response',
+        'Automated response for satellite battery voltage anomalies. Alerts ops team, initiates safe mode, switches to backup power bus, and escalates if unresolved.',
+        ${JSON.stringify({ auto: true, conditions: { severity: ["CRITICAL", "HIGH"], ruleIds: ["SG-TM-001"] } })}::jsonb,
+        ${JSON.stringify(batteryPlaybookSteps)}::jsonb,
+        true, 3, ${hoursAgo(30)}
+      )
+      RETURNING id
+    `;
+    log(`  Playbook: Battery Anomaly Response [${batteryPlaybook.id}]`);
+
+    const rfPlaybookSteps = [
+      { id: "s1", type: "notify", label: "Alert ground station operator", config: { channel: "ops-comms", message: "RF anomaly on {asset}" } },
+      { id: "s2", type: "diagnostic", label: "Run link budget analysis", config: { tool: "link_budget_calc", parameters: ["snr", "ber", "doppler"] } },
+      { id: "s3", type: "mitigate", label: "Switch to backup ground station", config: { action: "failover_ground_station", backup: "Matera" } },
+      { id: "s4", type: "report", label: "File interference report", config: { template: "ITU-RR-15.21", authority: "Norwegian Communications Authority" } },
+    ];
+
+    const [rfPlaybook] = await sql<Array<{ id: string }>>`
+      INSERT INTO playbooks (organization_id, name, description, trigger, steps, is_active, execution_count, last_executed)
+      VALUES (
+        ${probaOrgId},
+        'RF Interference Response',
+        'Response procedure for suspected RF interference or jamming on satellite communication links. Includes diagnostics, failover, and regulatory filing.',
+        ${JSON.stringify({ auto: false, conditions: { severity: ["HIGH", "CRITICAL"], spartaTactic: ["Denial"] } })}::jsonb,
+        ${JSON.stringify(rfPlaybookSteps)}::jsonb,
+        true, 1, ${hoursAgo(5)}
+      )
+      RETURNING id
+    `;
+    log(`  Playbook: RF Interference Response [${rfPlaybook.id}]`);
+
+    const accessPlaybookSteps = [
+      { id: "s1", type: "isolate", label: "Lock affected accounts", config: { action: "lock_accounts", scope: "targeted" } },
+      { id: "s2", type: "diagnostic", label: "Capture forensic snapshot", config: { tool: "forensic_capture", targets: ["auth_logs", "network_flows"] } },
+      { id: "s3", type: "notify", label: "Alert SOC and management", config: { channel: "security-critical", escalate_to: "CISO" } },
+      { id: "s4", type: "mitigate", label: "Block source IPs", config: { action: "firewall_block", duration_hours: 72 } },
+      { id: "s5", type: "report", label: "Generate preliminary IOC report", config: { format: "STIX", share_with: "CERT-EU" } },
+    ];
+
+    const [accessPlaybook] = await sql<Array<{ id: string }>>`
+      INSERT INTO playbooks (organization_id, name, description, trigger, steps, is_active, execution_count, last_executed)
+      VALUES (
+        ${probaOrgId},
+        'Unauthorized Access Response',
+        'Response playbook for unauthorized access attempts on mission control systems. Includes account lockdown, forensics, IP blocking, and CERT notification.',
+        ${JSON.stringify({ auto: true, conditions: { severity: ["CRITICAL"], spartaTactic: ["Initial Access"] } })}::jsonb,
+        ${JSON.stringify(accessPlaybookSteps)}::jsonb,
+        true, 1, ${hoursAgo(2)}
+      )
+      RETURNING id
+    `;
+    log(`  Playbook: Unauthorized Access Response [${accessPlaybook.id}]`);
+
+    // Create execution history for the battery playbook (3 executions)
+    const batteryExec1Log = [
+      { stepIndex: 0, stepType: "notify", status: "success", message: "Flight dynamics team alerted via ops-critical channel", timestamp: hoursAgo(36).toISOString() },
+      { stepIndex: 1, stepType: "runbook", status: "success", message: "Safe-mode checklist SAT-SM-001 completed in 12 minutes", timestamp: hoursAgo(35.8).toISOString() },
+      { stepIndex: 2, stepType: "isolate", status: "success", message: "Switched to backup power bus. Cell 3 bypassed.", timestamp: hoursAgo(35.5).toISOString() },
+      { stepIndex: 3, stepType: "notify", status: "success", message: "OHB SE notified via email", timestamp: hoursAgo(35.4).toISOString() },
+      { stepIndex: 4, stepType: "escalate", status: "success", message: "Incident created: Battery Cell Failure on Proba-EO-1", timestamp: hoursAgo(35.3).toISOString() },
+    ];
+
+    await sql`
+      INSERT INTO playbook_executions (playbook_id, incident_id, alert_id, triggered_by, status, steps_completed, steps_total, log, started_at, completed_at)
+      VALUES
+        (${batteryPlaybook.id}, ${batteryIncident.id}, ${alertIds[0]}, 'system (auto-trigger)', 'COMPLETED'::playbook_execution_status, 5, 5, ${JSON.stringify(batteryExec1Log)}::jsonb, ${hoursAgo(36)}, ${hoursAgo(35.3)}),
+        (${batteryPlaybook.id}, null, null, 'operator@proba-space.eu', 'COMPLETED'::playbook_execution_status, 5, 5, ${JSON.stringify(batteryExec1Log.map(e => ({...e, timestamp: hoursAgo(168).toISOString()})))}::jsonb, ${hoursAgo(168)}, ${hoursAgo(167.5)}),
+        (${rfPlaybook.id}, ${jammingIncident.id}, ${alertIds[1]}, 'operator@proba-space.eu', 'COMPLETED'::playbook_execution_status, 4, 4, ${JSON.stringify([
+          { stepIndex: 0, stepType: "notify", status: "success", message: "Ground station operator (KSAT) alerted", timestamp: hoursAgo(5.5).toISOString() },
+          { stepIndex: 1, stepType: "diagnostic", status: "success", message: "Link budget analysis complete. SNR degraded 8dB.", timestamp: hoursAgo(5.2).toISOString() },
+          { stepIndex: 2, stepType: "mitigate", status: "success", message: "Failover to Matera ground station initiated", timestamp: hoursAgo(5).toISOString() },
+          { stepIndex: 3, stepType: "report", status: "success", message: "ITU interference report filed with Norwegian Communications Authority", timestamp: hoursAgo(4.8).toISOString() },
+        ])}::jsonb, ${hoursAgo(5.5)}, ${hoursAgo(4.8)}),
+        (${accessPlaybook.id}, ${accessIncident.id}, ${alertIds[2]}, 'system (auto-trigger)', 'RUNNING'::playbook_execution_status, 2, 5, ${JSON.stringify([
+          { stepIndex: 0, stepType: "isolate", status: "success", message: "Admin account locked. All active sessions terminated.", timestamp: hoursAgo(2).toISOString() },
+          { stepIndex: 1, stepType: "diagnostic", status: "success", message: "Forensic snapshot captured: 847 auth log entries, 12 suspicious network flows", timestamp: hoursAgo(1.8).toISOString() },
+          { stepIndex: 2, stepType: "notify", status: "waiting", message: "Awaiting SOC acknowledgement...", timestamp: hoursAgo(1.7).toISOString() },
+        ])}::jsonb, ${hoursAgo(2)}, null)
+    `;
+    log("  4 playbook execution history records created");
+
+    // ==================================================================
+    logSection("Step 14: Risk Scores for All Assets");
+    // ==================================================================
+
+    // Generate risk scores for all Proba and NordSat assets
+    const allProbaAssets = ["Proba-EO-1", "Proba-EO-2", "Proba-EO-3", "Svalbard Ground Station", "Matera Ground Station", "Brussels Mission Control", "Primary S-band TT&C Link", "X-band Payload Data Link"];
+    const allNordAssets = ["NordSat-Alpha", "NordSat-Beta", "NordSat-Gamma", "NordSat-Delta", "Kiruna Ground Station", "Stockholm Operations"];
+
+    const riskProfiles: Array<{ name: string; orgId: string; score: number; breakdown: { compliance: number; threat: number; alerts: number; supplyChain: number; config: number } }> = [
+      // Proba assets (varying risk based on incidents/compliance)
+      { name: "Proba-EO-1", orgId: probaOrgId, score: 72, breakdown: { compliance: 15, threat: 22, alerts: 20, supplyChain: 8, config: 7 } },
+      { name: "Proba-EO-2", orgId: probaOrgId, score: 45, breakdown: { compliance: 12, threat: 10, alerts: 5, supplyChain: 8, config: 10 } },
+      { name: "Proba-EO-3", orgId: probaOrgId, score: 58, breakdown: { compliance: 15, threat: 12, alerts: 8, supplyChain: 8, config: 15 } },
+      { name: "Svalbard Ground Station", orgId: probaOrgId, score: 65, breakdown: { compliance: 10, threat: 25, alerts: 15, supplyChain: 10, config: 5 } },
+      { name: "Matera Ground Station", orgId: probaOrgId, score: 38, breakdown: { compliance: 10, threat: 8, alerts: 5, supplyChain: 10, config: 5 } },
+      { name: "Brussels Mission Control", orgId: probaOrgId, score: 68, breakdown: { compliance: 10, threat: 18, alerts: 20, supplyChain: 5, config: 15 } },
+      { name: "Primary S-band TT&C Link", orgId: probaOrgId, score: 35, breakdown: { compliance: 5, threat: 10, alerts: 5, supplyChain: 5, config: 10 } },
+      { name: "X-band Payload Data Link", orgId: probaOrgId, score: 55, breakdown: { compliance: 20, threat: 10, alerts: 5, supplyChain: 5, config: 15 } },
+      // NordSat assets (higher risk due to less mature posture)
+      { name: "NordSat-Alpha", orgId: nordOrgId, score: 78, breakdown: { compliance: 25, threat: 15, alerts: 18, supplyChain: 12, config: 8 } },
+      { name: "NordSat-Beta", orgId: nordOrgId, score: 62, breakdown: { compliance: 25, threat: 12, alerts: 5, supplyChain: 12, config: 8 } },
+      { name: "NordSat-Gamma", orgId: nordOrgId, score: 62, breakdown: { compliance: 25, threat: 12, alerts: 5, supplyChain: 12, config: 8 } },
+      { name: "NordSat-Delta", orgId: nordOrgId, score: 62, breakdown: { compliance: 25, threat: 12, alerts: 5, supplyChain: 12, config: 8 } },
+      { name: "Kiruna Ground Station", orgId: nordOrgId, score: 55, breakdown: { compliance: 20, threat: 10, alerts: 5, supplyChain: 15, config: 5 } },
+      { name: "Stockholm Operations", orgId: nordOrgId, score: 50, breakdown: { compliance: 18, threat: 10, alerts: 5, supplyChain: 10, config: 7 } },
+    ];
+
+    for (const rp of riskProfiles) {
+      const aId = assetMap.get(rp.name);
+      if (!aId) continue;
+      // Insert current score + 2 historical snapshots
+      for (const age of [0, 168, 336]) {
+        const historicalScore = age === 0 ? rp.score : rp.score + Math.floor(Math.random() * 10) - 3;
+        await sql`
+          INSERT INTO risk_scores_history (organization_id, asset_id, score, breakdown, calculated_at)
+          VALUES (${rp.orgId}, ${aId}, ${historicalScore}, ${JSON.stringify(rp.breakdown)}::jsonb, ${hoursAgo(age)})
+        `;
+      }
+    }
+    log(`  ${riskProfiles.length} assets with risk scores (3 snapshots each)`);
+
+    // ==================================================================
+    logSection("Step 15: Anomaly Baselines");
+    // ==================================================================
+
+    // Populate baselines for telemetry streams to enable anomaly detection
+    const probaHkStreamId2 = streams[0]?.id;
+    const probaCommsStreamId2 = streams[1]?.id;
+    const nordStreamId2 = streams[2]?.id;
+
+    if (probaHkStreamId2) {
+      const windowStart = hoursAgo(168);
+      const windowEnd = hoursAgo(0);
+      await sql`
+        INSERT INTO telemetry_baselines (stream_id, parameter_name, window_start, window_end, mean, std_deviation, min_value, max_value, sample_count)
+        VALUES
+          (${probaHkStreamId2}, 'battery_voltage_v', ${windowStart}, ${windowEnd}, 30.2, 1.8, 26.1, 33.0, 12096),
+          (${probaHkStreamId2}, 'solar_current_a', ${windowStart}, ${windowEnd}, 2.1, 1.6, 0.0, 4.3, 12096),
+          (${probaHkStreamId2}, 'temperature_obc_c', ${windowStart}, ${windowEnd}, 18.5, 8.2, -5.0, 38.0, 12096)
+        ON CONFLICT ON CONSTRAINT telemetry_baselines_stream_param_uniq DO UPDATE
+        SET mean = EXCLUDED.mean, std_deviation = EXCLUDED.std_deviation,
+            min_value = EXCLUDED.min_value, max_value = EXCLUDED.max_value,
+            sample_count = EXCLUDED.sample_count, window_start = EXCLUDED.window_start,
+            window_end = EXCLUDED.window_end, updated_at = NOW()
+      `;
+      log("  Proba-EO-1 HK baselines: battery_voltage_v, solar_current_a, temperature_obc_c");
+    }
+
+    if (probaCommsStreamId2) {
+      const windowStart = hoursAgo(168);
+      const windowEnd = hoursAgo(0);
+      await sql`
+        INSERT INTO telemetry_baselines (stream_id, parameter_name, window_start, window_end, mean, std_deviation, min_value, max_value, sample_count)
+        VALUES
+          (${probaCommsStreamId2}, 'signal_strength_dbm', ${windowStart}, ${windowEnd}, -72.0, 5.5, -95.0, -55.0, 1728)
+        ON CONFLICT ON CONSTRAINT telemetry_baselines_stream_param_uniq DO UPDATE
+        SET mean = EXCLUDED.mean, std_deviation = EXCLUDED.std_deviation,
+            min_value = EXCLUDED.min_value, max_value = EXCLUDED.max_value,
+            sample_count = EXCLUDED.sample_count, window_start = EXCLUDED.window_start,
+            window_end = EXCLUDED.window_end, updated_at = NOW()
+      `;
+      log("  Proba-EO-1 COMMS baselines: signal_strength_dbm");
+    }
+
+    if (nordStreamId2) {
+      const windowStart = hoursAgo(168);
+      const windowEnd = hoursAgo(0);
+      await sql`
+        INSERT INTO telemetry_baselines (stream_id, parameter_name, window_start, window_end, mean, std_deviation, min_value, max_value, sample_count)
+        VALUES
+          (${nordStreamId2}, 'temperature_obc_c', ${windowStart}, ${windowEnd}, 17.0, 7.5, -8.0, 35.0, 12096),
+          (${nordStreamId2}, 'battery_voltage_v', ${windowStart}, ${windowEnd}, 30.5, 1.5, 27.0, 33.0, 12096)
+        ON CONFLICT ON CONSTRAINT telemetry_baselines_stream_param_uniq DO UPDATE
+        SET mean = EXCLUDED.mean, std_deviation = EXCLUDED.std_deviation,
+            min_value = EXCLUDED.min_value, max_value = EXCLUDED.max_value,
+            sample_count = EXCLUDED.sample_count, window_start = EXCLUDED.window_start,
+            window_end = EXCLUDED.window_end, updated_at = NOW()
+      `;
+      log("  NordSat-Alpha HK baselines: temperature_obc_c, battery_voltage_v");
+    }
+
+    // ==================================================================
+    logSection("Step 16: Correlated Incidents (Auto-Created by Engine)");
+    // ==================================================================
+
+    // Create a correlated incident that groups the battery alert + temp spike
+    // This demonstrates the correlation engine's ability to link related anomalies
+    const correlatedTimeline = [
+      { timestamp: hoursAgo(1.5).toISOString(), event: "Correlation engine detected pattern: multiple thermal/power anomalies across fleet", actor: "system" },
+      { timestamp: hoursAgo(1.4).toISOString(), event: "Grouped 2 alerts: Battery Cell Failure (Proba-EO-1) + OBC Temperature Spike (NordSat-Alpha)", actor: "system" },
+      { timestamp: hoursAgo(1.3).toISOString(), event: "Auto-created incident for operator review", actor: "system" },
+    ];
+
+    await sql`
+      INSERT INTO incidents (organization_id, title, description, severity, status, nis2_classification, sparta_techniques, affected_asset_ids, timeline, detected_at, correlation_rule, correlation_score)
+      VALUES (
+        ${probaOrgId},
+        'Correlated: Fleet-wide Thermal/Power Anomaly Pattern',
+        'The correlation engine detected a pattern of thermal and power anomalies across multiple satellites in a 2-hour window. Battery cell failure on Proba-EO-1 and OBC temperature spike on NordSat-Alpha may share a common root cause (e.g., solar storm, shared component batch). Requires cross-operator investigation.',
+        'MEDIUM'::incident_severity,
+        'DETECTED'::incident_status,
+        'STANDARD'::incident_nis2_classification,
+        ${JSON.stringify([{ tactic: "Denial", technique: "Denial of Service" }])}::jsonb,
+        ${JSON.stringify([probaEO1, nordAlpha])}::jsonb,
+        ${JSON.stringify(correlatedTimeline)}::jsonb,
+        ${hoursAgo(1.5)},
+        'temporal_proximity',
+        0.82
+      )
+    `;
+    log("  1 correlated incident created (fleet-wide thermal/power pattern)");
+
+    // ==================================================================
+    logSection("Step 17: NIS2 Deadlines for Active Incidents");
     // ==================================================================
 
     // Jamming incident: notification due in 18 hours
@@ -1044,10 +1317,16 @@ async function run() {
       UNION ALL SELECT 'suppliers', count(*)::text FROM suppliers
       UNION ALL SELECT 'users', count(*)::text FROM users
       UNION ALL SELECT 'telemetry_streams', count(*)::text FROM telemetry_streams
+      UNION ALL SELECT 'telemetry_baselines', count(*)::text FROM telemetry_baselines
       UNION ALL SELECT 'alerts', count(*)::text FROM alerts
       UNION ALL SELECT 'incidents', count(*)::text FROM incidents
       UNION ALL SELECT 'incident_reports', count(*)::text FROM incident_reports
       UNION ALL SELECT 'incident_notes', count(*)::text FROM incident_notes
+      UNION ALL SELECT 'playbooks', count(*)::text FROM playbooks
+      UNION ALL SELECT 'playbook_executions', count(*)::text FROM playbook_executions
+      UNION ALL SELECT 'risk_scores_history', count(*)::text FROM risk_scores_history
+      UNION ALL SELECT 'scheduled_reports', count(*)::text FROM scheduled_reports
+      UNION ALL SELECT 'syslog_endpoints', count(*)::text FROM syslog_endpoints
       UNION ALL SELECT 'audit_log', count(*)::text FROM audit_log
       ORDER BY table_name
     `;
@@ -1067,13 +1346,19 @@ ${"=".repeat(60)}
     Auditor:  auditor@proba-space.eu  / SpaceGuard2026!
 
   Key demo scenarios:
-    - Dashboard: Shows compliance scores, active alerts, incident deadlines
+    - Dashboard: Compliance scores, active alerts, incident deadlines, risk overview
     - Alerts: 5 anomaly scenarios + 5 context alerts (mix of severities)
-    - Incidents: 1 CLOSED (full lifecycle), 1 INVESTIGATING, 1 DETECTED
+    - Incidents: 1 CLOSED, 1 INVESTIGATING, 1 DETECTED + 1 correlated (auto-created)
     - Compliance: Mixed posture across 4 orgs and 2 regulations
     - Supply Chain: 5 assessed vendors for Proba
     - NIS2 Reports: Full Article 23 lifecycle for battery incident
     - Deadlines: Notification due 18h, Early warning due 22h
+    - Playbooks: 3 playbooks with 4 execution records (1 still running)
+    - Risk Scores: 14 assets scored with 3 historical snapshots each
+    - Anomaly Baselines: Statistical baselines for all telemetry parameters
+    - Scheduled Reports: 5 configured (compliance, incidents, threats, supply, audit)
+    - Integrations: 3 syslog endpoints (Splunk, QRadar, dev)
+    - Correlation: Auto-grouped fleet-wide thermal/power anomaly pattern
     - Audit Trail: 48h of realistic activity
 `);
 

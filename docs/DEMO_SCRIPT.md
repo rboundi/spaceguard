@@ -1,6 +1,6 @@
 # SpaceGuard Demo Script
 
-A 15-minute walkthrough for demoing SpaceGuard to prospects and investors. This script assumes the full demo scenario has been loaded (`npx tsx scripts/full-demo.ts`).
+A 20-minute walkthrough for demoing SpaceGuard to prospects and investors. This script assumes the full demo scenario has been loaded (`npx tsx scripts/full-demo.ts`).
 
 ## Pre-Demo Checklist
 
@@ -23,37 +23,41 @@ Open the login page and sign in with the admin credentials:
 
 ## Act 1: The Dashboard (2 minutes)
 
-Start here. The dashboard shows the operational posture at a glance.
+Start here. The dashboard is fully customizable with drag-and-drop widgets.
 
 **Walk through these elements:**
 
 1. **Compliance score donut** (top left): "Proba Space Systems is at around 60% NIS2 compliance. The donut breaks down by status: compliant, partially compliant, non-compliant, and not yet assessed."
 
-2. **Active incidents card**: "We have active security incidents right now. You can see severity breakdown and the count of open cases."
+2. **Active incidents card**: "We have active security incidents right now, including one that was auto-created by the correlation engine. We'll see how that works shortly."
 
-3. **NIS2 deadline countdown**: "These are regulatory deadlines from NIS2 Article 23. The platform tracks early warning (24 hours), incident notification (72 hours), and final report (30 days) deadlines automatically. Red means a deadline is approaching."
+3. **NIS2 deadline countdown**: "These are regulatory deadlines from NIS2 Article 23. The platform tracks early warning (24 hours), incident notification (72 hours), and final report (30 days) deadlines automatically."
 
-4. **Recent alerts table**: "The detection engine has flagged several anomalies in the last 48 hours. We'll investigate one of these shortly."
+4. **Risk heatmap**: "Every asset has a risk score calculated across five dimensions: compliance gaps, threat exposure, active alerts, supply chain risk, and configuration weaknesses. The heatmap shows which assets need attention."
+
+5. **Recent alerts table**: "The detection engine has flagged several anomalies in the last 48 hours. We'll investigate one of these shortly."
+
+**Talking point:** "The dashboard layout is fully customizable. Each user can drag, resize, and arrange widgets to match their workflow. Changes persist across sessions."
 
 **Ask the prospect:** "How are you currently tracking your NIS2 compliance deadlines? Are you doing this manually?"
 
-## Act 2: Asset Registry (2 minutes)
+## Act 2: Asset Registry & Risk Scoring (2 minutes)
 
 Navigate to **Assets** in the sidebar.
 
 **Walk through:**
 
-1. "Proba has 8 registered assets: LEO satellites, ground stations, a control center, network segments, and communication links."
+1. "Proba has 8 registered assets: LEO satellites, ground stations, a control center, and communication links. Notice the risk score badges next to each asset."
 
-2. Click on **Proba-EO-1** (the primary satellite): "Each asset has its type, criticality level, operational status, and compliance mappings. This satellite is marked CRITICAL because it's the primary revenue-generating payload."
+2. Click on **Proba-EO-1** (the primary satellite): "This satellite has a risk score of 72 out of 100. Let me show you why."
 
-3. Show the compliance mappings on the asset detail page: "You can see which NIS2 requirements apply to this specific asset and their current compliance status."
+3. Show the risk breakdown: "The score comes from five dimensions. Proba-EO-1 scores high on threat exposure (22) because of the recent battery incident, and high on active alerts (20) because of ongoing anomalies."
 
-**Talking point:** "Most satellite operators we talk to are managing this in spreadsheets. SpaceGuard gives you a single source of truth that connects assets to requirements to evidence."
+4. Navigate to the **Risk** page: "Here you can compare risk scores across your entire fleet. NordSat-Alpha has the highest score at 78 because NordSat IoT is a less mature organization with more compliance gaps."
 
-**Ask the prospect:** "How many assets are in your constellation? Do you track ground stations separately?"
+**Talking point:** "Risk scores update automatically as compliance status changes, new alerts fire, or supplier assessments expire. This gives you a continuous, quantified view of your security posture."
 
-## Act 3: Telemetry & Detection (3 minutes)
+## Act 3: Telemetry & AI Anomaly Detection (3 minutes)
 
 Navigate to **Telemetry** in the sidebar.
 
@@ -61,91 +65,121 @@ Navigate to **Telemetry** in the sidebar.
 
 2. Click on the **Proba-EO-1 HK** stream to see the detail view: "Here's the time-series data. You can see battery voltage, solar current, and onboard temperature plotted over time."
 
-3. Point to the anomaly region: "Notice this area where battery voltage starts dropping. The detection engine picked this up automatically."
+3. **Highlight the anomaly with baseline overlay**: "The shaded band behind the chart is the statistical baseline. SpaceGuard calculates rolling mean and standard deviation for every parameter. When the battery voltage drops outside the normal band, you get the red anomaly markers."
+
+4. Point to the battery voltage drop: "This anomaly was detected automatically. The z-score exceeded the threshold, meaning the value was more than 3 standard deviations from the rolling mean. The system generated an alert without any manual threshold configuration."
 
 Navigate to **Alerts** in the sidebar.
 
-4. "The detection engine generated alerts for five different anomaly scenarios. Let me show you the most critical one."
+5. "The detection engine generated alerts for five different anomaly scenarios. Let me show you the most critical one."
 
-5. Click to expand the **Battery Cell Failure** alert (CRITICAL): "This alert was triggered when battery voltage on Proba-EO-1 dropped below the safe threshold. The system classified it using the SPARTA space-attack framework."
+6. Click to expand the **Battery Cell Failure** alert: "This alert was triggered when battery voltage dropped below the safe threshold. SpaceGuard enriched it with SPARTA space-attack framework classification and provided detection guidance."
 
-6. Show the Intelligence Context section: "SpaceGuard enriches every alert with SPARTA technique mappings, detection tips, and recommended mitigations. This turns a raw anomaly into actionable intelligence."
+**Talking point:** "Traditional SOC tools don't understand space telemetry. They can't tell you that a battery voltage drop at this orbital position is anomalous versus expected during eclipse. SpaceGuard's detection uses statistical baselines trained on your actual telemetry data."
 
-**Talking point:** "Traditional SOC tools don't understand space telemetry. They can't tell you that a battery voltage drop at this orbital position is anomalous versus expected during eclipse. SpaceGuard's detection rules are built specifically for space operations."
+## Act 4: Alert Correlation (2 minutes)
 
-## Act 4: Alert to Incident (2 minutes)
+Stay on the **Alerts** page or navigate to **Incidents**.
 
-From the expanded alert row:
+1. "Notice this incident marked with a correlation badge: 'Correlated: Fleet-wide Thermal/Power Anomaly Pattern.' This was created automatically by the correlation engine."
 
-1. Click **Create Incident**: "One click turns this alert into a tracked security incident. The system pre-fills the incident title, description, severity, and SPARTA classification from the alert."
+2. Click into the correlated incident: "The engine detected that a battery failure on Proba-EO-1 and a temperature spike on NordSat-Alpha happened within a 2-hour window. It grouped them into a single investigation with a correlation score of 0.82."
 
-2. You'll be redirected to the new incident detail page. Alternatively, navigate to **Incidents** and click the existing **Battery Cell Failure** incident.
+3. Show the timeline: "The correlation engine uses four rules: temporal proximity (events close in time), asset proximity (same asset or fleet), technique clustering (similar SPARTA techniques), and campaign detection (coordinated patterns)."
 
-3. Show the incident detail page: "Here's the full incident lifecycle view. You can see the timeline of events, linked alerts, and investigator notes."
+**Talking point:** "Alert fatigue is the number one problem in security operations. The correlation engine reduces noise by grouping related alerts and surfacing what matters. Instead of investigating 10 separate alerts, your team sees one correlated incident."
 
-4. Scroll to the **NIS2 Regulatory Reports** section: "The moment an incident is created, SpaceGuard starts the NIS2 Article 23 clock. Early warning must go to the CSIRT within 24 hours, incident notification within 72 hours, and the final report within 30 days."
+**Ask the prospect:** "How many alerts does your team see per day? Do you have a way to group related events?"
 
-5. Show the existing reports (for the battery incident, all three should be SUBMITTED): "For this resolved incident, all three reports were generated and submitted on time. The platform tracks submission status and deadlines."
+## Act 5: Alert to Incident & Playbook Execution (3 minutes)
 
-**Ask the prospect:** "Have you had to file an NIS2 incident report yet? How long did it take to prepare?"
+Navigate to the **Incidents** list.
 
-## Act 5: Compliance & Regulatory (2 minutes)
+1. "We have four incidents: one closed (battery failure), one investigating (RF jamming), one just detected (unauthorized access), and one auto-correlated."
+
+2. Click into the **Battery Cell Failure** incident (CLOSED): "Here's the full incident lifecycle. Timeline shows every status change from detection through resolution."
+
+3. Scroll to the **Playbook Execution** section: "When this alert fired, the Battery Anomaly Response playbook auto-triggered. You can see the five steps it executed: alert the flight dynamics team, run the safe-mode checklist, switch to backup power bus, notify the manufacturer, and escalate to incident."
+
+4. Show the per-step execution log: "Every step has a timestamp, status (success/failed/waiting), and detailed message. This is your audit trail for automated responses."
+
+Navigate to **Playbooks** in the sidebar.
+
+5. "We have three playbooks configured. The Battery Anomaly Response triggers automatically on CRITICAL battery alerts. The RF Interference Response is manual. The Unauthorized Access Response auto-triggers on Initial Access tactics."
+
+6. Show the visual step builder: "Each playbook defines a sequence of steps with types like notify, isolate, diagnostic, mitigate, escalate, and report. You can configure trigger conditions based on severity, SPARTA tactic, or specific rule IDs."
+
+**Talking point:** "Playbooks turn your incident response procedures into executable, auditable workflows. When a 2 AM alert fires, the platform starts your response automatically instead of waiting for a human to wake up."
+
+## Act 6: Compliance & Regulatory (2 minutes)
 
 Navigate to **Compliance** in the sidebar.
 
-1. "This is the NIS2 Article 21 compliance mapper. All 10 categories from Article 21(2) are covered: risk analysis, incident handling, business continuity, supply chain security, and more."
+1. "This is the compliance mapper. SpaceGuard supports three regulation frameworks: NIS2 Article 21, ENISA Space Threat Landscape, and the new Cyber Resilience Act (CRA). Use the filter to switch between them."
 
-2. Click through a few categories: "Each requirement can be mapped at the organization level or per-asset. You set the status, add evidence descriptions, and track when it was last assessed."
+2. Click through the CRA requirements: "CRA is specifically relevant for space operators building products with digital elements. SpaceGuard maps these requirements alongside NIS2 so you don't have to manage them separately."
 
-3. Show a category with mixed statuses: "Proba is fully compliant on some requirements but has gaps in supply chain security and business continuity. These gaps show up on the dashboard."
+3. Navigate to the **Battery Cell Failure** incident and scroll to NIS2 Reports: "For the closed battery incident, all three NIS2 Article 23 reports were generated and submitted on time. Early warning within 24h, incident notification within 72h, final report within 30 days."
 
 Navigate to **Reports** in the sidebar.
 
-4. Click **Download PDF**: "One click generates a comprehensive compliance status report. This is what you'd hand to an auditor or attach to a regulatory submission."
+4. Click **Download PDF**: "One click generates a comprehensive compliance status report for auditors."
 
-**Talking point:** "NIS2 applies to space operators classified as essential or important entities. The regulation is enforced starting October 2024. SpaceGuard maps every requirement to your specific assets and tracks compliance continuously, not just at audit time."
+**Talking point:** "NIS2 enforcement started October 2024. CRA requirements begin applying in 2027. SpaceGuard tracks both continuously, not just at audit time."
 
-## Act 6: Threat Intelligence & Supply Chain (2 minutes)
+## Act 7: Integrations & Scheduled Reports (2 minutes)
+
+Navigate to **Settings** in the sidebar.
+
+1. Show the Syslog/SIEM Integrations section: "SpaceGuard pushes alerts to your existing SIEM via syslog. We support CEF format for Splunk, LEEF for QRadar, and JSON for Elastic. You can configure multiple endpoints with different severity filters."
+
+2. Point to the configured endpoints: "Proba has three endpoints: their primary Splunk instance gets MEDIUM and above over TLS, QRadar backup gets only HIGH/CRITICAL, and there's a dev endpoint for testing."
+
+3. Show the Scheduled Reports section: "Reports can be generated automatically. Proba gets a weekly compliance summary every Monday, a monthly threat briefing, and a quarterly supply chain review. Recipients are configurable."
+
+**Talking point:** "SpaceGuard integrates with your existing security infrastructure. It's not a replacement for your SIEM; it's the space-native data source that feeds into it."
+
+## Act 8: Threat Intelligence & Supply Chain (2 minutes)
 
 Navigate to **SPARTA Navigator** (under Admin in the sidebar).
 
-1. "SpaceGuard integrates the SPARTA framework, which is the space-specific equivalent of MITRE ATT&CK. It covers 11 tactics and 85+ techniques specific to satellite and ground station attacks."
+1. "SpaceGuard integrates the SPARTA framework, the space-specific equivalent of MITRE ATT&CK. It covers 11 tactics and 85+ techniques specific to satellite and ground station attacks."
 
-2. Search for a technique: "You can search by technique name, tactic, or keyword. Each technique has detection guidance and recommended mitigations."
+2. Search for a technique: "Each technique has detection guidance and recommended mitigations."
 
 Navigate to **Supply Chain** in the sidebar.
 
-3. "NIS2 requires supply chain risk management. SpaceGuard tracks your suppliers with risk scores, security certifications, and review schedules."
+3. "NIS2 requires supply chain risk management. Proba tracks 5 suppliers with risk scores, security certifications (ISO 27001, SOC 2), and review schedules."
 
-4. Point out a high-risk or overdue supplier: "This supplier hasn't been reviewed in over a year and has a high risk score. The platform flags these automatically."
+4. Point to the high-risk vendor: "This software vendor has a risk score of 7/10, no ISO 27001, and their review is overdue. The platform flags these automatically."
 
-**Ask the prospect:** "Who are your critical suppliers for ground segment operations? Do you track their security posture today?"
-
-## Act 7: Audit Trail & Export (1 minute)
+## Act 9: Audit Trail & Developer Portal (1 minute)
 
 Navigate to **Audit** in the sidebar.
 
-1. "Every action in SpaceGuard is logged: logins, asset changes, compliance updates, incident actions, report submissions. This is essential for NIS2 Article 21 accountability requirements."
+1. "Every action is logged: logins, asset changes, compliance updates, incident actions, playbook executions, report submissions. This is essential for NIS2 accountability."
 
-2. Show the filters: "You can filter by date range, actor, action type, or resource. And export the full trail as CSV or PDF for auditors."
+Navigate to **Developer Portal** (`/developers`).
 
-Navigate to the **Alerts** page, select a few alerts, and click **STIX Export**.
-
-3. "For sharing threat intelligence with your national CSIRT or peer operators, SpaceGuard exports in STIX 2.1 format. This is the standard used by EU CSIRT networks."
+2. "For integrations, we provide full OpenAPI documentation with interactive endpoint exploration. Your engineering team can build custom integrations using our REST API."
 
 ## Closing (1 minute)
 
 Return to the **Dashboard**.
 
-"SpaceGuard gives you a single platform that connects your space assets to NIS2 compliance requirements, monitors telemetry for anomalies, manages incidents with regulatory deadline tracking, and produces audit-ready reports. Everything is purpose-built for space operations."
+"SpaceGuard gives you a single platform that monitors satellite telemetry with AI anomaly detection, auto-correlates alerts to reduce noise, executes response playbooks automatically, tracks NIS2 and CRA compliance continuously, calculates risk across your entire fleet, and integrates with your existing SIEM. Everything is purpose-built for space operations."
 
 **Key differentiators to emphasize:**
 
 - Space-native: understands CCSDS telemetry, orbital mechanics, and SPARTA threat framework
-- NIS2-first: built around EU regulatory requirements, not retrofitted
+- AI-powered: statistical anomaly detection with rolling baselines, not static thresholds
+- Alert correlation: auto-groups related events to reduce noise by 80%+
+- Automated response: playbooks execute your IR procedures without human delay
+- Risk-quantified: five-dimension scoring across every asset with historical trends
+- NIS2 and CRA-first: built around EU regulatory requirements, not retrofitted
 - Operator-friendly: designed for 10-200 person teams without dedicated security staff
-- Audit-ready: continuous compliance tracking, not point-in-time assessments
-- Integrated: asset registry, detection, incidents, intel, and compliance in one platform
+- Audit-ready: continuous compliance tracking with full action logging
+- Production-ready: Docker deployment with SSL, nginx reverse proxy, and automated backups
 
 **Ask the prospect:** "What's your biggest pain point right now: compliance tracking, threat detection, or incident response? We can dive deeper into any of these areas."
 
@@ -155,16 +189,20 @@ The full demo data includes these pre-built scenarios:
 
 | Scenario | Org | Status | Description |
 |----------|-----|--------|-------------|
-| Battery Cell Failure | Proba Space Systems | CLOSED | Resolved incident with all three NIS2 reports submitted |
-| RF Signal Jamming | Proba Space Systems | INVESTIGATING | Active incident with early warning report, 18h until notification deadline |
-| Unauthorized Access | Proba Space Systems | DETECTED | New incident just detected, 22h until early warning deadline |
+| Battery Cell Failure | Proba Space Systems | CLOSED | Full lifecycle with all NIS2 reports submitted, playbook auto-executed |
+| RF Signal Jamming | Proba Space Systems | INVESTIGATING | Active incident, playbook ran failover to Matera, 18h until notification deadline |
+| Unauthorized Access | Proba Space Systems | DETECTED | New incident, playbook running (2/5 steps complete), 22h until early warning |
+| Fleet Thermal/Power Pattern | Proba Space Systems | DETECTED | Auto-correlated by engine, groups battery + temp anomalies across fleet |
 | Temperature Spike | NordSat IoT | Alert only | Anomaly on NordSat satellite, not yet escalated |
 | Telemetry Dropout | Proba Space Systems | Alert only | Communication gap detected, under investigation |
 
 ## Tips for Presenters
 
-- Keep the demo moving. Don't dwell on any single page for more than 2 minutes.
+- Keep the demo moving. Don't dwell on any single page for more than 3 minutes.
 - Use the NIS2 deadline countdown as a hook. Every operator worries about regulatory deadlines.
-- The "Create Incident from Alert" flow is the most impressive. Practice it until it feels smooth.
+- The anomaly baseline overlay is the most visually compelling feature. Make sure to pause on the telemetry chart.
+- The correlated incident is a great "wow" moment. Practice the transition from individual alerts to the auto-grouped incident.
+- Show the playbook execution log to demonstrate automation. The per-step timestamps prove the platform responds in seconds, not hours.
+- Risk score comparison between Proba-EO-1 (72) and NordSat-Alpha (78) is a great conversation starter about security maturity.
 - If the prospect asks about a feature that doesn't exist yet, note it and move on. Don't apologize.
-- Adjust depth based on audience: investors care about market and differentiation, operators care about the detection engine and compliance mapping.
+- Adjust depth based on audience: investors care about market and differentiation, operators care about the detection engine and playbooks, CISOs care about compliance and risk scoring.
