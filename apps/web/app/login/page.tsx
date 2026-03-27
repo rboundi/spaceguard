@@ -9,8 +9,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("admin@proba-space.eu");
+  const [password, setPassword] = useState("spaceguard123");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -21,7 +21,8 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.push("/");
+      // Use full page navigation so AuthProvider reads fresh localStorage on mount
+      window.location.href = "/";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -48,6 +49,7 @@ export default function LoginPage() {
         {/* Login form */}
         <form
           onSubmit={handleSubmit}
+          autoComplete="off"
           className="bg-slate-900 border border-slate-800 rounded-lg p-6 space-y-4"
         >
           <div>
@@ -61,7 +63,7 @@ export default function LoginPage() {
               id="email"
               type="email"
               required
-              autoComplete="email"
+              autoComplete="off"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full h-9 px-3 rounded-md bg-slate-800 border border-slate-700 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
@@ -80,7 +82,7 @@ export default function LoginPage() {
               id="password"
               type="password"
               required
-              autoComplete="current-password"
+              autoComplete="off"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full h-9 px-3 rounded-md bg-slate-800 border border-slate-700 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
@@ -105,7 +107,7 @@ export default function LoginPage() {
 
         {/* Dev hint */}
         <p className="text-[10px] text-slate-600 text-center mt-4">
-          Demo: admin@proba-space.eu / SpaceGuard2026!
+          Demo: admin@proba-space.eu / spaceguard123
         </p>
       </div>
     </div>

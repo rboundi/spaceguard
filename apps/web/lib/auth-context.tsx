@@ -86,42 +86,47 @@ function removeUser(): void {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Initialize state synchronously from localStorage so it survives
+  // React 18 Strict Mode double-mount in development.
+  const [user, setUser] = useState<AuthUser | null>(() => readUser());
+  const [token, setToken] = useState<string | null>(() => readToken());
+  const [loading, setLoading] = useState(() => !!(readToken() && readUser()));
 
-  // On mount, restore from localStorage and validate
+  // On mount, validate the stored token against the API
   useEffect(() => {
-    const storedToken = readToken();
-    const storedUser = readUser();
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(storedUser);
-      // Validate token in background
-      fetch(`${API_URL}/api/v1/auth/me`, {
-        headers: { Authorization: `Bearer ${storedToken}` },
-      })
-        .then(async (res) => {
-          if (res.ok) {
-            const freshUser = await res.json() as AuthUser;
-            setUser(freshUser);
-            writeUser(freshUser);
-          } else {
-            // Token expired/invalid
-            removeToken();
-            removeUser();
-            setToken(null);
-            setUser(null);
-          }
-        })
-        .catch(() => {
-          // Network error; keep cached user for now
-        })
-        .finally(() => setLoading(false));
-    } else {
+    if (!token || !user) {
       setLoading(false);
+      return;
     }
-  }, []);
+
+    let cancelled = false;
+
+    fetch(`${API_URL}/api/v1/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (res) => {
+        if (cancelled) return;
+        if (res.ok) {
+          const freshUser = await res.json() as AuthUser;
+          setUser(freshUser);
+          writeUser(freshUser);
+        } else {
+          // Token expired/invalid
+          removeToken();
+          removeUser();
+          setToken(null);
+          setUser(null);
+        }
+      })
+      .catch(() => {
+        // Network error; keep cached user for now
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await fetch(`${API_URL}/api/v1/auth/login`, {

@@ -56,16 +56,11 @@ async function request<T>(
   });
 
   if (!res.ok) {
-    // If 401 and we have a token, it may be expired: clear it
-    if (res.status === 401 && token) {
-      try {
-        localStorage.removeItem("spaceguard_token");
-        localStorage.removeItem("spaceguard_user");
-      } catch { /* ignore */ }
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-    }
+    // NOTE: We intentionally do NOT auto-clear tokens or redirect on 401
+    // here. AuthProvider validates the token on mount and AuthGuard
+    // handles the redirect to /login when the user is not authenticated.
+    // Previous auto-logout logic caused race conditions where concurrent
+    // API calls during initial page load would clear freshly-issued tokens.
     const body = await res.json().catch(() => ({ error: res.statusText }));
     const msg = typeof body.error === "string" ? body.error : (body.message ?? res.statusText);
     throw new ApiError(res.status, msg);
