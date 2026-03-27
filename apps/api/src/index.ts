@@ -24,6 +24,7 @@ import { syslogRoutes } from "./routes/syslog";
 import { enisaRoutes } from "./routes/enisa";
 import { docsRoutes } from "./routes/docs";
 import { scheduledReportRoutes } from "./routes/scheduled-reports";
+import { riskRoutes } from "./routes/risk";
 import { auditMiddleware } from "./middleware/audit";
 import { authMiddleware, adminOnly } from "./middleware/auth-guard";
 import { startScheduler } from "./services/scheduler.service";
@@ -95,6 +96,8 @@ app.use("/api/v1/enisa/*", authMiddleware);
 app.use("/api/v1/enisa", authMiddleware);
 app.use("/api/v1/anomaly/*", authMiddleware);
 app.use("/api/v1/anomaly", authMiddleware);
+app.use("/api/v1/risk/*", authMiddleware);
+app.use("/api/v1/risk", authMiddleware);
 app.use("/api/v1/admin/*", authMiddleware);
 app.use("/api/v1/admin/*", adminOnly);
 
@@ -139,6 +142,9 @@ app.route("/api/v1", enisaRoutes);
 
 // Anomaly Detection routes
 app.route("/api/v1", anomalyRoutes);
+
+// Risk Scoring routes
+app.route("/api/v1", riskRoutes);
 
 // Admin routes
 app.route("/api/v1", adminSpartaRoutes);

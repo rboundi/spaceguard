@@ -41,3 +41,6 @@ export * from "./audit";
 
 // Scheduled Reports
 export * from "./scheduled-reports";
+
+// Risk Scores
+export * from "./risk";

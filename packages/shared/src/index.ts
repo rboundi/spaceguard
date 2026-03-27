@@ -10,3 +10,4 @@ export * from "./schemas/sparta";
 export * from "./schemas/supplier";
 export * from "./schemas/anomaly";
 export * from "./schemas/scheduled-report";
+export * from "./schemas/risk";
