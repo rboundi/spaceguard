@@ -1,6 +1,24 @@
 # Known Issues and Intentional Limitations
 
-Last updated: 2026-03-27
+Last updated: 2026-03-28
+
+## Fixed: Code Review Pass 2 (2026-03-28)
+
+### Missing tenant isolation on intel enrichAlert endpoint
+
+**File**: `apps/api/src/routes/intel.ts`
+
+**Severity**: HIGH (security)
+
+The `GET /intel/enrich/alert/:alertId` endpoint accepted any valid alert UUID
+without verifying the alert belonged to the requesting user's organization. An
+authenticated user could enrich alerts from other organizations by guessing
+UUIDs. Added a pre-check that fetches the alert, verifies tenant ownership via
+`assertTenant()`, then proceeds with enrichment.
+
+Note: Other intel endpoints (list, search, techniques, countermeasures) remain
+globally scoped because threat intelligence is shared reference data, not
+org-specific. See "Architecture Decisions" section below.
 
 ## Architecture
 
@@ -650,6 +668,31 @@ The `AssetRiskApi` type was imported but never used. Removed the unused import.
 The frontend has no root-level React Error Boundary. Unexpected JavaScript errors show the Next.js error overlay in dev and a blank page in production. Each page handles its own errors via try/catch in data fetching, but synchronous render errors are unhandled.
 
 **Resolution path**: Create a `RootErrorBoundary` component in the root layout using React class-based Error Boundary.
+
+### N+1 query pattern in risk score calculation
+
+**Status**: Deferred
+**Impact**: Medium (performance)
+
+The `getRiskOverview()` function in `risk.service.ts` calls
+`calculateAssetRisk(id)` for each asset in a loop via `Promise.all`. Each
+call executes multiple database queries. For organizations with many assets,
+this creates significant database load.
+
+**Resolution path**: Batch queries by collecting all asset IDs first, then
+performing bulk `WHERE ... IN (...)` queries for each risk dimension.
+
+### Detection engine in-memory state grows unbounded
+
+**Status**: Deferred
+**Impact**: Low (long-running processes)
+
+The detection engine in `detection/engine.ts` stores threshold, rate-of-change,
+and absence state in in-memory Maps keyed by stream ID. These maps are never
+pruned, so deleted streams accumulate stale entries over the process lifetime.
+
+**Resolution path**: Add periodic cleanup that removes entries for streams no
+longer present in the database, or use Redis for state with TTL expiry.
 
 ### Structured logging not implemented
 

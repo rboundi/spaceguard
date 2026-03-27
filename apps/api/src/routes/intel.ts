@@ -19,10 +19,11 @@ import {
   getCountermeasuresByNist,
 } from "../services/intel.service";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
+import { getAlert } from "../services/detection/alert.service";
 
 export const intelRoutes = new Hono();
 
-import { assertUUID } from "../middleware/validate";
+import { assertUUID, assertTenant } from "../middleware/validate";
 
 // ---------------------------------------------------------------------------
 // GET /api/v1/intel
@@ -105,6 +106,9 @@ intelRoutes.post(
 intelRoutes.get("/intel/enrich/alert/:alertId", async (c) => {
   const alertId = c.req.param("alertId");
   assertUUID(alertId, "alertId");
+  // Verify the alert belongs to the caller's organization
+  const alert = await getAlert(alertId);
+  assertTenant(c, alert.organizationId);
   const enrichment = await enrichAlert(alertId);
   return c.json(enrichment);
 });
