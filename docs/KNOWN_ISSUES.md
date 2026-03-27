@@ -1,6 +1,6 @@
 # Known Issues and Intentional Limitations
 
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 
 ## Architecture
 
@@ -613,3 +613,67 @@ proper HTTP error. Added null guards with appropriate 404/500 responses to:
 - `updateStream()` in telemetry.service.ts
 - `generateNis2Report()` in incident.service.ts (both update and insert paths)
 - `createIntel()` in intel.service.ts
+
+## Fixed: Code Review Pass (2026-03-27)
+
+### Duplicate API_URL definitions across frontend
+
+**Files**: `apps/web/app/settings/page.tsx`, `apps/web/app/developers/page.tsx`
+
+**Severity**: LOW (maintainability)
+
+Three frontend files each defined their own `const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"`. Changes to the API URL pattern required updating multiple files. Exported `API_URL` from `apps/web/lib/api.ts` and updated settings and developers pages to import it.
+
+### Unused import in asset list page
+
+**File**: `apps/web/app/assets/page.tsx`
+
+**Severity**: LOW (code quality)
+
+The `AssetRiskApi` type was imported but never used. Removed the unused import.
+
+### Noisy console.log in risk snapshot service
+
+**File**: `apps/api/src/services/risk.service.ts`
+
+**Severity**: LOW (noise)
+
+`storeRiskSnapshot()` logged a success message on every run. Removed the info-level log; the per-asset error log is retained with improved error message extraction.
+
+## Open: Deferred Improvements (2026-03-27 Review)
+
+### No global React Error Boundary
+
+**Status**: Deferred
+**Impact**: Medium
+
+The frontend has no root-level React Error Boundary. Unexpected JavaScript errors show the Next.js error overlay in dev and a blank page in production. Each page handles its own errors via try/catch in data fetching, but synchronous render errors are unhandled.
+
+**Resolution path**: Create a `RootErrorBoundary` component in the root layout using React class-based Error Boundary.
+
+### Structured logging not implemented
+
+**Status**: Deferred
+**Impact**: Medium
+
+The backend uses `console.log/error` throughout (23+ instances across services). This is sufficient for development but inadequate for production: no log levels, no structured JSON format, no correlation IDs.
+
+**Resolution path**: Replace with `pino` or similar structured logger. Add request IDs via Hono middleware.
+
+### Query parameter validation uses manual regex
+
+**Status**: Deferred
+**Impact**: Low
+
+Several route files (reports, risk, supply-chain) validate `organizationId` query parameters using manual UUID regex checks instead of `zValidator("query", ...)`. The validation works correctly but is inconsistent with the Zod-first approach used for request bodies.
+
+**Resolution path**: Add `zValidator("query", z.object({ organizationId: z.string().uuid() }))` to affected routes.
+
+### Client-side Zod validation not implemented
+
+**Status**: Deferred
+**Impact**: Low
+
+Frontend forms validate required fields manually (e.g. `if (!name.trim()) return`) instead of using the shared Zod schemas for client-side validation. Validation still happens server-side, but error feedback is less granular.
+
+**Resolution path**: Wire Zod schemas from @spaceguard/shared into form submission handlers for instant field-level feedback.

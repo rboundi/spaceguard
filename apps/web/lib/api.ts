@@ -23,7 +23,7 @@ import type {
 
 import { getAuthToken } from "@/lib/auth-context";
 
-const API_URL =
+export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 class ApiError extends Error {

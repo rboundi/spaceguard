@@ -656,9 +656,8 @@ export async function storeRiskSnapshot(organizationId: string): Promise<void> {
         calculatedAt: now,
       });
     } catch (err) {
-      console.error(`[risk] Failed to store snapshot for asset ${asset.id}:`, err);
+      // Log but continue: one failed asset snapshot shouldn't abort the entire batch
+      console.error(`[risk] Failed to store snapshot for asset ${asset.id}:`, err instanceof Error ? err.message : err);
     }
   }
-
-  console.log(`[risk] Stored risk snapshot for org ${organizationId}: score=${orgRisk.overall}`);
 }

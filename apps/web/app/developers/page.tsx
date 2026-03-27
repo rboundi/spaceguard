@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { API_URL } from "@/lib/api";
 import Link from "next/link";
 import {
   BookOpen,
@@ -130,7 +131,7 @@ function LangTabs({ tabs }: { tabs: { label: string; lang: string; code: string 
 // Page
 // ---------------------------------------------------------------------------
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_BASE = API_URL;
 
 export default function DevelopersPage() {
   return (

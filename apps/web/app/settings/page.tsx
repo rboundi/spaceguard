@@ -21,6 +21,7 @@ import {
   updateSyslogEndpointApi,
   deleteSyslogEndpointApi,
   testSyslogEndpointApi,
+  API_URL,
 } from "@/lib/api";
 import type {
   SettingsDetectionRule,
@@ -456,8 +457,6 @@ function TelemetryTab() {
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text).catch(() => {});
   }
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
   if (loading) return <div className="text-sm text-slate-500 flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Loading streams...</div>;
 
@@ -1168,7 +1167,7 @@ function IntegrationsTab() {
             Open Developer Portal
           </a>
           <a
-            href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/docs`}
+            href={`${API_URL}/api/docs`}
             target="_blank"
             rel="noopener noreferrer"
             className="h-9 px-4 flex items-center gap-2 rounded-md bg-slate-800 border border-slate-700 text-xs text-slate-300 hover:text-slate-100 transition-colors"

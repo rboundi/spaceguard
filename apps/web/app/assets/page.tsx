@@ -9,7 +9,7 @@ import {
   assetTypeLabels,
 } from "@spaceguard/shared";
 import type { AssetResponse } from "@spaceguard/shared";
-import { getAssets, getAssetRisk, type AssetRiskApi } from "@/lib/api";
+import { getAssets, getAssetRisk } from "@/lib/api";
 import { useOrg } from "@/lib/context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
