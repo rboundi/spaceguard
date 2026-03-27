@@ -1492,3 +1492,31 @@ export const getPlaybookExecutions = (organizationId: string, playbookId?: strin
 
 export const getPlaybookExecution = (executionId: string) =>
   api.get<PlaybookExecutionApi>(`/api/v1/playbooks/executions/${executionId}`);
+
+// ---------------------------------------------------------------------------
+// Dashboard Layouts
+// ---------------------------------------------------------------------------
+
+export interface WidgetConfigApi {
+  widget_id: string;
+  position: { row: number; col: number };
+  size: { w: number; h: number };
+  config: Record<string, unknown>;
+}
+
+export interface DashboardLayoutApi {
+  id: string | null;
+  userId: string;
+  layout: WidgetConfigApi[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const getDashboardLayout = () =>
+  api.get<DashboardLayoutApi>("/api/v1/dashboard/layout");
+
+export const saveDashboardLayout = (layout: WidgetConfigApi[]) =>
+  api.put<DashboardLayoutApi>("/api/v1/dashboard/layout", { layout });
+
+export const resetDashboardLayout = () =>
+  api.delete("/api/v1/dashboard/layout");

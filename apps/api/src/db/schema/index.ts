@@ -47,3 +47,6 @@ export * from "./risk";
 
 // Playbooks
 export * from "./playbooks";
+
+// Dashboard Layouts
+export * from "./dashboard-layouts";
