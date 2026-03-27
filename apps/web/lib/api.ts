@@ -1230,3 +1230,59 @@ export const updateCorrelationRuleSettings = (
   ruleId: string,
   data: { enabled?: boolean; thresholds?: Record<string, number> }
 ) => api.put<CorrelationRuleConfig>(`/api/v1/settings/correlation/rules/${ruleId}`, data);
+
+// ---------------------------------------------------------------------------
+// Syslog SIEM Integration
+// ---------------------------------------------------------------------------
+
+export interface SyslogEndpointResponse {
+  id: string;
+  organizationId: string;
+  name: string;
+  host: string;
+  port: number;
+  protocol: "UDP" | "TCP" | "TLS";
+  format: "CEF" | "LEEF" | "JSON";
+  minSeverity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSyslogEndpoint {
+  organizationId: string;
+  name: string;
+  host: string;
+  port?: number;
+  protocol?: "UDP" | "TCP" | "TLS";
+  format?: "CEF" | "LEEF" | "JSON";
+  minSeverity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  isActive?: boolean;
+}
+
+export interface UpdateSyslogEndpoint {
+  name?: string;
+  host?: string;
+  port?: number;
+  protocol?: "UDP" | "TCP" | "TLS";
+  format?: "CEF" | "LEEF" | "JSON";
+  minSeverity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  isActive?: boolean;
+}
+
+export const getSyslogEndpoints = (organizationId: string) =>
+  api.get<{ data: SyslogEndpointResponse[]; total: number }>(
+    `/api/v1/settings/syslog?organizationId=${organizationId}`
+  );
+
+export const createSyslogEndpointApi = (data: CreateSyslogEndpoint) =>
+  api.post<SyslogEndpointResponse>("/api/v1/settings/syslog", data);
+
+export const updateSyslogEndpointApi = (id: string, data: UpdateSyslogEndpoint) =>
+  api.put<SyslogEndpointResponse>(`/api/v1/settings/syslog/${id}`, data);
+
+export const deleteSyslogEndpointApi = (id: string) =>
+  api.delete(`/api/v1/settings/syslog/${id}`);
+
+export const testSyslogEndpointApi = (id: string) =>
+  api.post<{ success: boolean; error?: string }>(`/api/v1/settings/syslog/${id}/test`, {});

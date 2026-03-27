@@ -16,10 +16,17 @@ import {
   updateProfile,
   getCorrelationRules,
   updateCorrelationRuleSettings,
+  getSyslogEndpoints,
+  createSyslogEndpointApi,
+  updateSyslogEndpointApi,
+  deleteSyslogEndpointApi,
+  testSyslogEndpointApi,
 } from "@/lib/api";
 import type {
   SettingsDetectionRule,
   CorrelationRuleConfig,
+  SyslogEndpointResponse,
+  CreateSyslogEndpoint,
 } from "@/lib/api";
 import type { OrganizationResponse, StreamResponse } from "@spaceguard/shared";
 import {
@@ -50,6 +57,9 @@ import {
   Webhook,
   MessageSquare,
   GitMerge,
+  Trash2,
+  Plus,
+  Radio,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -887,40 +897,256 @@ function DetectionTab() {
 // ===========================================================================
 
 function IntegrationsTab() {
+  const { orgId } = useOrg();
+  const [endpoints, setEndpoints] = useState<SyslogEndpointResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ id: string; success: boolean; error?: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // New endpoint form state
+  const [newName, setNewName] = useState("");
+  const [newHost, setNewHost] = useState("");
+  const [newPort, setNewPort] = useState("514");
+  const [newProtocol, setNewProtocol] = useState<"UDP" | "TCP" | "TLS">("UDP");
+  const [newFormat, setNewFormat] = useState<"CEF" | "LEEF" | "JSON">("CEF");
+  const [newMinSev, setNewMinSev] = useState<"LOW" | "MEDIUM" | "HIGH" | "CRITICAL">("LOW");
+
+  const loadEndpoints = useCallback(async () => {
+    if (!orgId) return;
+    try {
+      const res = await getSyslogEndpoints(orgId);
+      setEndpoints(res.data);
+    } catch (err) {
+      console.error("Failed to load syslog endpoints:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => { loadEndpoints(); }, [loadEndpoints]);
+
+  const handleAdd = async () => {
+    if (!orgId || !newName.trim() || !newHost.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await createSyslogEndpointApi({
+        organizationId: orgId,
+        name: newName.trim(),
+        host: newHost.trim(),
+        port: parseInt(newPort, 10) || 514,
+        protocol: newProtocol,
+        format: newFormat,
+        minSeverity: newMinSev,
+      });
+      setShowAdd(false);
+      setNewName(""); setNewHost(""); setNewPort("514");
+      setNewProtocol("UDP"); setNewFormat("CEF"); setNewMinSev("LOW");
+      await loadEndpoints();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create endpoint");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (ep: SyslogEndpointResponse) => {
+    try {
+      await updateSyslogEndpointApi(ep.id, { isActive: !ep.isActive });
+      await loadEndpoints();
+    } catch (err) {
+      console.error("Failed to toggle endpoint:", err);
+    }
+  };
+
+  const handleDelete = async (ep: SyslogEndpointResponse) => {
+    try {
+      await deleteSyslogEndpointApi(ep.id);
+      await loadEndpoints();
+    } catch (err) {
+      console.error("Failed to delete endpoint:", err);
+    }
+  };
+
+  const handleTest = async (ep: SyslogEndpointResponse) => {
+    setTesting(ep.id);
+    setTestResult(null);
+    try {
+      const result = await testSyslogEndpointApi(ep.id);
+      setTestResult({ id: ep.id, ...result });
+    } catch (err) {
+      setTestResult({ id: ep.id, success: false, error: err instanceof Error ? err.message : "Test failed" });
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  const PROTOCOL_LABELS: Record<string, string> = { UDP: "UDP", TCP: "TCP", TLS: "TLS (Encrypted)" };
+  const FORMAT_LABELS: Record<string, string> = { CEF: "CEF (Splunk/ArcSight/Elastic)", LEEF: "LEEF (IBM QRadar)", JSON: "JSON (Generic)" };
+
   return (
     <div className="space-y-5">
+      {/* Syslog Output - Now Functional */}
+      <SectionCard>
+        <div className="flex items-center justify-between">
+          <SectionHeader icon={<Globe size={15} />} title="Syslog / SIEM Forwarding" description="Forward alerts and incidents to external SIEMs in CEF, LEEF, or JSON format" />
+          <button
+            onClick={() => setShowAdd(!showAdd)}
+            className="h-8 px-3 flex items-center gap-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-xs text-white transition-colors shrink-0"
+          >
+            <Plus size={12} />
+            Add Endpoint
+          </button>
+        </div>
+
+        {/* Add form */}
+        {showAdd && (
+          <div className="mt-3 p-3 rounded-lg bg-slate-800/60 border border-slate-700 space-y-3">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <FieldLabel>Name</FieldLabel>
+                <TextInput value={newName} onChange={setNewName} placeholder="Production Splunk" />
+              </div>
+              <div>
+                <FieldLabel>Host</FieldLabel>
+                <TextInput value={newHost} onChange={setNewHost} placeholder="syslog.example.com" />
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-4 gap-3">
+              <div>
+                <FieldLabel>Port</FieldLabel>
+                <TextInput value={newPort} onChange={setNewPort} placeholder="514" />
+              </div>
+              <div>
+                <FieldLabel>Protocol</FieldLabel>
+                <select
+                  value={newProtocol}
+                  onChange={(e) => setNewProtocol(e.target.value as "UDP" | "TCP" | "TLS")}
+                  className="w-full h-9 px-3 rounded-md bg-slate-900 border border-slate-700 text-xs text-slate-200"
+                >
+                  <option value="UDP">UDP</option>
+                  <option value="TCP">TCP</option>
+                  <option value="TLS">TLS</option>
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Format</FieldLabel>
+                <select
+                  value={newFormat}
+                  onChange={(e) => setNewFormat(e.target.value as "CEF" | "LEEF" | "JSON")}
+                  className="w-full h-9 px-3 rounded-md bg-slate-900 border border-slate-700 text-xs text-slate-200"
+                >
+                  <option value="CEF">CEF</option>
+                  <option value="LEEF">LEEF</option>
+                  <option value="JSON">JSON</option>
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Min Severity</FieldLabel>
+                <select
+                  value={newMinSev}
+                  onChange={(e) => setNewMinSev(e.target.value as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL")}
+                  className="w-full h-9 px-3 rounded-md bg-slate-900 border border-slate-700 text-xs text-slate-200"
+                >
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="CRITICAL">Critical</option>
+                </select>
+              </div>
+            </div>
+            {error && <p className="text-xs text-red-400">{error}</p>}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleAdd}
+                disabled={saving || !newName.trim() || !newHost.trim()}
+                className="h-8 px-4 rounded-md bg-blue-600 hover:bg-blue-500 text-xs text-white transition-colors disabled:opacity-50"
+              >
+                {saving ? <Loader2 size={12} className="animate-spin" /> : "Create Endpoint"}
+              </button>
+              <button onClick={() => setShowAdd(false)} className="h-8 px-3 rounded-md bg-slate-800 border border-slate-700 text-xs text-slate-400 hover:text-slate-200 transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Endpoint list */}
+        {loading ? (
+          <div className="flex items-center gap-2 py-4"><Loader2 size={14} className="animate-spin text-slate-500" /><span className="text-xs text-slate-500">Loading...</span></div>
+        ) : endpoints.length === 0 ? (
+          <div className="py-4 text-center">
+            <p className="text-xs text-slate-500">No syslog endpoints configured.</p>
+            <p className="text-[10px] text-slate-600 mt-1">Add an endpoint to forward alerts to your SIEM (Splunk, Elastic, QRadar, Sentinel).</p>
+          </div>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {endpoints.map((ep) => (
+              <div key={ep.id} className="p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => handleToggle(ep)} className="relative">
+                      <div className={`w-8 h-[18px] rounded-full transition-colors ${ep.isActive ? "bg-emerald-600" : "bg-slate-700"}`}>
+                        <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-all ${ep.isActive ? "left-[16px]" : "left-[2px]"}`} />
+                      </div>
+                    </button>
+                    <div>
+                      <span className="text-xs font-medium text-slate-200">{ep.name}</span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] text-slate-500">{ep.host}:{ep.port}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-400">{ep.protocol}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-blue-400">{ep.format}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-amber-400">{ep.minSeverity}+</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleTest(ep)}
+                      disabled={testing === ep.id}
+                      className="h-7 px-2.5 flex items-center gap-1 rounded bg-slate-700 border border-slate-600 text-[11px] text-slate-300 hover:text-slate-100 transition-colors disabled:opacity-50"
+                    >
+                      {testing === ep.id ? <Loader2 size={10} className="animate-spin" /> : <Radio size={10} />}
+                      Test
+                    </button>
+                    <button
+                      onClick={() => handleDelete(ep)}
+                      className="h-7 w-7 flex items-center justify-center rounded bg-slate-700 border border-slate-600 text-slate-400 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                </div>
+                {testResult && testResult.id === ep.id && (
+                  <div className={`mt-2 p-2 rounded text-[11px] ${testResult.success ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
+                    {testResult.success ? "Test message sent successfully." : `Test failed: ${testResult.error}`}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      {/* Webhook - placeholder */}
       <SectionCard>
         <SectionHeader icon={<Webhook size={15} />} title="Webhook Alert Forwarding" description="Forward alerts to an external endpoint in real-time" />
         <div>
           <FieldLabel>Webhook URL</FieldLabel>
           <div className="flex items-center gap-2">
-            <TextInput value="" onChange={() => {}} placeholder="https://your-siem.example.com/api/alerts" />
-            <button className="h-9 px-3 rounded-md bg-slate-800 border border-slate-700 text-xs text-slate-300 hover:bg-slate-700 transition-colors shrink-0">
+            <TextInput value="" onChange={() => {}} placeholder="https://your-siem.example.com/api/alerts" disabled />
+            <button disabled className="h-9 px-3 rounded-md bg-slate-800 border border-slate-700 text-xs text-slate-500 shrink-0">
               Test
             </button>
           </div>
-          <p className="text-[10px] text-slate-600 mt-1">POST request with JSON alert payload on every new alert.</p>
+          <p className="text-[10px] text-slate-600 mt-1">Webhook forwarding coming in a future release.</p>
         </div>
       </SectionCard>
 
-      <SectionCard>
-        <SectionHeader icon={<Globe size={15} />} title="Syslog Output" description="Forward events to your SIEM via syslog protocol" />
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div>
-            <FieldLabel>Syslog Host</FieldLabel>
-            <TextInput value="" onChange={() => {}} placeholder="syslog.example.com" />
-          </div>
-          <div>
-            <FieldLabel>Port</FieldLabel>
-            <TextInput value="" onChange={() => {}} placeholder="514" />
-          </div>
-        </div>
-        <div className="flex items-center gap-2 p-2 rounded bg-blue-500/10 border border-blue-500/20">
-          <Info size={12} className="text-blue-400 shrink-0" />
-          <span className="text-[11px] text-blue-400">Syslog integration coming in a future release.</span>
-        </div>
-      </SectionCard>
-
+      {/* STIX/TAXII - placeholder */}
       <SectionCard>
         <SectionHeader icon={<ExternalLink size={15} />} title="STIX/TAXII Feed" description="Publish threat intelligence as a TAXII 2.1 collection" />
         <div className="flex items-center gap-2 p-2 rounded bg-blue-500/10 border border-blue-500/20">
@@ -929,6 +1155,7 @@ function IntegrationsTab() {
         </div>
       </SectionCard>
 
+      {/* Chat Notifications - placeholder */}
       <SectionCard>
         <SectionHeader icon={<MessageSquare size={15} />} title="Chat Notifications" description="Send alerts to Slack or Microsoft Teams channels" />
         <div className="grid sm:grid-cols-2 gap-3">

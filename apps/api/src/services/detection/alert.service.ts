@@ -28,6 +28,7 @@ import type {
 } from "@spaceguard/shared";
 import { createIncidentFromAlert } from "../incident.service";
 import { sendAlertNotification } from "../notification.service";
+import { forwardAlertToSyslog } from "../syslog.service";
 import { correlateAlert } from "./correlator";
 
 // ---------------------------------------------------------------------------
@@ -176,6 +177,11 @@ export async function createAlert(data: CreateAlert): Promise<AlertResponse | nu
   // Fire-and-forget alert correlation (runs for ALL alerts, not just HIGH/CRITICAL)
   correlateAlert(response).catch((err: unknown) => {
     console.error("[alert-service] Failed to correlate alert:", err);
+  });
+
+  // Fire-and-forget syslog SIEM forwarding
+  forwardAlertToSyslog(response).catch((err: unknown) => {
+    console.error("[alert-service] Failed to forward alert to syslog:", err);
   });
 
   return response;

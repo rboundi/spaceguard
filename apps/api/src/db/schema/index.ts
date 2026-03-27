@@ -33,5 +33,8 @@ export * from "./supply-chain";
 // User Management & Auth
 export * from "./users";
 
+// Syslog SIEM Integration
+export * from "./syslog";
+
 // Audit Trail
 export * from "./audit";

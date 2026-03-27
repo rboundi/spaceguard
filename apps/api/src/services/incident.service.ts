@@ -28,6 +28,7 @@ import {
 import { alerts } from "../db/schema/alerts";
 import { organizations } from "../db/schema/organizations";
 import { sendIncidentCreated } from "./notification.service";
+import { forwardIncidentToSyslog } from "./syslog.service";
 import { spaceAssets } from "../db/schema/assets";
 import type {
   Incident,
@@ -177,7 +178,25 @@ export async function createIncident(
     })
     .returning();
 
-  return incidentToResponse(row);
+  const response = incidentToResponse(row);
+
+  // Fire-and-forget syslog SIEM forwarding
+  forwardIncidentToSyslog({
+    id: response.id,
+    organizationId: response.organizationId,
+    title: response.title,
+    severity: response.severity as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+    status: response.status,
+    description: response.description,
+    nis2Classification: response.nis2Classification,
+    affectedAssetIds: (response.affectedAssetIds ?? []) as string[],
+    spartaTechniques: (response.spartaTechniques ?? []) as Array<{ tactic: string; technique: string }>,
+    createdAt: response.createdAt,
+  }).catch((err: unknown) => {
+    console.error("[incident-service] Failed to forward incident to syslog:", err);
+  });
+
+  return response;
 }
 
 export async function getIncident(id: string): Promise<IncidentResponse> {

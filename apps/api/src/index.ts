@@ -20,6 +20,7 @@ import { authRoutes } from "./routes/auth";
 import { exportRoutes } from "./routes/exports";
 import { settingsRoutes } from "./routes/settings";
 import { anomalyRoutes } from "./routes/anomaly";
+import { syslogRoutes } from "./routes/syslog";
 import { enisaRoutes } from "./routes/enisa";
 import { auditMiddleware } from "./middleware/audit";
 import { authMiddleware, adminOnly } from "./middleware/auth-guard";
@@ -120,6 +121,9 @@ app.route("/api/v1", exportRoutes);
 
 // Settings routes
 app.route("/api/v1", settingsRoutes);
+
+// Syslog SIEM integration routes
+app.route("/api/v1", syslogRoutes);
 
 // ENISA routes
 app.route("/api/v1", enisaRoutes);
