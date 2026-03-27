@@ -1286,3 +1286,57 @@ export const deleteSyslogEndpointApi = (id: string) =>
 
 export const testSyslogEndpointApi = (id: string) =>
   api.post<{ success: boolean; error?: string }>(`/api/v1/settings/syslog/${id}/test`, {});
+
+// ---------------------------------------------------------------------------
+// Scheduled Reports
+// ---------------------------------------------------------------------------
+
+export interface ScheduledReportRow {
+  id: string;
+  organizationId: string;
+  reportType: "COMPLIANCE" | "INCIDENT_SUMMARY" | "THREAT_BRIEFING" | "SUPPLY_CHAIN" | "AUDIT_TRAIL";
+  schedule: "WEEKLY" | "MONTHLY" | "QUARTERLY";
+  dayOfWeek: number | null;
+  dayOfMonth: number | null;
+  recipients: string[];
+  lastGenerated: string | null;
+  nextRun: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateScheduledReportInput {
+  organizationId: string;
+  reportType: ScheduledReportRow["reportType"];
+  schedule: ScheduledReportRow["schedule"];
+  dayOfWeek?: number | null;
+  dayOfMonth?: number | null;
+  recipients: string[];
+  isActive?: boolean;
+}
+
+export interface UpdateScheduledReportInput {
+  schedule?: ScheduledReportRow["schedule"];
+  dayOfWeek?: number | null;
+  dayOfMonth?: number | null;
+  recipients?: string[];
+  isActive?: boolean;
+}
+
+export const getScheduledReports = (organizationId: string) =>
+  api.get<{ data: ScheduledReportRow[]; total: number }>(
+    `/api/v1/reports/scheduled?organizationId=${organizationId}`
+  );
+
+export const createScheduledReport = (data: CreateScheduledReportInput) =>
+  api.post<ScheduledReportRow>("/api/v1/reports/scheduled", data);
+
+export const updateScheduledReport = (id: string, data: UpdateScheduledReportInput) =>
+  api.put<ScheduledReportRow>(`/api/v1/reports/scheduled/${id}`, data);
+
+export const deleteScheduledReport = (id: string) =>
+  api.delete(`/api/v1/reports/scheduled/${id}`);
+
+export const runScheduledReportNow = (id: string) =>
+  api.post<{ success: boolean; message: string }>(`/api/v1/reports/scheduled/${id}/run-now`, {});

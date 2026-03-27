@@ -38,3 +38,6 @@ export * from "./syslog";
 
 // Audit Trail
 export * from "./audit";
+
+// Scheduled Reports
+export * from "./scheduled-reports";

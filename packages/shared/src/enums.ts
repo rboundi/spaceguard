@@ -172,6 +172,38 @@ export const userRoleLabels: Record<UserRole, string> = {
   [UserRole.AUDITOR]: "Auditor",
 };
 
+// ---------------------------------------------------------------------------
+// Scheduled Reports
+// ---------------------------------------------------------------------------
+
+export enum ScheduledReportType {
+  COMPLIANCE = "COMPLIANCE",
+  INCIDENT_SUMMARY = "INCIDENT_SUMMARY",
+  THREAT_BRIEFING = "THREAT_BRIEFING",
+  SUPPLY_CHAIN = "SUPPLY_CHAIN",
+  AUDIT_TRAIL = "AUDIT_TRAIL",
+}
+
+export const scheduledReportTypeLabels: Record<ScheduledReportType, string> = {
+  [ScheduledReportType.COMPLIANCE]: "NIS2 Compliance",
+  [ScheduledReportType.INCIDENT_SUMMARY]: "Incident Summary",
+  [ScheduledReportType.THREAT_BRIEFING]: "Threat Briefing",
+  [ScheduledReportType.SUPPLY_CHAIN]: "Supply Chain Risk",
+  [ScheduledReportType.AUDIT_TRAIL]: "Audit Trail",
+};
+
+export enum ReportSchedule {
+  WEEKLY = "WEEKLY",
+  MONTHLY = "MONTHLY",
+  QUARTERLY = "QUARTERLY",
+}
+
+export const reportScheduleLabels: Record<ReportSchedule, string> = {
+  [ReportSchedule.WEEKLY]: "Weekly",
+  [ReportSchedule.MONTHLY]: "Monthly",
+  [ReportSchedule.QUARTERLY]: "Quarterly",
+};
+
 export enum SupplierType {
   COMPONENT_MANUFACTURER = "COMPONENT_MANUFACTURER",
   GROUND_STATION_OPERATOR = "GROUND_STATION_OPERATOR",

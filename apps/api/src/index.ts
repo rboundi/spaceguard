@@ -23,8 +23,10 @@ import { anomalyRoutes } from "./routes/anomaly";
 import { syslogRoutes } from "./routes/syslog";
 import { enisaRoutes } from "./routes/enisa";
 import { docsRoutes } from "./routes/docs";
+import { scheduledReportRoutes } from "./routes/scheduled-reports";
 import { auditMiddleware } from "./middleware/audit";
 import { authMiddleware, adminOnly } from "./middleware/auth-guard";
+import { startScheduler } from "./services/scheduler.service";
 
 const app = new Hono();
 
@@ -96,6 +98,9 @@ app.use("/api/v1/anomaly", authMiddleware);
 app.use("/api/v1/admin/*", authMiddleware);
 app.use("/api/v1/admin/*", adminOnly);
 
+// Scheduled Reports routes
+app.route("/api/v1", scheduledReportRoutes);
+
 // Module 1 routes
 app.route("/api/v1", organizationRoutes);
 app.route("/api/v1", assetRoutes);
@@ -143,5 +148,8 @@ const port = Number(process.env.PORT) || 3001;
 console.log(`SpaceGuard API running on http://localhost:${port}`);
 
 serve({ fetch: app.fetch, port });
+
+// Start the scheduled report checker (runs every 60 min)
+startScheduler();
 
 export default app;

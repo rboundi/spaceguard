@@ -271,7 +271,7 @@ function weeklyDigestHtml(stats: {
 // Send helper (Resend API or console fallback)
 // ---------------------------------------------------------------------------
 
-async function sendEmail(payload: EmailPayload): Promise<void> {
+export async function sendEmail(payload: EmailPayload): Promise<void> {
   if (!IS_LIVE) {
     console.log("[notification] (dev mode) Email would be sent:");
     console.log(`  To: ${payload.to.join(", ")}`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   FileText,
   Download,
@@ -15,6 +15,12 @@ import {
   Target,
   Link as LinkIcon,
   ClipboardList,
+  Clock,
+  Play,
+  Trash2,
+  Plus,
+  X,
+  Mail,
 } from "lucide-react";
 import {
   getDashboard,
@@ -24,7 +30,14 @@ import {
   getThreatBriefingPdf,
   getSupplyChainPdf,
   getAuditTrailPdf,
+  getScheduledReports,
+  createScheduledReport,
+  updateScheduledReport,
+  deleteScheduledReport,
+  runScheduledReportNow,
   type IncidentSummaryStats,
+  type ScheduledReportRow,
+  type CreateScheduledReportInput,
 } from "@/lib/api";
 import { useOrg } from "@/lib/context";
 import type { DashboardResponse } from "@spaceguard/shared";
@@ -123,7 +136,7 @@ function PlaceholderCard({ icon, title, description }: PlaceholderCardProps) {
 // Incident Summary Report card
 // ---------------------------------------------------------------------------
 
-function IncidentSummaryCard({ orgId }: { orgId: string | null }) {
+function IncidentSummaryCard({ orgId, schedules, onScheduleCreated }: { orgId: string | null; schedules: ScheduledReportRow[]; onScheduleCreated: () => void }) {
   const [fromDate, setFromDate] = useState(nDaysAgo(90));
   const [toDate, setToDate] = useState(today());
   const [stats, setStats] = useState<IncidentSummaryStats | null>(null);
@@ -370,24 +383,34 @@ function IncidentSummaryCard({ orgId }: { orgId: string | null }) {
           </div>
         )}
 
-        <Button
-          onClick={handleDownload}
-          disabled={!orgId || downloading || statsLoading}
-          suppressHydrationWarning
-          className="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium disabled:opacity-50"
-        >
-          {downloading ? (
-            <>
-              <Loader2 size={16} className="mr-2 animate-spin" />
-              Generating PDF...
-            </>
-          ) : (
-            <>
-              <Download size={16} className="mr-2" />
-              Download Incident Summary PDF
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleDownload}
+            disabled={!orgId || downloading || statsLoading}
+            suppressHydrationWarning
+            className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-medium disabled:opacity-50"
+          >
+            {downloading ? (
+              <>
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <Download size={16} className="mr-2" />
+                Download Incident Summary PDF
+              </>
+            )}
+          </Button>
+          <ScheduleButton orgId={orgId} reportType="INCIDENT_SUMMARY" onCreated={onScheduleCreated} />
+        </div>
+
+        {schedules.filter((s) => s.reportType === "INCIDENT_SUMMARY" && s.isActive).map((s) => (
+          <div key={s.id} className="flex items-center gap-2 text-[11px] text-amber-400">
+            <Clock size={11} />
+            Next scheduled: {fmtDate(s.nextRun)}
+          </div>
+        ))}
 
         {!orgId && (
           <p className="text-center text-xs text-slate-600">
@@ -403,7 +426,7 @@ function IncidentSummaryCard({ orgId }: { orgId: string | null }) {
 // Threat Landscape Briefing card
 // ---------------------------------------------------------------------------
 
-function ThreatBriefingCard({ orgId }: { orgId: string | null }) {
+function ThreatBriefingCard({ orgId, schedules, onScheduleCreated }: { orgId: string | null; schedules: ScheduledReportRow[]; onScheduleCreated: () => void }) {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -492,24 +515,34 @@ function ThreatBriefingCard({ orgId }: { orgId: string | null }) {
           </div>
         )}
 
-        <Button
-          onClick={handleDownload}
-          disabled={!orgId || downloading}
-          suppressHydrationWarning
-          className="w-full bg-violet-700 hover:bg-violet-600 text-white font-medium disabled:opacity-50"
-        >
-          {downloading ? (
-            <>
-              <Loader2 size={16} className="mr-2 animate-spin" />
-              Generating PDF...
-            </>
-          ) : (
-            <>
-              <Download size={16} className="mr-2" />
-              Download Threat Briefing PDF
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleDownload}
+            disabled={!orgId || downloading}
+            suppressHydrationWarning
+            className="flex-1 bg-violet-700 hover:bg-violet-600 text-white font-medium disabled:opacity-50"
+          >
+            {downloading ? (
+              <>
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <Download size={16} className="mr-2" />
+                Download Threat Briefing PDF
+              </>
+            )}
+          </Button>
+          <ScheduleButton orgId={orgId} reportType="THREAT_BRIEFING" onCreated={onScheduleCreated} />
+        </div>
+
+        {schedules.filter((s) => s.reportType === "THREAT_BRIEFING" && s.isActive).map((s) => (
+          <div key={s.id} className="flex items-center gap-2 text-[11px] text-violet-400">
+            <Clock size={11} />
+            Next scheduled: {fmtDate(s.nextRun)}
+          </div>
+        ))}
 
         {!orgId && (
           <p className="text-center text-xs text-slate-600">
@@ -525,7 +558,7 @@ function ThreatBriefingCard({ orgId }: { orgId: string | null }) {
 // Supply Chain Risk Assessment card
 // ---------------------------------------------------------------------------
 
-function SupplyChainCard({ orgId }: { orgId: string | null }) {
+function SupplyChainCard({ orgId, schedules, onScheduleCreated }: { orgId: string | null; schedules: ScheduledReportRow[]; onScheduleCreated: () => void }) {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -613,24 +646,34 @@ function SupplyChainCard({ orgId }: { orgId: string | null }) {
           </div>
         )}
 
-        <Button
-          onClick={handleDownload}
-          disabled={!orgId || downloading}
-          suppressHydrationWarning
-          className="w-full bg-cyan-700 hover:bg-cyan-600 text-white font-medium disabled:opacity-50"
-        >
-          {downloading ? (
-            <>
-              <Loader2 size={16} className="mr-2 animate-spin" />
-              Generating PDF...
-            </>
-          ) : (
-            <>
-              <Download size={16} className="mr-2" />
-              Download Supply Chain PDF
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleDownload}
+            disabled={!orgId || downloading}
+            suppressHydrationWarning
+            className="flex-1 bg-cyan-700 hover:bg-cyan-600 text-white font-medium disabled:opacity-50"
+          >
+            {downloading ? (
+              <>
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <Download size={16} className="mr-2" />
+                Download Supply Chain PDF
+              </>
+            )}
+          </Button>
+          <ScheduleButton orgId={orgId} reportType="SUPPLY_CHAIN" onCreated={onScheduleCreated} />
+        </div>
+
+        {schedules.filter((s) => s.reportType === "SUPPLY_CHAIN" && s.isActive).map((s) => (
+          <div key={s.id} className="flex items-center gap-2 text-[11px] text-cyan-400">
+            <Clock size={11} />
+            Next scheduled: {fmtDate(s.nextRun)}
+          </div>
+        ))}
 
         {!orgId && (
           <p className="text-center text-xs text-slate-600">
@@ -646,7 +689,7 @@ function SupplyChainCard({ orgId }: { orgId: string | null }) {
 // Audit Trail Report card
 // ---------------------------------------------------------------------------
 
-function AuditTrailCard({ orgId }: { orgId: string | null }) {
+function AuditTrailCard({ orgId, schedules, onScheduleCreated }: { orgId: string | null; schedules: ScheduledReportRow[]; onScheduleCreated: () => void }) {
   const [fromDate, setFromDate] = useState(nDaysAgo(90));
   const [toDate, setToDate] = useState(today());
   const [downloading, setDownloading] = useState(false);
@@ -771,24 +814,34 @@ function AuditTrailCard({ orgId }: { orgId: string | null }) {
           </div>
         )}
 
-        <Button
-          onClick={handleDownload}
-          disabled={!orgId || downloading}
-          suppressHydrationWarning
-          className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium disabled:opacity-50"
-        >
-          {downloading ? (
-            <>
-              <Loader2 size={16} className="mr-2 animate-spin" />
-              Generating PDF...
-            </>
-          ) : (
-            <>
-              <Download size={16} className="mr-2" />
-              Download Audit Trail PDF
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleDownload}
+            disabled={!orgId || downloading}
+            suppressHydrationWarning
+            className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium disabled:opacity-50"
+          >
+            {downloading ? (
+              <>
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <Download size={16} className="mr-2" />
+                Download Audit Trail PDF
+              </>
+            )}
+          </Button>
+          <ScheduleButton orgId={orgId} reportType="AUDIT_TRAIL" onCreated={onScheduleCreated} />
+        </div>
+
+        {schedules.filter((s) => s.reportType === "AUDIT_TRAIL" && s.isActive).map((s) => (
+          <div key={s.id} className="flex items-center gap-2 text-[11px] text-slate-400">
+            <Clock size={11} />
+            Next scheduled: {fmtDate(s.nextRun)}
+          </div>
+        ))}
 
         {!orgId && (
           <p className="text-center text-xs text-slate-600">
@@ -797,6 +850,438 @@ function AuditTrailCard({ orgId }: { orgId: string | null }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Report type metadata
+// ---------------------------------------------------------------------------
+
+const REPORT_TYPE_META: Record<
+  string,
+  { label: string; color: string }
+> = {
+  COMPLIANCE: { label: "NIS2 Compliance", color: "text-blue-400" },
+  INCIDENT_SUMMARY: { label: "Incident Summary", color: "text-amber-400" },
+  THREAT_BRIEFING: { label: "Threat Briefing", color: "text-violet-400" },
+  SUPPLY_CHAIN: { label: "Supply Chain Risk", color: "text-cyan-400" },
+  AUDIT_TRAIL: { label: "Audit Trail", color: "text-slate-400" },
+};
+
+const SCHEDULE_LABELS: Record<string, string> = {
+  WEEKLY: "Weekly",
+  MONTHLY: "Monthly",
+  QUARTERLY: "Quarterly",
+};
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return "Never";
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Schedule Dialog
+// ---------------------------------------------------------------------------
+
+interface ScheduleDialogProps {
+  orgId: string;
+  reportType: CreateScheduledReportInput["reportType"];
+  onClose: () => void;
+  onCreated: () => void;
+}
+
+function ScheduleDialog({ orgId, reportType, onClose, onCreated }: ScheduleDialogProps) {
+  const [schedule, setSchedule] = useState<"WEEKLY" | "MONTHLY" | "QUARTERLY">("WEEKLY");
+  const [dayOfWeek, setDayOfWeek] = useState(1); // Monday
+  const [dayOfMonth, setDayOfMonth] = useState(1);
+  const [recipientInput, setRecipientInput] = useState("");
+  const [recipients, setRecipients] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function addRecipient() {
+    const email = recipientInput.trim().toLowerCase();
+    if (!email) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Invalid email address");
+      return;
+    }
+    if (recipients.includes(email)) {
+      setError("Email already added");
+      return;
+    }
+    setRecipients([...recipients, email]);
+    setRecipientInput("");
+    setError(null);
+  }
+
+  function removeRecipient(email: string) {
+    setRecipients(recipients.filter((r) => r !== email));
+  }
+
+  async function handleSave() {
+    if (recipients.length === 0) {
+      setError("Add at least one recipient email");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await createScheduledReport({
+        organizationId: orgId,
+        reportType,
+        schedule,
+        dayOfWeek: schedule === "WEEKLY" ? dayOfWeek : null,
+        dayOfMonth: schedule !== "WEEKLY" ? dayOfMonth : null,
+        recipients,
+      });
+      onCreated();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create schedule");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const meta = REPORT_TYPE_META[reportType];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-slate-100">
+            Schedule {meta?.label ?? reportType} Report
+          </h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Frequency */}
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-widest text-slate-500">
+              Frequency
+            </Label>
+            <div className="grid grid-cols-3 gap-2">
+              {(["WEEKLY", "MONTHLY", "QUARTERLY"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSchedule(s)}
+                  className={`h-8 rounded-md text-xs font-medium transition-colors ${
+                    schedule === s
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  {SCHEDULE_LABELS[s]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Day selector */}
+          {schedule === "WEEKLY" ? (
+            <div className="space-y-1.5">
+              <Label className="text-[10px] uppercase tracking-widest text-slate-500">
+                Day of Week
+              </Label>
+              <select
+                value={dayOfWeek}
+                onChange={(e) => setDayOfWeek(Number(e.target.value))}
+                className="w-full h-9 px-3 rounded-md bg-slate-800 border border-slate-700 text-xs text-slate-200"
+              >
+                {DAY_NAMES.map((name, idx) => (
+                  <option key={idx} value={idx}>{name}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label className="text-[10px] uppercase tracking-widest text-slate-500">
+                Day of Month
+              </Label>
+              <select
+                value={dayOfMonth}
+                onChange={(e) => setDayOfMonth(Number(e.target.value))}
+                className="w-full h-9 px-3 rounded-md bg-slate-800 border border-slate-700 text-xs text-slate-200"
+              >
+                {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Recipients */}
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-widest text-slate-500">
+              Recipients
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="email"
+                value={recipientInput}
+                onChange={(e) => setRecipientInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRecipient(); } }}
+                placeholder="email@example.com"
+                className="h-8 text-xs bg-slate-800 border-slate-700 text-slate-200"
+              />
+              <button
+                onClick={addRecipient}
+                className="h-8 px-3 rounded-md bg-slate-800 border border-slate-700 text-xs text-slate-400 hover:text-slate-200 shrink-0"
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+            {recipients.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {recipients.map((email) => (
+                  <span
+                    key={email}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-400"
+                  >
+                    <Mail size={10} />
+                    {email}
+                    <button onClick={() => removeRecipient(email)} className="hover:text-red-400 ml-0.5">
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <p className="text-xs text-red-400">{error}</p>
+          )}
+
+          <div className="flex items-center gap-2 pt-2">
+            <Button
+              onClick={handleSave}
+              disabled={saving || recipients.length === 0}
+              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs"
+              size="sm"
+            >
+              {saving ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <Clock size={14} className="mr-1.5" />}
+              Create Schedule
+            </Button>
+            <Button
+              onClick={onClose}
+              variant="ghost"
+              className="text-xs text-slate-400"
+              size="sm"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Schedule Button (added to each report card)
+// ---------------------------------------------------------------------------
+
+interface ScheduleButtonProps {
+  orgId: string | null;
+  reportType: CreateScheduledReportInput["reportType"];
+  onCreated: () => void;
+}
+
+function ScheduleButton({ orgId, reportType, onCreated }: ScheduleButtonProps) {
+  const [showDialog, setShowDialog] = useState(false);
+
+  return (
+    <>
+      <Button
+        onClick={() => setShowDialog(true)}
+        disabled={!orgId}
+        variant="ghost"
+        className="text-xs text-slate-400 hover:text-blue-400 gap-1.5"
+        size="sm"
+      >
+        <Clock size={14} />
+        Schedule
+      </Button>
+      {showDialog && orgId && (
+        <ScheduleDialog
+          orgId={orgId}
+          reportType={reportType}
+          onClose={() => setShowDialog(false)}
+          onCreated={onCreated}
+        />
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Scheduled Reports section (bottom of page)
+// ---------------------------------------------------------------------------
+
+interface ScheduledReportsSectionProps {
+  orgId: string | null;
+  schedules: ScheduledReportRow[];
+  onRefresh: () => void;
+}
+
+function ScheduledReportsSection({ orgId, schedules, onRefresh }: ScheduledReportsSectionProps) {
+  const [runningId, setRunningId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  async function handleRunNow(id: string) {
+    setRunningId(id);
+    try {
+      await runScheduledReportNow(id);
+      onRefresh();
+    } catch (err) {
+      console.error("Run-now failed:", err);
+    } finally {
+      setRunningId(null);
+    }
+  }
+
+  async function handleToggle(row: ScheduledReportRow) {
+    setTogglingId(row.id);
+    try {
+      await updateScheduledReport(row.id, { isActive: !row.isActive });
+      onRefresh();
+    } catch (err) {
+      console.error("Toggle failed:", err);
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      await deleteScheduledReport(id);
+      onRefresh();
+    } catch (err) {
+      console.error("Delete failed:", err);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  if (!orgId) return null;
+
+  return (
+    <div className="mt-8 max-w-4xl">
+      <h2 className="text-lg font-semibold text-slate-100 mb-1">Scheduled Reports</h2>
+      <p className="text-xs text-slate-500 mb-4">
+        Automatic report generation and email delivery
+      </p>
+
+      {schedules.length === 0 ? (
+        <Card className="border-slate-800 bg-slate-900/50">
+          <CardContent className="py-8 text-center">
+            <Clock size={24} className="mx-auto mb-2 text-slate-600" />
+            <p className="text-sm text-slate-500">No scheduled reports yet.</p>
+            <p className="text-xs text-slate-600 mt-1">
+              Use the "Schedule" button on any report card above to set up automatic delivery.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {schedules.map((s) => {
+            const meta = REPORT_TYPE_META[s.reportType];
+            const scheduleDesc = s.schedule === "WEEKLY"
+              ? `Every ${DAY_NAMES[s.dayOfWeek ?? 1]}`
+              : s.schedule === "MONTHLY"
+                ? `Monthly on day ${s.dayOfMonth ?? 1}`
+                : `Quarterly on day ${s.dayOfMonth ?? 1}`;
+
+            return (
+              <Card key={s.id} className={`border-slate-700/50 bg-slate-900 ${!s.isActive ? "opacity-50" : ""}`}>
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center justify-between gap-4">
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs font-semibold ${meta?.color ?? "text-slate-300"}`}>
+                          {meta?.label ?? s.reportType}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500">
+                          {SCHEDULE_LABELS[s.schedule]}
+                        </span>
+                        {!s.isActive && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            Paused
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 text-[11px] text-slate-500">
+                        <span>{scheduleDesc}</span>
+                        <span>Next: {fmtDate(s.nextRun)}</span>
+                        {s.lastGenerated && <span>Last: {fmtDate(s.lastGenerated)}</span>}
+                      </div>
+                      <div className="flex items-center gap-1 mt-1">
+                        {s.recipients.map((email) => (
+                          <span
+                            key={email}
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500"
+                          >
+                            {email}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Toggle active */}
+                      <button
+                        onClick={() => handleToggle(s)}
+                        disabled={togglingId === s.id}
+                        className="relative h-7 px-2 rounded bg-slate-800 border border-slate-700 text-[11px] text-slate-400 hover:text-slate-200 transition-colors disabled:opacity-50"
+                        title={s.isActive ? "Pause" : "Resume"}
+                      >
+                        {s.isActive ? "Pause" : "Resume"}
+                      </button>
+                      {/* Run now */}
+                      <button
+                        onClick={() => handleRunNow(s.id)}
+                        disabled={runningId === s.id}
+                        className="h-7 px-2 flex items-center gap-1 rounded bg-slate-800 border border-slate-700 text-[11px] text-slate-400 hover:text-emerald-400 transition-colors disabled:opacity-50"
+                        title="Generate and send now"
+                      >
+                        {runningId === s.id ? <Loader2 size={10} className="animate-spin" /> : <Play size={10} />}
+                        Run Now
+                      </button>
+                      {/* Delete */}
+                      <button
+                        onClick={() => handleDelete(s.id)}
+                        disabled={deletingId === s.id}
+                        className="h-7 w-7 flex items-center justify-center rounded bg-slate-800 border border-slate-700 text-slate-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                        title="Delete schedule"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -810,6 +1295,17 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [schedules, setSchedules] = useState<ScheduledReportRow[]>([]);
+
+  const loadSchedules = useCallback(async () => {
+    if (!orgId) { setSchedules([]); return; }
+    try {
+      const res = await getScheduledReports(orgId);
+      setSchedules(res.data);
+    } catch {
+      // silently ignore
+    }
+  }, [orgId]);
 
   useEffect(() => {
     if (orgLoading) return;
@@ -825,7 +1321,8 @@ export default function ReportsPage() {
         /* silently fall through - page still renders without stats */
       })
       .finally(() => setLoading(false));
-  }, [orgId, orgLoading]);
+    loadSchedules();
+  }, [orgId, orgLoading, loadSchedules]);
 
   async function handleDownload() {
     if (!orgId) return;
@@ -977,24 +1474,35 @@ export default function ReportsPage() {
               </div>
             )}
 
-            <Button
-              onClick={handleDownload}
-              disabled={!orgId || downloading || loading}
-              suppressHydrationWarning
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium disabled:opacity-50"
-            >
-              {downloading ? (
-                <>
-                  <Loader2 size={16} className="mr-2 animate-spin" />
-                  Generating PDF...
-                </>
-              ) : (
-                <>
-                  <Download size={16} className="mr-2" />
-                  Download PDF
-                </>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleDownload}
+                disabled={!orgId || downloading || loading}
+                suppressHydrationWarning
+                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium disabled:opacity-50"
+              >
+                {downloading ? (
+                  <>
+                    <Loader2 size={16} className="mr-2 animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} className="mr-2" />
+                    Download PDF
+                  </>
+                )}
+              </Button>
+              <ScheduleButton orgId={orgId} reportType="COMPLIANCE" onCreated={loadSchedules} />
+            </div>
+
+            {/* Show next scheduled if exists */}
+            {schedules.filter((s) => s.reportType === "COMPLIANCE" && s.isActive).map((s) => (
+              <div key={s.id} className="flex items-center gap-2 text-[11px] text-blue-400">
+                <Clock size={11} />
+                Next scheduled: {fmtDate(s.nextRun)}
+              </div>
+            ))}
 
             {!orgId && !loading && (
               <p className="text-center text-xs text-slate-600">
@@ -1008,20 +1516,20 @@ export default function ReportsPage() {
         {/* Active: Incident Summary Report */}
         {/* ---------------------------------------------------------------- */}
         <div className="md:col-span-2">
-          <IncidentSummaryCard orgId={orgId} />
+          <IncidentSummaryCard orgId={orgId} schedules={schedules} onScheduleCreated={loadSchedules} />
         </div>
 
         {/* ---------------------------------------------------------------- */}
         {/* Active: Threat Landscape Briefing */}
         {/* ---------------------------------------------------------------- */}
-        <ThreatBriefingCard orgId={orgId} />
+        <ThreatBriefingCard orgId={orgId} schedules={schedules} onScheduleCreated={loadSchedules} />
 
         {/* ---------------------------------------------------------------- */}
-        {/* Placeholder cards */}
+        {/* Active report cards */}
         {/* ---------------------------------------------------------------- */}
-        <SupplyChainCard orgId={orgId} />
+        <SupplyChainCard orgId={orgId} schedules={schedules} onScheduleCreated={loadSchedules} />
 
-        <AuditTrailCard orgId={orgId} />
+        <AuditTrailCard orgId={orgId} schedules={schedules} onScheduleCreated={loadSchedules} />
 
         <PlaceholderCard
           icon={<BarChart2 size={18} />}
@@ -1029,6 +1537,9 @@ export default function ReportsPage() {
           description="Statistical overview of telemetry anomalies detected across all assets, detection rule performance metrics, and false-positive rate analysis over time."
         />
       </div>
+
+      {/* Scheduled Reports section */}
+      <ScheduledReportsSection orgId={orgId} schedules={schedules} onRefresh={loadSchedules} />
     </div>
   );
 }
