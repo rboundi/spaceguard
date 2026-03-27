@@ -44,3 +44,6 @@ export * from "./scheduled-reports";
 
 // Risk Scores
 export * from "./risk";
+
+// Playbooks
+export * from "./playbooks";

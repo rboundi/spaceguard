@@ -223,3 +223,43 @@ export const supplierTypeLabels: Record<SupplierType, string> = {
   [SupplierType.INTEGRATION_PARTNER]: "Integration Partner",
   [SupplierType.DATA_RELAY_PROVIDER]: "Data Relay Provider",
 };
+
+// ---------------------------------------------------------------------------
+// Playbooks
+// ---------------------------------------------------------------------------
+
+export enum PlaybookStepType {
+  NOTIFY = "notify",
+  CREATE_INCIDENT = "create_incident",
+  CHANGE_ALERT_STATUS = "change_alert_status",
+  GENERATE_REPORT = "generate_report",
+  WEBHOOK_ACTION = "webhook_action",
+  WAIT = "wait",
+  HUMAN_APPROVAL = "human_approval",
+  ADD_NOTE = "add_note",
+}
+
+export const playbookStepTypeLabels: Record<PlaybookStepType, string> = {
+  [PlaybookStepType.NOTIFY]: "Send Notification",
+  [PlaybookStepType.CREATE_INCIDENT]: "Create Incident",
+  [PlaybookStepType.CHANGE_ALERT_STATUS]: "Change Alert Status",
+  [PlaybookStepType.GENERATE_REPORT]: "Generate Report",
+  [PlaybookStepType.WEBHOOK_ACTION]: "Webhook Action",
+  [PlaybookStepType.WAIT]: "Wait",
+  [PlaybookStepType.HUMAN_APPROVAL]: "Human Approval",
+  [PlaybookStepType.ADD_NOTE]: "Add Note",
+};
+
+export enum PlaybookExecutionStatus {
+  RUNNING = "RUNNING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
+  CANCELLED = "CANCELLED",
+}
+
+export const playbookExecutionStatusLabels: Record<PlaybookExecutionStatus, string> = {
+  [PlaybookExecutionStatus.RUNNING]: "Running",
+  [PlaybookExecutionStatus.COMPLETED]: "Completed",
+  [PlaybookExecutionStatus.FAILED]: "Failed",
+  [PlaybookExecutionStatus.CANCELLED]: "Cancelled",
+};

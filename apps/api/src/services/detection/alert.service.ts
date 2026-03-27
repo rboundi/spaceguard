@@ -30,6 +30,7 @@ import { createIncidentFromAlert } from "../incident.service";
 import { sendAlertNotification } from "../notification.service";
 import { forwardAlertToSyslog } from "../syslog.service";
 import { correlateAlert } from "./correlator";
+import { checkPlaybookTriggers } from "../playbook.service";
 
 // ---------------------------------------------------------------------------
 // Redis client (lazily initialised, shared singleton)
@@ -182,6 +183,17 @@ export async function createAlert(data: CreateAlert): Promise<AlertResponse | nu
   // Fire-and-forget syslog SIEM forwarding
   forwardAlertToSyslog(response).catch((err: unknown) => {
     console.error("[alert-service] Failed to forward alert to syslog:", err);
+  });
+
+  // Fire-and-forget playbook auto-trigger check
+  checkPlaybookTriggers(
+    row.id,
+    data.organizationId,
+    row.severity,
+    row.spartaTactic,
+    data.ruleId,
+  ).catch((err: unknown) => {
+    console.error("[alert-service] Failed to check playbook triggers:", err);
   });
 
   return response;

@@ -11,3 +11,4 @@ export * from "./schemas/supplier";
 export * from "./schemas/anomaly";
 export * from "./schemas/scheduled-report";
 export * from "./schemas/risk";
+export * from "./schemas/playbook";
