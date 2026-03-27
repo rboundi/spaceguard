@@ -33,9 +33,16 @@ organizationRoutes.post(
 );
 
 // GET /api/v1/organizations
+// Admins see all orgs (for the org-switcher). Non-admins see only their own.
 organizationRoutes.get("/organizations", async (c) => {
-  const orgs = await listOrganizations();
-  return c.json({ data: orgs });
+  const user = c.get("user");
+  if (user.role === "ADMIN") {
+    const orgs = await listOrganizations();
+    return c.json({ data: orgs });
+  }
+  // Non-admin: return only their own organization
+  const org = await getOrganization(user.organizationId);
+  return c.json({ data: [org] });
 });
 
 // GET /api/v1/organizations/:id

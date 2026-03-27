@@ -12,7 +12,7 @@ export const stixObjectSchema = z.object({
   modified: z.string().optional(),
   name: z.string().optional(),
   description: z.string().optional(),
-}).passthrough();
+}).passthrough().strict();
 
 export type StixObject = z.infer<typeof stixObjectSchema>;
 
@@ -21,7 +21,7 @@ export const stixBundleSchema = z.object({
   type: z.literal("bundle"),
   id: z.string().min(1),
   objects: z.array(stixObjectSchema).min(1),
-});
+}).strict();
 
 export type StixBundle = z.infer<typeof stixBundleSchema>;
 
@@ -105,6 +105,6 @@ export const spartaFetchRequestSchema = z.object({
     .string()
     .url()
     .default("https://sparta.aerospace.org/download/STIX?f=latest"),
-});
+}).strict();
 
 export type SpartaFetchRequest = z.infer<typeof spartaFetchRequestSchema>;

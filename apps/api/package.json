@@ -17,6 +17,7 @@
     "@hono/zod-validator": "^0.4",
     "@react-pdf/renderer": "^4",
     "@spaceguard/shared": "*",
+    "@types/ws": "^8.18.1",
     "drizzle-orm": "^0.38",
     "hono": "^4",
     "ioredis": "^5",
@@ -24,6 +25,7 @@
     "next": "16.2.0",
     "postgres": "^3.4",
     "react": "^18",
+    "ws": "^8.20.0",
     "zod": "^3.24"
   },
   "devDependencies": {

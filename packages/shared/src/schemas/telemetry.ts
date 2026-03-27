@@ -18,7 +18,7 @@ export const createStreamSchema = z.object({
   apid: z.number().int().min(0).max(2047).optional(),
   sampleRateHz: z.number().positive().optional(),
   status: z.nativeEnum(StreamStatus).default(StreamStatus.ACTIVE),
-});
+}).strict();
 
 export const updateStreamSchema = createStreamSchema
   .omit({ organizationId: true, assetId: true })
@@ -56,12 +56,12 @@ export const ingestPointSchema = z.object({
   valueNumeric: z.number().optional(),
   valueText: z.string().max(1024).optional(),
   quality: z.nativeEnum(TelemetryQuality).default(TelemetryQuality.GOOD),
-});
+}).strict();
 
 export const ingestBatchSchema = z.object({
   streamId: z.string().uuid(),
   points: z.array(ingestPointSchema).min(1).max(1000),
-});
+}).strict();
 
 export const telemetryQuerySchema = z
   .object({
@@ -98,7 +98,7 @@ export const logEntrySchema = z.object({
   message: z.string().min(1).max(10000),
   structuredData: z.record(z.unknown()).optional(),
   timestamp: z.string().datetime({ offset: true }),
-});
+}).strict();
 
 export const logQuerySchema = z
   .object({

@@ -4,6 +4,7 @@
 
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import type { TokenPayload } from "../services/auth.service";
 
 export const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -39,4 +40,29 @@ export function assertTenant(c: Context, requestedOrgId: string): void {
       message: "Access denied: you cannot access another organization's data",
     });
   }
+}
+
+/**
+ * Get the effective organization ID for a request.
+ *
+ * Non-admin users always get their JWT org ID regardless of what the client
+ * sends. Admin users can specify an org via the `requestedOrgId` parameter
+ * (from query string or request body) and fall back to their JWT org ID.
+ */
+export function getEffectiveOrgId(c: Context, requestedOrgId?: string): string {
+  const user = c.get("user") as TokenPayload | undefined;
+  if (!user) {
+    throw new HTTPException(401, { message: "Authentication required" });
+  }
+  // Non-admin: always locked to their JWT org
+  if (user.role !== "ADMIN") {
+    if (requestedOrgId && requestedOrgId !== user.organizationId) {
+      throw new HTTPException(403, {
+        message: "Access denied: you cannot access another organization's data",
+      });
+    }
+    return user.organizationId;
+  }
+  // Admin: use requested org or fall back to their own
+  return requestedOrgId || user.organizationId;
 }

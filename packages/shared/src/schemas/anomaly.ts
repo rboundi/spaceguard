@@ -29,7 +29,7 @@ export const updateBaselineSchema = z.object({
   stdDeviation: z.number().min(0).optional(),
   minValue: z.number().optional(),
   maxValue: z.number().optional(),
-});
+}).strict();
 
 export type UpdateBaseline = z.infer<typeof updateBaselineSchema>;
 

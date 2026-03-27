@@ -8,7 +8,7 @@ export const createOrganizationSchema = z.object({
   sector: z.string().max(100).default("space"),
   contactEmail: z.string().email(),
   contactName: z.string().min(1).max(255),
-});
+}).strict();
 
 export const updateOrganizationSchema = createOrganizationSchema.partial();
 

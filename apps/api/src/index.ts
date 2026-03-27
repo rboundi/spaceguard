@@ -2,9 +2,11 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { secureHeaders } from "hono/secure-headers";
 import { bodyLimit } from "hono/body-limit";
 import { errorMiddleware } from "./middleware/error";
+import { securityHeadersMiddleware } from "./middleware/security-headers";
+import { apiRateLimit, telemetryRateLimit, reportRateLimit, authRateLimit } from "./middleware/rate-limit";
+import { jsonbSizeGuard } from "./middleware/sanitize";
 import { organizationRoutes } from "./routes/organizations";
 import { assetRoutes } from "./routes/assets";
 import { complianceRoutes } from "./routes/compliance";
@@ -35,11 +37,16 @@ import { setupWebSocket } from "./services/realtime.service";
 
 const app = new Hono();
 
-// Global middleware
+// ---------------------------------------------------------------------------
+// Global middleware stack (order matters)
+// ---------------------------------------------------------------------------
+
 app.use("*", logger());
-app.use("*", secureHeaders());
-// Allow the frontend origin to be configured via env var for production deployments.
-// Falls back to localhost:3000 for local development.
+
+// Security headers (replaces Hono's built-in secureHeaders with stricter set)
+app.use("*", securityHeadersMiddleware);
+
+// CORS
 const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN ?? "http://localhost:3000")
   .split(",")
   .map((o) => o.trim())
@@ -52,6 +59,7 @@ app.use(
     credentials: true,
   })
 );
+
 // Body size limits: SPARTA imports can be 20 MB, everything else 512 KB
 app.use("/api/v1/*", async (c, next) => {
   const isSpartaImport = c.req.path === "/api/v1/admin/sparta/import";
@@ -61,8 +69,33 @@ app.use("/api/v1/*", async (c, next) => {
     : "Request body too large";
   return bodyLimit({ maxSize: limit, onError: (ctx) => ctx.json({ error: msg }, 413) })(c, next);
 });
+
+// JSONB field size guard (rejects individual JSONB fields > 1 MB)
+app.use("/api/v1/*", jsonbSizeGuard);
+
+// Global error handler
 app.use("*", errorMiddleware);
+
+// Audit logging for all API mutations
 app.use("/api/v1/*", auditMiddleware);
+
+// ---------------------------------------------------------------------------
+// Rate limiting (applied per route category)
+// ---------------------------------------------------------------------------
+
+// Auth endpoints: 10 attempts/min per IP (brute-force protection)
+app.use("/api/v1/auth/login", authRateLimit);
+app.use("/api/v1/auth/register", authRateLimit);
+
+// Report generation: 10/hour per org
+app.use("/api/v1/reports/*", reportRateLimit);
+
+// Telemetry ingestion: 10 000 points/min per org
+app.use("/api/v1/telemetry/ingest", telemetryRateLimit);
+app.use("/api/v1/telemetry/ingest/*", telemetryRateLimit);
+
+// General API: 1000 req/min per org (applied after auth so org ID is available)
+// Note: this is applied AFTER the auth middleware below so the org ID is in context
 
 // Health check
 app.get("/health", (c) => {
@@ -108,6 +141,9 @@ app.use("/api/v1/dashboard/*", authMiddleware);
 app.use("/api/v1/dashboard", authMiddleware);
 app.use("/api/v1/admin/*", authMiddleware);
 app.use("/api/v1/admin/*", adminOnly);
+
+// General API rate limit: 1000 req/min per org (after auth so orgId is in context)
+app.use("/api/v1/*", apiRateLimit);
 
 // Scheduled Reports routes
 app.route("/api/v1", scheduledReportRoutes);

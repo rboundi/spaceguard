@@ -13,7 +13,7 @@ export const createScheduledReportSchema = z.object({
   dayOfMonth: z.number().int().min(1).max(28).nullable().optional(),
   recipients: z.array(z.string().email()).min(1, "At least one recipient is required"),
   isActive: z.boolean().optional().default(true),
-});
+}).strict();
 
 export type CreateScheduledReport = z.infer<typeof createScheduledReportSchema>;
 
@@ -27,7 +27,7 @@ export const updateScheduledReportSchema = z.object({
   dayOfMonth: z.number().int().min(1).max(28).nullable().optional(),
   recipients: z.array(z.string().email()).min(1).optional(),
   isActive: z.boolean().optional(),
-});
+}).strict();
 
 export type UpdateScheduledReport = z.infer<typeof updateScheduledReportSchema>;
 

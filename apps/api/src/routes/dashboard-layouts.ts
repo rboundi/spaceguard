@@ -21,7 +21,19 @@ const widgetConfigSchema = z.object({
 
 const saveLayoutSchema = z.object({
   layout: z.array(widgetConfigSchema).min(1).max(20),
-});
+}).strict();
+
+// ---------------------------------------------------------------------------
+// Helper: extract userId from JWT payload set by authMiddleware
+// ---------------------------------------------------------------------------
+
+function getUserId(c: { get(key: "user"): { userId: string } | undefined }): string {
+  const user = c.get("user");
+  if (!user?.userId) {
+    throw new HTTPException(401, { message: "Authentication required" });
+  }
+  return user.userId;
+}
 
 // ---------------------------------------------------------------------------
 // Routes
@@ -34,11 +46,7 @@ export const dashboardLayoutRoutes = new Hono();
  * Requires auth. Returns the current user's dashboard layout.
  */
 dashboardLayoutRoutes.get("/", async (c) => {
-  const userId = c.get("userId") as string | undefined;
-  if (!userId) {
-    throw new HTTPException(401, { message: "Authentication required" });
-  }
-
+  const userId = getUserId(c);
   const layout = await getLayout(userId);
   return c.json(layout);
 });
@@ -48,17 +56,13 @@ dashboardLayoutRoutes.get("/", async (c) => {
  * Requires auth. Saves the user's dashboard layout.
  */
 dashboardLayoutRoutes.put("/", async (c) => {
-  const userId = c.get("userId") as string | undefined;
-  if (!userId) {
-    throw new HTTPException(401, { message: "Authentication required" });
-  }
+  const userId = getUserId(c);
 
   const body = await c.req.json();
   const parsed = saveLayoutSchema.safeParse(body);
   if (!parsed.success) {
     throw new HTTPException(400, {
       message: "Invalid layout",
-      cause: parsed.error.flatten(),
     });
   }
 
@@ -71,11 +75,7 @@ dashboardLayoutRoutes.put("/", async (c) => {
  * Requires auth. Resets the user's dashboard to the default layout.
  */
 dashboardLayoutRoutes.delete("/", async (c) => {
-  const userId = c.get("userId") as string | undefined;
-  if (!userId) {
-    throw new HTTPException(401, { message: "Authentication required" });
-  }
-
+  const userId = getUserId(c);
   await resetLayout(userId);
   return c.json({ layout: DEFAULT_LAYOUT });
 });

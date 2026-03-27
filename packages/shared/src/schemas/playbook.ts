@@ -40,7 +40,7 @@ export const createPlaybookSchema = z.object({
   trigger: playbookTriggerSchema,
   steps: z.array(playbookStepSchema).min(1),
   isActive: z.boolean().optional().default(true),
-});
+}).strict();
 
 export type CreatePlaybook = z.infer<typeof createPlaybookSchema>;
 
@@ -50,7 +50,7 @@ export const updatePlaybookSchema = z.object({
   trigger: playbookTriggerSchema.optional(),
   steps: z.array(playbookStepSchema).min(1).optional(),
   isActive: z.boolean().optional(),
-});
+}).strict();
 
 export type UpdatePlaybook = z.infer<typeof updatePlaybookSchema>;
 
@@ -118,6 +118,6 @@ export type PlaybookExecutionResponse = z.infer<typeof playbookExecutionResponse
 export const executePlaybookSchema = z.object({
   alertId: z.string().uuid().optional(),
   incidentId: z.string().uuid().optional(),
-});
+}).strict();
 
 export type ExecutePlaybookRequest = z.infer<typeof executePlaybookSchema>;

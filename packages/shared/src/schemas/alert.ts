@@ -41,7 +41,7 @@ export const createAlertSchema = z.object({
   affectedAssetId: z.string().uuid().optional(),
   triggeredAt: z.string().datetime({ offset: true }).optional(),
   metadata: z.record(z.unknown()).optional(),
-});
+}).strict();
 
 // ---------------------------------------------------------------------------
 // Update alert (status transitions, resolution tracking)
@@ -52,7 +52,7 @@ export const updateAlertSchema = z.object({
   resolvedBy: z.string().max(255).optional(),
   // Callers may provide additional notes via metadata merge
   metadata: z.record(z.unknown()).optional(),
-});
+}).strict();
 
 // ---------------------------------------------------------------------------
 // Query params for listing alerts

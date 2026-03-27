@@ -9,7 +9,7 @@ export const createAssetSchema = z.object({
   metadata: z.record(z.unknown()).optional(),
   status: z.nativeEnum(AssetStatus).default(AssetStatus.OPERATIONAL),
   criticality: z.nativeEnum(Criticality).default(Criticality.MEDIUM),
-});
+}).strict();
 
 export const updateAssetSchema = createAssetSchema.omit({ organizationId: true }).partial();
 

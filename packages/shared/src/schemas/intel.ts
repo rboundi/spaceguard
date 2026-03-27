@@ -52,7 +52,7 @@ export const createIntelSchema = z.object({
   confidence:  z.number().int().min(0).max(100).optional(),
   validFrom:   z.string().datetime({ offset: true }).optional(),
   validUntil:  z.string().datetime({ offset: true }).optional(),
-});
+}).strict();
 
 export type CreateIntel = z.infer<typeof createIntelSchema>;
 

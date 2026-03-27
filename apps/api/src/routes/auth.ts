@@ -26,12 +26,12 @@ const registerSchema = z.object({
   name: z.string().min(1).max(255),
   organizationId: z.string().uuid(),
   role: z.enum(["ADMIN", "OPERATOR", "VIEWER", "AUDITOR"]).default("VIEWER"),
-});
+}).strict();
 
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
-});
+}).strict();
 
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(255).optional(),
@@ -39,13 +39,13 @@ const updateProfileSchema = z.object({
   notifyCriticalAlerts: z.boolean().optional(),
   notifyDeadlines: z.boolean().optional(),
   notifyWeeklyDigest: z.boolean().optional(),
-});
+}).strict();
 
 const updateUserSchema = z.object({
   role: z.enum(["ADMIN", "OPERATOR", "VIEWER", "AUDITOR"]).optional(),
   isActive: z.boolean().optional(),
   name: z.string().min(1).max(255).optional(),
-});
+}).strict();
 
 // ---------------------------------------------------------------------------
 // Router

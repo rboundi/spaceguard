@@ -29,7 +29,7 @@ export const createMappingSchema = z.object({
   responsiblePerson: z.string().max(255).optional(),
   nextReviewDate: z.string().date().optional(),
   notes: z.string().max(10000).optional(),
-});
+}).strict();
 
 export const updateMappingSchema = createMappingSchema
   .omit({ organizationId: true, requirementId: true })

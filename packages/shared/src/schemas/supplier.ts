@@ -25,7 +25,7 @@ export const createSupplierSchema = z.object({
   contactInfo: z.record(z.unknown()).optional(),
   assetsSupplied: z.array(z.string().uuid()).optional(),
   securityAssessment: securityAssessmentSchema.optional(),
-});
+}).strict();
 
 export const updateSupplierSchema = createSupplierSchema
   .omit({ organizationId: true })

@@ -91,7 +91,7 @@ export const createIncidentSchema = z.object({
   spartaTechniques: z.array(spartaTechniqueEntrySchema).default([]),
   affectedAssetIds: z.array(z.string().uuid()).default([]),
   detectedAt: z.string().datetime({ offset: true }).optional(),
-});
+}).strict();
 
 export const updateIncidentSchema = z.object({
   title: z.string().min(1).max(500).optional(),
@@ -104,7 +104,7 @@ export const updateIncidentSchema = z.object({
   resolvedAt: z.string().datetime({ offset: true }).optional(),
   timeToDetectMinutes: z.number().int().nonnegative().optional(),
   timeToRespondMinutes: z.number().int().nonnegative().optional(),
-});
+}).strict();
 
 export const incidentResponseSchema = z.object({
   id: z.string().uuid(),
@@ -144,7 +144,7 @@ export const incidentQuerySchema = z.object({
 
 export const addAlertToIncidentSchema = z.object({
   alertId: z.string().uuid(),
-});
+}).strict();
 
 export const incidentAlertResponseSchema = z.object({
   id: z.string().uuid(),
@@ -160,7 +160,7 @@ export const incidentAlertResponseSchema = z.object({
 export const createIncidentNoteSchema = z.object({
   author: z.string().min(1).max(255),
   content: z.string().min(1).max(10000),
-});
+}).strict();
 
 export const incidentNoteResponseSchema = z.object({
   id: z.string().uuid(),
@@ -177,7 +177,7 @@ export const incidentNoteResponseSchema = z.object({
 export const createIncidentReportSchema = z.object({
   reportType: z.nativeEnum(IncidentReportType),
   submittedTo: z.string().max(255).optional(),
-});
+}).strict();
 
 export const incidentReportResponseSchema = z.object({
   id: z.string().uuid(),

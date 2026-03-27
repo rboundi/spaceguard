@@ -29,19 +29,44 @@ export interface TokenPayload extends JWTPayload {
 // Password hashing (scrypt, no external deps)
 // ---------------------------------------------------------------------------
 
+// Explicit scrypt parameters for production-grade security.
+// N=2^15=32768 (CPU/memory cost), r=8 (block size), p=1 (parallelism).
+// These match OWASP recommendations for scrypt and provide ~100ms hash time
+// on modern hardware, comparable to bcrypt with 12 rounds.
+const SCRYPT_PARAMS = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+const SCRYPT_KEYLEN = 64;
+
 function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64).toString("hex");
+  const hash = scryptSync(password, salt, SCRYPT_KEYLEN, SCRYPT_PARAMS).toString("hex");
   return `${salt}:${hash}`;
 }
 
 function verifyPassword(password: string, stored: string): boolean {
   const [salt, hash] = stored.split(":");
   if (!salt || !hash) return false;
-  const candidate = scryptSync(password, salt, 64);
+
   const expected = Buffer.from(hash, "hex");
-  if (candidate.length !== expected.length) return false;
-  return timingSafeEqual(candidate, expected);
+
+  // Try with the current (hardened) scrypt parameters first
+  const candidate = scryptSync(password, salt, SCRYPT_KEYLEN, SCRYPT_PARAMS);
+  if (candidate.length === expected.length && timingSafeEqual(candidate, expected)) {
+    return true;
+  }
+
+  // Fallback: try with Node.js default scrypt parameters for passwords
+  // hashed before the hardening upgrade. This ensures existing users can
+  // still log in; their password will be re-hashed on next change.
+  try {
+    const legacy = scryptSync(password, salt, SCRYPT_KEYLEN);
+    if (legacy.length === expected.length && timingSafeEqual(legacy, expected)) {
+      return true;
+    }
+  } catch {
+    // Ignore errors from the legacy attempt
+  }
+
+  return false;
 }
 
 // ---------------------------------------------------------------------------
