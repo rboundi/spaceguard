@@ -593,3 +593,23 @@ The `GET /supply-chain/suppliers` endpoint only checked tenant isolation when
 an `organizationId` query parameter was explicitly provided. If omitted, the
 endpoint returned suppliers from all organizations. Now defaults to the
 authenticated user's organizationId for non-admin users.
+
+## Fixed: Part 12 - Null Safety on Database Mutations (2026-03-27)
+
+### Missing null checks after .returning() on update/insert operations
+
+**Files**: `apps/api/src/services/telemetry/telemetry.service.ts`,
+`apps/api/src/services/incident.service.ts`,
+`apps/api/src/services/intel.service.ts`
+
+**Severity**: HIGH (runtime crash)
+
+Three service functions destructured the result of `.update().returning()` or
+`.insert().returning()` without checking for undefined. If the database
+returned zero rows (e.g. concurrent deletion, constraint violation), the code
+would crash with "Cannot read properties of undefined" instead of returning a
+proper HTTP error. Added null guards with appropriate 404/500 responses to:
+
+- `updateStream()` in telemetry.service.ts
+- `generateNis2Report()` in incident.service.ts (both update and insert paths)
+- `createIntel()` in intel.service.ts

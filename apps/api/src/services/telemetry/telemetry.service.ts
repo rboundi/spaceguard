@@ -169,6 +169,9 @@ export async function updateStream(
     .set({ ...data, updatedAt: new Date() })
     .where(eq(telemetryStreams.id, id))
     .returning();
+  if (!row) {
+    throw new HTTPException(404, { message: `Stream ${id} not found after update` });
+  }
   return streamToResponse(row);
 }
 

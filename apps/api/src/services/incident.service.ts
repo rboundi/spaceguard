@@ -665,7 +665,7 @@ export async function generateNis2Report(
     )
     .limit(1);
 
-  let row: IncidentReport;
+  let row: IncidentReport | undefined;
   if (existing) {
     [row] = await db
       .update(incidentReports)
@@ -688,6 +688,9 @@ export async function generateNis2Report(
         deadline: deadlines[data.reportType as IncidentReportType],
       })
       .returning();
+  }
+  if (!row) {
+    throw new HTTPException(500, { message: "Failed to create or update NIS2 report" });
   }
 
   await appendTimeline(

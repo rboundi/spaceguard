@@ -164,6 +164,9 @@ export async function createIntel(data: CreateIntel): Promise<IntelResponse> {
     })
     .returning();
 
+  if (!row) {
+    throw new HTTPException(500, { message: "Failed to create or upsert intel record" });
+  }
   return intelToResponse(row);
 }
 
