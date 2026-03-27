@@ -60,6 +60,7 @@ import {
   Trash2,
   Plus,
   Radio,
+  Code2,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -1152,6 +1153,29 @@ function IntegrationsTab() {
         <div className="flex items-center gap-2 p-2 rounded bg-blue-500/10 border border-blue-500/20">
           <Info size={12} className="text-blue-400 shrink-0" />
           <span className="text-[11px] text-blue-400">STIX/TAXII feed endpoint coming soon. Use the Exports page for manual STIX bundle export.</span>
+        </div>
+      </SectionCard>
+
+      {/* Developer Portal link */}
+      <SectionCard>
+        <SectionHeader icon={<ExternalLink size={15} />} title="Developer Portal" description="API documentation, integration guides, and code examples" />
+        <div className="flex items-center gap-3">
+          <a
+            href="/developers"
+            className="h-9 px-4 flex items-center gap-2 rounded-md bg-blue-600 hover:bg-blue-500 text-xs font-medium text-white transition-colors"
+          >
+            <Code2 size={13} />
+            Open Developer Portal
+          </a>
+          <a
+            href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/docs`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-9 px-4 flex items-center gap-2 rounded-md bg-slate-800 border border-slate-700 text-xs text-slate-300 hover:text-slate-100 transition-colors"
+          >
+            <ExternalLink size={13} />
+            Swagger UI
+          </a>
         </div>
       </SectionCard>
 

@@ -22,6 +22,7 @@ import { settingsRoutes } from "./routes/settings";
 import { anomalyRoutes } from "./routes/anomaly";
 import { syslogRoutes } from "./routes/syslog";
 import { enisaRoutes } from "./routes/enisa";
+import { docsRoutes } from "./routes/docs";
 import { auditMiddleware } from "./middleware/audit";
 import { authMiddleware, adminOnly } from "./middleware/auth-guard";
 
@@ -60,6 +61,9 @@ app.use("/api/v1/*", auditMiddleware);
 app.get("/health", (c) => {
   return c.json({ status: "healthy", version: "0.1.0" });
 });
+
+// API documentation (public, no auth)
+app.route("", docsRoutes);
 
 // Auth routes (login/register/setup-status are public; they handle their own auth)
 app.route("/api/v1", authRoutes);

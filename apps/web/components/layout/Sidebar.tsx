@@ -21,6 +21,7 @@ import {
   UserCog,
   Download,
   BookOpen,
+  Code2,
 } from "lucide-react";
 import { useAlerts } from "@/lib/alerts-context";
 import { useIncidents } from "@/lib/incidents-context";
@@ -107,6 +108,13 @@ const navItems = [
     label: "Exports",
     href: "/exports",
     icon: Download,
+    exact: false,
+    badge: false,
+  },
+  {
+    label: "Developers",
+    href: "/developers",
+    icon: Code2,
     exact: false,
     badge: false,
   },
