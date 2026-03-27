@@ -583,14 +583,14 @@ function TitlePage({ data }: { data: ReportData }) {
           <Text style={s.titleBrandSub}>CYBERSECURITY PLATFORM</Text>
         </View>
         <View>
-          <Text style={s.titleBannerRight}>NIS2 Directive - Article 21</Text>
+          <Text style={s.titleBannerRight}>NIS2 / CRA / ENISA</Text>
           <Text style={s.titleBannerRight}>Compliance Assessment Report</Text>
         </View>
       </View>
 
       {/* Body */}
       <View style={s.titleBody}>
-        <Text style={s.titleHeading}>NIS2 Compliance{"\n"}Report</Text>
+        <Text style={s.titleHeading}>Compliance{"\n"}Report</Text>
         <Text style={s.titleSubheading}>European Space Infrastructure</Text>
 
         {/* Org box */}
@@ -1171,20 +1171,113 @@ function AssetInventoryPage({ data }: { data: ReportData }) {
 }
 
 // ---------------------------------------------------------------------------
+// Regulation Breakdown Page (NIS2 / CRA / ENISA per-regulation scores)
+// ---------------------------------------------------------------------------
+
+const REG_LABELS: Record<string, string> = {
+  NIS2: "NIS2 Directive",
+  CRA: "Cyber Resilience Act",
+  ENISA_SPACE: "ENISA Space Threat Landscape",
+};
+
+const REG_DESCRIPTIONS: Record<string, string> = {
+  NIS2: "EU directive on measures for a high common level of cybersecurity across the Union. Requires essential and important entities to implement risk management and incident reporting.",
+  CRA: "EU regulation establishing cybersecurity requirements for products with digital elements. Focuses on secure-by-design development, vulnerability handling, and security update obligations.",
+  ENISA_SPACE: "ENISA guidelines for cybersecurity of space systems. Provides sector-specific controls mapped to the SPARTA threat framework.",
+};
+
+function RegulationBreakdownPage({ data }: { data: ReportData }) {
+  const byRegulation = data.dashboard?.byRegulation ?? [];
+
+  if (byRegulation.length <= 1) return null;
+
+  return (
+    <Page size="A4" style={s.contentPage}>
+      <PageHeader
+        title="Regulation Breakdown"
+        subtitle="Compliance posture per regulatory framework"
+      />
+
+      <View style={{ marginTop: 16 }}>
+        {byRegulation.map((reg) => {
+          const pct = reg.total > 0 ? Math.round((reg.compliant / reg.total) * 100) : 0;
+          const barColor =
+            pct >= 70 ? C.compliant : pct >= 40 ? C.partial : C.nonCompliant;
+
+          return (
+            <View
+              key={reg.regulation}
+              style={{
+                backgroundColor: C.navyCard,
+                borderRadius: 6,
+                padding: 16,
+                marginBottom: 12,
+              }}
+            >
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: C.white }}>
+                  {REG_LABELS[reg.regulation] ?? reg.regulation}
+                </Text>
+                <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: barColor }}>
+                  {reg.score}%
+                </Text>
+              </View>
+
+              <Text style={{ fontSize: 8, color: C.slate, marginBottom: 8, lineHeight: 1.4 }}>
+                {REG_DESCRIPTIONS[reg.regulation] ?? ""}
+              </Text>
+
+              {/* Progress bar */}
+              <View style={{ height: 8, backgroundColor: C.navyDark, borderRadius: 4 }}>
+                <View
+                  style={{
+                    height: 8,
+                    width: `${pct}%`,
+                    backgroundColor: barColor,
+                    borderRadius: 4,
+                  }}
+                />
+              </View>
+
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
+                <Text style={{ fontSize: 8, color: C.slate }}>
+                  {reg.compliant} of {reg.total} requirements compliant
+                </Text>
+                <Text style={{ fontSize: 8, color: C.slate }}>
+                  {reg.total - reg.compliant} remaining
+                </Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
+      <Text
+        style={s.pageNumber}
+        render={({ pageNumber, totalPages }) =>
+          `Page ${pageNumber} of ${totalPages}`
+        }
+      />
+    </Page>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Root PDF document
 // ---------------------------------------------------------------------------
 
 function ComplianceReport({ data }: { data: ReportData }) {
   return (
     <Document
-      title={`NIS2 Compliance Report - ${data.org.name}`}
+      title={`Compliance Report - ${data.org.name}`}
       author="SpaceGuard Platform"
-      subject="NIS2 Article 21 Compliance Assessment"
+      subject="NIS2, CRA & ENISA Compliance Assessment"
       creator="SpaceGuard"
       producer="SpaceGuard v0.1"
     >
       <TitlePage data={data} />
       <ExecutiveSummaryPage data={data} />
+      <RegulationBreakdownPage data={data} />
       <ComplianceMatrixPage data={data} />
       <GapAnalysisPage data={data} />
       <AssetInventoryPage data={data} />

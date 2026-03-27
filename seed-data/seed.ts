@@ -19,6 +19,17 @@ interface NIS2Requirement {
   applicabilityNotes?: string;
 }
 
+interface CraRequirement {
+  regulation: string;
+  articleReference: string;
+  title: string;
+  category: string;
+  description: string;
+  evidenceGuidance: string;
+  applicabilityNotes?: string;
+  spartaCountermeasures?: string[];
+}
+
 interface EnisaControl {
   regulation: string;
   articleReference: string;
@@ -178,6 +189,70 @@ async function seedNis2Requirements(sql: postgres.Sql): Promise<void> {
   >`SELECT count(*)::text FROM compliance_requirements`;
 
   console.log(`  Total requirements in database: ${count}`);
+}
+
+// ---------------------------------------------------------------------------
+// Seed CRA requirements
+// ---------------------------------------------------------------------------
+
+async function seedCraRequirements(sql: postgres.Sql): Promise<void> {
+  const raw = readFileSync(
+    join(__dirname, "cra-requirements.json"),
+    "utf-8"
+  );
+  const requirements: CraRequirement[] = JSON.parse(raw);
+
+  console.log(`\nSeeding ${requirements.length} CRA requirements...`);
+
+  let inserted = 0;
+  let skipped = 0;
+
+  for (const r of requirements) {
+    // Pack SPARTA countermeasure mappings into applicability_notes metadata
+    // following the same pattern used by ENISA controls
+    const metadata: Record<string, unknown> = {};
+    if (r.applicabilityNotes) metadata.notes = r.applicabilityNotes;
+    if (r.spartaCountermeasures && r.spartaCountermeasures.length > 0) {
+      metadata.spartaCountermeasures = r.spartaCountermeasures;
+    }
+    const hasMetadata = Object.keys(metadata).length > 0;
+    const applicabilityNotes = hasMetadata
+      ? JSON.stringify(metadata, null, 2)
+      : null;
+
+    const result = await sql`
+      INSERT INTO compliance_requirements
+        (regulation, article_reference, title, description,
+         evidence_guidance, category, applicability_notes)
+      VALUES (
+        ${r.regulation}::regulation,
+        ${r.articleReference},
+        ${r.title},
+        ${r.description},
+        ${r.evidenceGuidance},
+        ${r.category},
+        ${applicabilityNotes}
+      )
+      ON CONFLICT (title) DO NOTHING
+      RETURNING id
+    `;
+
+    if (result.length > 0) {
+      inserted++;
+    } else {
+      skipped++;
+    }
+  }
+
+  console.log(
+    `  Inserted ${inserted} CRA requirements, skipped ${skipped} duplicates.`
+  );
+
+  const [{ count }] = await sql<
+    [{ count: string }]
+  >`SELECT count(*)::text FROM compliance_requirements WHERE regulation = 'CRA'`;
+
+  console.log(`  Total CRA requirements in database: ${count}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -522,6 +597,7 @@ async function seed() {
 
   try {
     await seedNis2Requirements(sql);
+    await seedCraRequirements(sql);
     await seedEnisaControls(sql);
     await seedSpartaFullMatrix(sql);
 

@@ -54,7 +54,7 @@ export function ComplianceByCategoryWidget({ data }: WidgetProps) {
             Details <ArrowRight size={10} />
           </Link>
         </div>
-        <p className="text-xs text-slate-500 mt-0.5">NIS2 Article 21 domain scores</p>
+        <p className="text-xs text-slate-500 mt-0.5">Scores per compliance domain</p>
       </CardHeader>
       <CardContent className="px-4 pb-4">
         {chartData.length === 0 ? (

@@ -1,0 +1,182 @@
+[
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 10(1)",
+    "title": "Secure-by-design development lifecycle",
+    "category": "Secure by Design",
+    "description": "Products with digital elements shall be designed, developed, and produced in accordance with essential cybersecurity requirements, ensuring security is integrated from the earliest stages of the product lifecycle.",
+    "evidenceGuidance": "Documented secure development lifecycle (SDLC) procedures, threat modelling records, design review minutes, security requirements traceability matrix.",
+    "applicabilityNotes": "For space systems: applies to on-board software, firmware, ground segment applications, and mission planning tools. Covers the full chain from development to deployment on the satellite bus.",
+    "spartaCountermeasures": ["CM-0001", "CM-0002", "CM-0003"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 10(1)",
+    "title": "Default secure configuration",
+    "category": "Secure by Design",
+    "description": "Products shall be delivered with secure default configurations, including the ability to reset to the original secure state, and shall not ship with known exploitable vulnerabilities.",
+    "evidenceGuidance": "Default configuration documentation, hardening guides, baseline security configuration audits, evidence of configuration review before deployment.",
+    "applicabilityNotes": "Satellite firmware and ground station software must ship with minimal attack surface. Default telecommand authentication must be enabled, not optional.",
+    "spartaCountermeasures": ["CM-0009", "CM-0010"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 10(2)",
+    "title": "Vulnerability handling process",
+    "category": "Vulnerability Handling",
+    "description": "Manufacturers shall identify and document vulnerabilities and components contained in the product, maintain a software bill of materials (SBOM), and apply effective and regular tests and reviews.",
+    "evidenceGuidance": "SBOM in CycloneDX or SPDX format, vulnerability scanning reports, dependency analysis results, penetration test reports.",
+    "applicabilityNotes": "Critical for space systems using COTS components. SBOMs must cover both ground segment libraries and on-board software dependencies including RTOS modules.",
+    "spartaCountermeasures": ["CM-0004", "CM-0005"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 10(2)",
+    "title": "Coordinated vulnerability disclosure",
+    "category": "Vulnerability Handling",
+    "description": "Manufacturers shall establish a coordinated vulnerability disclosure policy, provide a contact address for vulnerability reporting, and process reported vulnerabilities without delay.",
+    "evidenceGuidance": "Published vulnerability disclosure policy, security.txt file, VDP contact records, evidence of timely triage and response to reported vulnerabilities.",
+    "applicabilityNotes": "Space operators should establish sector-specific disclosure channels. Coordinate with ENISA and national CSIRTs for vulnerabilities affecting critical space infrastructure.",
+    "spartaCountermeasures": ["CM-0006"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 10(2)",
+    "title": "Vulnerability remediation through security updates",
+    "category": "Vulnerability Handling",
+    "description": "Address and remediate vulnerabilities without delay, including by providing security updates. Where a security patch is not possible, provide mitigation guidance to users.",
+    "evidenceGuidance": "Patch management records, security advisory publications, mean time to remediate metrics, mitigation guidance documents for unpatched vulnerabilities.",
+    "applicabilityNotes": "On-orbit assets require special consideration: firmware updates must be validated in ground-based simulators before uplink. Maintain rollback capability for all patches.",
+    "spartaCountermeasures": ["CM-0007", "CM-0008"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 10(6)",
+    "title": "Security update delivery mechanism",
+    "category": "Security Updates",
+    "description": "Ensure security updates are made available to users free of charge and in a timely manner, with advisory information including potential impact and remediation guidance.",
+    "evidenceGuidance": "Update distribution mechanism documentation, security advisory templates, evidence of free update availability, user notification records.",
+    "applicabilityNotes": "For satellite operators: secure OTA update channels for on-board software. Ground segment updates must use authenticated delivery with integrity verification.",
+    "spartaCountermeasures": ["CM-0007", "CM-0008"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 10(6)",
+    "title": "Support period and end-of-life planning",
+    "category": "Security Updates",
+    "description": "Manufacturers shall ensure vulnerability handling and security updates for a minimum support period proportionate to the expected product lifetime.",
+    "evidenceGuidance": "Documented support period per product, end-of-life transition plan, evidence of continued security monitoring during support period.",
+    "applicabilityNotes": "Satellite missions often span 15+ years. Security update support must cover the full mission lifetime. Plan for long-term cryptographic agility as algorithms may be deprecated.",
+    "spartaCountermeasures": ["CM-0007"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Annex I(1)",
+    "title": "Confidentiality of stored and transmitted data",
+    "category": "Secure by Design",
+    "description": "Products shall protect the confidentiality of data, including at rest and in transit, using state-of-the-art encryption or other technical means.",
+    "evidenceGuidance": "Encryption implementation documentation, key management procedures, TLS/DTLS configuration records, data classification and handling policy.",
+    "applicabilityNotes": "Applies to TT&C links, inter-satellite links, and ground network segments. Use space-qualified encryption for uplink/downlink. Consider quantum-resistant algorithms for long-duration missions.",
+    "spartaCountermeasures": ["CM-0009", "CM-0010", "CM-0011"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Annex I(1)",
+    "title": "Integrity of stored and processed data",
+    "category": "Secure by Design",
+    "description": "Products shall protect the integrity of stored, transmitted, and processed data, commands, and configuration against unauthorized manipulation.",
+    "evidenceGuidance": "Integrity verification mechanisms documentation, digital signature implementation, tamper detection records, command authentication procedures.",
+    "applicabilityNotes": "Critical for telecommand authentication. All commands to spacecraft must be integrity-protected. Telemetry data must include integrity checks to detect tampering during downlink.",
+    "spartaCountermeasures": ["CM-0009", "CM-0012"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Annex I(1)",
+    "title": "Access control and authentication",
+    "category": "Secure by Design",
+    "description": "Products shall implement appropriate access control mechanisms, including authentication, identity management, and minimal privilege principles.",
+    "evidenceGuidance": "Access control policy, role-based access matrix, authentication mechanism documentation, privileged access management records, MFA deployment evidence.",
+    "applicabilityNotes": "Ground station access must enforce strong authentication. Mission control systems require role-based access with operator/supervisor separation. Consider hardware tokens for critical telecommand authorization.",
+    "spartaCountermeasures": ["CM-0013", "CM-0014"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Annex I(1)",
+    "title": "Logging and monitoring of security events",
+    "category": "Secure by Design",
+    "description": "Products shall provide logging capabilities for security-relevant events, including access attempts, configuration changes, and anomalies.",
+    "evidenceGuidance": "Logging policy, log retention configuration, SIEM integration evidence, sample security event logs, monitoring dashboard screenshots.",
+    "applicabilityNotes": "Space systems must log all telecommand transmissions, ground station access events, and telemetry anomalies. Ensure log integrity through cryptographic chaining or write-once storage.",
+    "spartaCountermeasures": ["CM-0015", "CM-0016"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Annex I(1)",
+    "title": "Minimisation of attack surface",
+    "category": "Secure by Design",
+    "description": "Products shall minimise the attack surface, including external interfaces. Unused ports, protocols, and services shall be disabled.",
+    "evidenceGuidance": "Attack surface assessment report, network diagram with exposed interfaces, port scan results, disabled services documentation, interface hardening records.",
+    "applicabilityNotes": "Satellite bus systems should disable unused CCSDS service types. Ground stations must minimize internet-facing services. Restrict debug and diagnostic interfaces in production firmware.",
+    "spartaCountermeasures": ["CM-0001", "CM-0017"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 13(1)",
+    "title": "Technical documentation",
+    "category": "Documentation & Transparency",
+    "description": "Manufacturers shall draw up technical documentation containing all relevant information to demonstrate conformity with essential cybersecurity requirements.",
+    "evidenceGuidance": "Technical documentation package including architecture diagrams, threat model, security testing results, SBOM, configuration guides, and conformity assessment records.",
+    "applicabilityNotes": "For space products: include spacecraft bus security architecture, link budget security analysis, ground segment network security documentation, and FMECA covering cyber scenarios.",
+    "spartaCountermeasures": ["CM-0001", "CM-0002"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 13(6)",
+    "title": "User security information",
+    "category": "Documentation & Transparency",
+    "description": "Manufacturers shall provide users with clear and understandable instructions for secure installation, operation, and disposal of the product.",
+    "evidenceGuidance": "User-facing security documentation, secure deployment guide, decommissioning procedures, residual risk disclosure.",
+    "applicabilityNotes": "Satellite operators must receive clear guidance on secure ground station deployment, key ceremony procedures, and end-of-mission data sanitization for deorbiting assets.",
+    "spartaCountermeasures": ["CM-0003"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 14(1)",
+    "title": "Incident reporting to ENISA",
+    "category": "Incident Reporting",
+    "description": "Manufacturers shall notify ENISA of any actively exploited vulnerability and any severe incident with impact on product security within 24 hours of becoming aware.",
+    "evidenceGuidance": "Incident reporting procedures, ENISA notification templates, evidence of timely submissions, designated reporting contact, records of 24-hour compliance.",
+    "applicabilityNotes": "Space operators must be prepared for dual reporting: CRA notifications to ENISA and NIS2 notifications to national CSIRTs. Establish clear internal escalation paths for zero-day exploitation of space system components.",
+    "spartaCountermeasures": ["CM-0006"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 14(2)",
+    "title": "User notification of incidents",
+    "category": "Incident Reporting",
+    "description": "Manufacturers shall inform users of the product about the incident and, where applicable, about corrective measures that the user can deploy to mitigate the impact.",
+    "evidenceGuidance": "User notification procedures, security advisory templates, evidence of user communication, corrective action guidance documents.",
+    "applicabilityNotes": "Downstream satellite service customers must be promptly informed of security incidents affecting data integrity or availability. Include impact assessment for dependent services.",
+    "spartaCountermeasures": ["CM-0006"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 24",
+    "title": "Conformity assessment for critical products",
+    "category": "Conformity Assessment",
+    "description": "Critical products with digital elements shall undergo conformity assessment by a notified body or through an approved European cybersecurity certification scheme.",
+    "evidenceGuidance": "Conformity assessment report, notified body certificate, EU declaration of conformity, audit findings and corrective actions, CE marking documentation.",
+    "applicabilityNotes": "Space system components classified as critical (e.g., satellite command receivers, encryption modules, ground station authentication systems) may require third-party assessment under CRA Class II.",
+    "spartaCountermeasures": ["CM-0001"]
+  },
+  {
+    "regulation": "CRA",
+    "articleReference": "CRA Art. 24",
+    "title": "Internal conformity assessment and self-declaration",
+    "category": "Conformity Assessment",
+    "description": "For non-critical products, manufacturers may perform internal conformity assessment (Module A) and issue an EU declaration of conformity.",
+    "evidenceGuidance": "Internal assessment procedures, self-assessment checklist, EU declaration of conformity document, technical file completeness review.",
+    "applicabilityNotes": "Non-critical ground segment software tools and monitoring dashboards may qualify for self-assessment. Maintain thorough documentation as market surveillance authorities may audit.",
+    "spartaCountermeasures": ["CM-0001", "CM-0002"]
+  }
+]

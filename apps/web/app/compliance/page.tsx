@@ -819,7 +819,7 @@ export default function CompliancePage() {
 
         {/* Regulation filter tabs */}
         <div className="flex gap-2 mb-4">
-          {["ALL", "NIS2", "ENISA_SPACE"].map((reg) => (
+          {["ALL", "NIS2", "CRA", "ENISA_SPACE"].map((reg) => (
             <button
               key={reg}
               onClick={() => setRegulationFilter(reg)}
@@ -833,6 +833,8 @@ export default function CompliancePage() {
                 ? "All Regulations"
                 : reg === "NIS2"
                 ? "NIS2"
+                : reg === "CRA"
+                ? "CRA"
                 : "ENISA Space"}
             </button>
           ))}

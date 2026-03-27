@@ -11,8 +11,15 @@ function scoreTextClass(score: number): string {
   return "text-red-400";
 }
 
+const REG_LABELS: Record<string, string> = {
+  NIS2: "NIS2",
+  CRA: "CRA",
+  ENISA_SPACE: "ENISA",
+};
+
 export function ComplianceScoreWidget({ data }: WidgetProps) {
   const score = data.dashboard?.overallScore ?? 0;
+  const byRegulation = data.dashboard?.byRegulation ?? [];
 
   return (
     <Link href="/compliance" className="block h-full">
@@ -27,6 +34,16 @@ export function ComplianceScoreWidget({ data }: WidgetProps) {
           <p className={`text-3xl font-bold ${scoreTextClass(score)}`}>
             {score}%
           </p>
+          {byRegulation.length > 0 && (
+            <div className="flex gap-3 mt-2">
+              {byRegulation.map((r) => (
+                <div key={r.regulation} className="text-center">
+                  <p className={`text-sm font-semibold ${scoreTextClass(r.score)}`}>{r.score}%</p>
+                  <p className="text-[9px] text-slate-500">{REG_LABELS[r.regulation] ?? r.regulation}</p>
+                </div>
+              ))}
+            </div>
+          )}
           <p className="text-xs text-slate-500 mt-1">
             {score >= 70 ? "Good posture" : score >= 40 ? "Needs improvement" : "Critical gaps"}
           </p>
