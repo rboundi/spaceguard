@@ -1395,3 +1395,100 @@ export const getRiskOverview = (organizationId: string) =>
 
 export const storeRiskSnapshot = (organizationId: string) =>
   api.post<{ success: boolean }>(`/api/v1/risk/snapshot?organizationId=${organizationId}`, {});
+
+// ---------------------------------------------------------------------------
+// Playbooks
+// ---------------------------------------------------------------------------
+
+export interface PlaybookTriggerApi {
+  auto: boolean;
+  conditions: {
+    severity?: string[];
+    spartaTactic?: string[];
+    ruleIds?: string[];
+  };
+}
+
+export interface PlaybookStepApi {
+  id: string;
+  type: string;
+  label: string;
+  config: Record<string, unknown>;
+}
+
+export interface PlaybookApi {
+  id: string;
+  organizationId: string | null;
+  name: string;
+  description: string | null;
+  trigger: PlaybookTriggerApi;
+  steps: PlaybookStepApi[];
+  isActive: boolean;
+  executionCount: number;
+  lastExecuted: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlaybookExecutionLogEntry {
+  stepIndex: number;
+  stepType: string;
+  status: "success" | "failed" | "skipped" | "waiting";
+  message: string;
+  timestamp: string;
+  details?: Record<string, unknown>;
+}
+
+export interface PlaybookExecutionApi {
+  id: string;
+  playbookId: string;
+  playbookName?: string;
+  incidentId: string | null;
+  alertId: string | null;
+  triggeredBy: string;
+  status: "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
+  stepsCompleted: number;
+  stepsTotal: number;
+  log: PlaybookExecutionLogEntry[];
+  startedAt: string;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+export const getPlaybooks = (organizationId: string) =>
+  api.get<{ data: PlaybookApi[] }>(`/api/v1/playbooks?organizationId=${organizationId}`);
+
+export const getPlaybook = (id: string) =>
+  api.get<PlaybookApi>(`/api/v1/playbooks/${id}`);
+
+export const createPlaybook = (data: {
+  organizationId?: string;
+  name: string;
+  description?: string;
+  trigger: PlaybookTriggerApi;
+  steps: PlaybookStepApi[];
+  isActive?: boolean;
+}) => api.post<PlaybookApi>("/api/v1/playbooks", data);
+
+export const updatePlaybook = (id: string, data: {
+  name?: string;
+  description?: string;
+  trigger?: PlaybookTriggerApi;
+  steps?: PlaybookStepApi[];
+  isActive?: boolean;
+}) => api.put<PlaybookApi>(`/api/v1/playbooks/${id}`, data);
+
+export const deletePlaybook = (id: string) =>
+  api.delete(`/api/v1/playbooks/${id}`);
+
+export const executePlaybookApi = (id: string, data?: { alertId?: string; incidentId?: string }) =>
+  api.post<PlaybookExecutionApi>(`/api/v1/playbooks/${id}/execute`, data ?? {});
+
+export const getPlaybookExecutions = (organizationId: string, playbookId?: string) => {
+  const params = new URLSearchParams({ organizationId });
+  if (playbookId) params.set("playbookId", playbookId);
+  return api.get<{ data: PlaybookExecutionApi[] }>(`/api/v1/playbooks/executions/list?${params}`);
+};
+
+export const getPlaybookExecution = (executionId: string) =>
+  api.get<PlaybookExecutionApi>(`/api/v1/playbooks/executions/${executionId}`);

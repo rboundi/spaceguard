@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   ShieldAlert,
   Gauge,
+  Workflow,
   Link as LinkIcon,
   ClipboardList,
   Settings,
@@ -55,6 +56,13 @@ const navItems = [
     icon: Bell,
     exact: false,
     badge: "alerts" as const,
+  },
+  {
+    label: "Playbooks",
+    href: "/playbooks",
+    icon: Workflow,
+    exact: false,
+    badge: false,
   },
   {
     label: "Incidents",
