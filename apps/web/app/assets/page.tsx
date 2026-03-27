@@ -9,7 +9,7 @@ import {
   assetTypeLabels,
 } from "@spaceguard/shared";
 import type { AssetResponse } from "@spaceguard/shared";
-import { getAssets } from "@/lib/api";
+import { getAssets, getAssetRisk, type AssetRiskApi } from "@/lib/api";
 import { useOrg } from "@/lib/context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -97,6 +97,18 @@ function criticalityBadge(crit: string) {
   );
 }
 
+function riskBadge(score: number | undefined) {
+  if (score === undefined) {
+    return <span className="text-[10px] text-slate-600">--</span>;
+  }
+  const variant = score > 60 ? "destructive" : score > 30 ? "warning" : "success";
+  return (
+    <Badge variant={variant} className="text-[10px] px-1.5 py-0 font-bold tabular-nums">
+      {score}
+    </Badge>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Skeleton row
 // ---------------------------------------------------------------------------
@@ -104,7 +116,7 @@ function criticalityBadge(crit: string) {
 function SkeletonRow() {
   return (
     <TableRow className="border-slate-800 hover:bg-transparent">
-      {[40, 28, 24, 20, 32].map((w, i) => (
+      {[40, 28, 24, 20, 16, 32].map((w, i) => (
         <TableCell key={i} className="py-3">
           <div
             className={`h-3 w-${w} animate-pulse rounded bg-slate-800`}
@@ -125,6 +137,7 @@ export default function AssetsPage() {
   const { orgId, loading: orgLoading } = useOrg();
 
   const [assets, setAssets] = useState<AssetResponse[]>([]);
+  const [riskScores, setRiskScores] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -152,6 +165,12 @@ export default function AssetsPage() {
       });
       setAssets(result.data);
       setError(null);
+      // Fire-and-forget risk score loading for each asset
+      result.data.forEach((asset) => {
+        getAssetRisk(asset.id)
+          .then((risk) => setRiskScores((prev) => ({ ...prev, [asset.id]: risk.risk.overall })))
+          .catch(() => {});
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load assets");
     }
@@ -302,6 +321,9 @@ export default function AssetsPage() {
                 Criticality
               </TableHead>
               <TableHead className="text-slate-500 text-xs font-medium">
+                Risk
+              </TableHead>
+              <TableHead className="text-slate-500 text-xs font-medium">
                 Created
               </TableHead>
             </TableRow>
@@ -313,7 +335,7 @@ export default function AssetsPage() {
               ))
             ) : assets.length === 0 ? (
               <TableRow className="border-slate-800 hover:bg-transparent">
-                <TableCell colSpan={5} className="py-16 text-center">
+                <TableCell colSpan={6} className="py-16 text-center">
                   <Satellite size={32} className="mx-auto text-blue-500 mb-3" />
                   <p className="text-slate-200 font-medium text-sm">
                     {orgId
@@ -349,6 +371,9 @@ export default function AssetsPage() {
                   </TableCell>
                   <TableCell className="py-3">
                     {criticalityBadge(asset.criticality)}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    {riskBadge(riskScores[asset.id])}
                   </TableCell>
                   <TableCell className="py-3 text-xs text-slate-500">
                     {new Date(asset.createdAt).toLocaleDateString("en-GB", {

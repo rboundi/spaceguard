@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil, ShieldAlert, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import {
   assetTypeLabels,
   complianceStatusLabels,
@@ -12,7 +12,7 @@ import type {
   MappingResponse,
   ComplianceRequirement,
 } from "@spaceguard/shared";
-import { getAsset, getMappings, getRequirements } from "@/lib/api";
+import { getAsset, getMappings, getRequirements, getAssetRisk, type AssetRiskApi } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,6 +72,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
   const [asset, setAsset] = useState<AssetResponse | null>(null);
   const [mappings, setMappings] = useState<MappingResponse[]>([]);
   const [requirements, setRequirements] = useState<ComplianceRequirement[]>([]);
+  const [riskData, setRiskData] = useState<AssetRiskApi | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -93,6 +94,8 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
       setAsset(assetData);
       setMappings(mappingsData.data);
       setRequirements(requirementsData.data);
+      // Fire-and-forget risk score load
+      getAssetRisk(id).then(setRiskData).catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load asset");
     } finally {
@@ -202,6 +205,68 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
           </CardContent>
         </Card>
       </div>
+
+      {/* Risk Score Card */}
+      {riskData && (
+        <Card className="bg-slate-900 border-slate-800">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <div className="flex items-center gap-2">
+              <ShieldAlert size={14} className="text-red-400" />
+              <CardTitle className="text-sm font-semibold text-slate-200">Risk Score</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="flex items-start gap-6">
+              {/* Score + Trend */}
+              <div className="text-center">
+                <span className={`text-4xl font-bold tabular-nums ${riskData.risk.overall > 60 ? "text-red-400" : riskData.risk.overall > 30 ? "text-amber-400" : "text-emerald-400"}`}>
+                  {riskData.risk.overall}
+                </span>
+                <div className="flex items-center justify-center gap-1 mt-1">
+                  {riskData.risk.trend === "IMPROVING" ? <TrendingDown size={12} className="text-emerald-400" /> : riskData.risk.trend === "DEGRADING" ? <TrendingUp size={12} className="text-red-400" /> : <Minus size={12} className="text-slate-500" />}
+                  <span className={`text-[10px] ${riskData.risk.trend === "IMPROVING" ? "text-emerald-400" : riskData.risk.trend === "DEGRADING" ? "text-red-400" : "text-slate-500"}`}>
+                    {riskData.risk.trend === "IMPROVING" ? "Improving" : riskData.risk.trend === "DEGRADING" ? "Degrading" : "Stable"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Breakdown bars */}
+              <div className="flex-1 space-y-1.5">
+                {[
+                  { label: "Compliance", value: riskData.risk.breakdown.compliance, color: "bg-blue-500" },
+                  { label: "Threat Exposure", value: riskData.risk.breakdown.threat, color: "bg-violet-500" },
+                  { label: "Alert History", value: riskData.risk.breakdown.alerts, color: "bg-amber-500" },
+                  { label: "Supply Chain", value: riskData.risk.breakdown.supplyChain, color: "bg-cyan-500" },
+                  { label: "Configuration", value: riskData.risk.breakdown.config, color: "bg-slate-500" },
+                ].map((d) => (
+                  <div key={d.label} className="flex items-center gap-2">
+                    <span className="text-[9px] text-slate-500 w-20 text-right">{d.label}</span>
+                    <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${d.color}`} style={{ width: `${d.value}%` }} />
+                    </div>
+                    <span className="text-[9px] text-slate-500 w-6 tabular-nums">{d.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Top risks */}
+              {riskData.risk.topRisks.length > 0 && (
+                <div className="w-56">
+                  <p className="text-[9px] uppercase tracking-widest text-slate-600 mb-1.5">Top Risks</p>
+                  <div className="space-y-1">
+                    {riskData.risk.topRisks.map((r, i) => (
+                      <div key={i} className="flex items-start gap-1.5">
+                        <span className="text-[9px] text-red-400 shrink-0 mt-0.5">&#x25CF;</span>
+                        <span className="text-[10px] text-slate-400 leading-tight">{r}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {metaEntries.length > 0 && (
         <Card className="bg-slate-900 border-slate-800">

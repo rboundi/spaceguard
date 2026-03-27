@@ -34,6 +34,8 @@ import {
   getDetectionRules,
   getAnomalyBaselines,
   getAnomalyStats,
+  getOrgRisk,
+  type OrgRiskApi,
 } from "@/lib/api";
 import type { AlertResponse, AlertStats, IncidentResponse, BaselineResponse, AnomalyStatsResponse } from "@/lib/api";
 import type { StreamResponse } from "@spaceguard/shared";
@@ -54,6 +56,10 @@ import {
   Rocket,
   Link2,
   Brain,
+  ShieldAlert,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -941,6 +947,7 @@ export default function DashboardPage() {
   const [streams, setStreams] = useState<StreamResponse[]>([]);
   const [rulesCount, setRulesCount] = useState(0);
   const [aiData, setAiData] = useState<Map<string, { baselines: BaselineResponse[]; stats: AnomalyStatsResponse | null }>>(new Map());
+  const [orgRisk, setOrgRisk] = useState<OrgRiskApi | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -973,6 +980,9 @@ export default function DashboardPage() {
         setIncidents(inc.data);
         setStreams(str.data);
         setRulesCount(rulesRes.total);
+
+        // Fetch risk score (non-blocking)
+        getOrgRisk(orgId!).then((r) => { if (!cancelled) setOrgRisk(r); }).catch(() => {});
 
         // Fetch anomaly data for each active stream (fire and forget, non-blocking)
         const activeStreams = str.data.filter((s) => s.status === "ACTIVE").slice(0, 10);
@@ -1235,6 +1245,59 @@ export default function DashboardPage() {
           <AiDetectionCard streams={streams} aiData={aiData} />
         </Link>
       </div>
+
+      {/* Row 1.5 - Risk Overview */}
+      {orgRisk && (
+        <Link href="/risk" className="block">
+          <Card className="border-slate-700 bg-slate-900 hover:border-slate-600 transition-colors">
+            <CardContent className="py-4 px-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-lg bg-red-500/10 p-2.5 text-red-400">
+                    <ShieldAlert size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-0.5">Organization Risk Score</p>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-3xl font-bold tabular-nums ${orgRisk.overall > 60 ? "text-red-400" : orgRisk.overall > 30 ? "text-amber-400" : "text-emerald-400"}`}>
+                        {orgRisk.overall}
+                      </span>
+                      <span className="text-xs text-slate-500">/ 100</span>
+                      <div className="flex items-center gap-1 ml-2">
+                        {orgRisk.trend === "IMPROVING" ? <TrendingDown size={14} className="text-emerald-400" /> : orgRisk.trend === "DEGRADING" ? <TrendingUp size={14} className="text-red-400" /> : <Minus size={14} className="text-slate-500" />}
+                        <span className={`text-xs ${orgRisk.trend === "IMPROVING" ? "text-emerald-400" : orgRisk.trend === "DEGRADING" ? "text-red-400" : "text-slate-500"}`}>
+                          {orgRisk.trend === "IMPROVING" ? "Improving" : orgRisk.trend === "DEGRADING" ? "Degrading" : "Stable"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-6">
+                  {/* Breakdown mini bars */}
+                  {[
+                    { label: "Compliance", value: orgRisk.breakdown.compliance, color: "bg-blue-500" },
+                    { label: "Threats", value: orgRisk.breakdown.threat, color: "bg-violet-500" },
+                    { label: "Alerts", value: orgRisk.breakdown.alerts, color: "bg-amber-500" },
+                    { label: "Supply", value: orgRisk.breakdown.supplyChain, color: "bg-cyan-500" },
+                    { label: "Config", value: orgRisk.breakdown.config, color: "bg-slate-500" },
+                  ].map((d) => (
+                    <div key={d.label} className="text-center">
+                      <div className="w-8 h-16 bg-slate-800 rounded-full overflow-hidden flex flex-col-reverse">
+                        <div className={`${d.color} rounded-full transition-all`} style={{ height: `${d.value}%` }} />
+                      </div>
+                      <p className="text-[8px] text-slate-500 mt-1">{d.label}</p>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <span>{orgRisk.highRiskAssetCount} high-risk</span>
+                    <ArrowRight size={12} />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       {/* Row 2 - Recent Alerts (60%) + Incidents/Deadlines (40%) */}
       <div className="grid grid-cols-5 gap-4">

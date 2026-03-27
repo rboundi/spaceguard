@@ -15,6 +15,7 @@ import {
   Bell,
   AlertTriangle,
   ShieldAlert,
+  Gauge,
   Link as LinkIcon,
   ClipboardList,
   Settings,
@@ -67,6 +68,13 @@ const navItems = [
     href: "/alerts/rules",
     icon: BookOpen,
     exact: true,
+    badge: false,
+  },
+  {
+    label: "Risk",
+    href: "/risk",
+    icon: Gauge,
+    exact: false,
     badge: false,
   },
   {

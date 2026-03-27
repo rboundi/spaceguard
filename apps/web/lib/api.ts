@@ -1340,3 +1340,58 @@ export const deleteScheduledReport = (id: string) =>
 
 export const runScheduledReportNow = (id: string) =>
   api.post<{ success: boolean; message: string }>(`/api/v1/reports/scheduled/${id}/run-now`, {});
+
+// ---------------------------------------------------------------------------
+// Risk Scoring
+// ---------------------------------------------------------------------------
+
+export interface RiskBreakdownApi {
+  compliance: number;
+  threat: number;
+  alerts: number;
+  supplyChain: number;
+  config: number;
+}
+
+export interface RiskScoreApi {
+  overall: number;
+  breakdown: RiskBreakdownApi;
+  trend: "IMPROVING" | "STABLE" | "DEGRADING";
+  topRisks: string[];
+}
+
+export interface AssetRiskApi {
+  assetId: string;
+  assetName: string;
+  assetType: string;
+  criticality: string;
+  risk: RiskScoreApi;
+}
+
+export interface OrgRiskApi {
+  organizationId: string;
+  overall: number;
+  breakdown: RiskBreakdownApi;
+  trend: "IMPROVING" | "STABLE" | "DEGRADING";
+  topRisks: string[];
+  assetCount: number;
+  highRiskAssetCount: number;
+}
+
+export interface RiskOverviewApi {
+  organization: OrgRiskApi;
+  assets: AssetRiskApi[];
+  history: Array<{ date: string; score: number }>;
+}
+
+export const getAssetRisk = (assetId: string) =>
+  api.get<AssetRiskApi>(`/api/v1/risk/assets/${assetId}`);
+
+export const getOrgRisk = (organizationId: string) =>
+  api.get<OrgRiskApi>(`/api/v1/risk/organization?organizationId=${organizationId}`);
+
+export const getRiskOverview = (organizationId: string) =>
+  api.get<RiskOverviewApi>(`/api/v1/risk/overview?organizationId=${organizationId}`);
+
+export const storeRiskSnapshot = (organizationId: string) =>
+  api.post<{ success: boolean }>(`/api/v1/risk/snapshot?organizationId=${organizationId}`, {});
