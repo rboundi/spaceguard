@@ -1,0 +1,151 @@
+[
+  {
+    "name": "Critical Satellite Alert Response",
+    "description": "Automated response for critical satellite alerts. Changes alert status, notifies operators, creates an incident, dispatches webhook, waits 30 minutes, then escalates to admins if unacknowledged, and drafts a NIS2 early warning report.",
+    "trigger": {
+      "auto": true,
+      "conditions": {
+        "severity": ["CRITICAL", "HIGH"]
+      }
+    },
+    "steps": [
+      {
+        "id": "csar-1",
+        "type": "change_alert_status",
+        "label": "Mark alert as Investigating",
+        "config": { "newStatus": "INVESTIGATING" }
+      },
+      {
+        "id": "csar-2",
+        "type": "notify",
+        "label": "Notify all operators",
+        "config": {
+          "channels": ["email"],
+          "recipients": [],
+          "message": "A critical satellite alert has been triggered. Immediate investigation required."
+        }
+      },
+      {
+        "id": "csar-3",
+        "type": "create_incident",
+        "label": "Create incident from alert",
+        "config": { "severity": "HIGH" }
+      },
+      {
+        "id": "csar-4",
+        "type": "webhook_action",
+        "label": "Forward to monitoring webhook",
+        "config": { "url": "", "endpointId": "" }
+      },
+      {
+        "id": "csar-5",
+        "type": "wait",
+        "label": "Wait 30 minutes for acknowledgment",
+        "config": { "minutes": 30, "then": "escalate" }
+      },
+      {
+        "id": "csar-6",
+        "type": "notify",
+        "label": "Escalate to admins",
+        "config": {
+          "channels": ["email"],
+          "recipients": [],
+          "message": "ESCALATION: Critical satellite alert was not acknowledged within 30 minutes. Admin attention required."
+        }
+      },
+      {
+        "id": "csar-7",
+        "type": "generate_report",
+        "label": "Draft NIS2 early warning report",
+        "config": { "reportType": "EARLY_WARNING" }
+      }
+    ]
+  },
+  {
+    "name": "Ground Station Security Event",
+    "description": "Response procedure for ground station security events. Notifies SOC, adds triage guidance, requests human approval before escalating to a full incident.",
+    "trigger": {
+      "auto": false,
+      "conditions": {}
+    },
+    "steps": [
+      {
+        "id": "gsse-1",
+        "type": "notify",
+        "label": "Notify SOC team",
+        "config": {
+          "channels": ["email", "webhook"],
+          "recipients": [],
+          "message": "Ground station security event detected. SOC triage required."
+        }
+      },
+      {
+        "id": "gsse-2",
+        "type": "add_note",
+        "label": "Add initial triage guidance",
+        "config": {
+          "noteTemplate": "Ground station security event triage checklist:\n1. Verify physical access logs for anomalies\n2. Check network perimeter alerts\n3. Review RF interference indicators\n4. Assess impact on active satellite passes\n5. Document initial findings"
+        }
+      },
+      {
+        "id": "gsse-3",
+        "type": "human_approval",
+        "label": "Approve escalation to incident",
+        "config": {
+          "approvers": [],
+          "timeoutMinutes": 60
+        }
+      },
+      {
+        "id": "gsse-4",
+        "type": "create_incident",
+        "label": "Create incident and notify management",
+        "config": { "severity": "HIGH" }
+      }
+    ]
+  },
+  {
+    "name": "NIS2 Deadline Approaching",
+    "description": "Automated reminder workflow for NIS2 reporting deadlines. Sends notifications, waits for report generation, then escalates if no action is taken.",
+    "trigger": {
+      "auto": false,
+      "conditions": {}
+    },
+    "steps": [
+      {
+        "id": "nis2-1",
+        "type": "notify",
+        "label": "Notify responsible person",
+        "config": {
+          "channels": ["email"],
+          "recipients": [],
+          "message": "NIS2 reporting deadline is approaching. Please generate and submit the required report within 4 hours."
+        }
+      },
+      {
+        "id": "nis2-2",
+        "type": "wait",
+        "label": "Wait 4 hours for report generation",
+        "config": { "minutes": 240, "then": "escalate" }
+      },
+      {
+        "id": "nis2-3",
+        "type": "notify",
+        "label": "Escalate to admin",
+        "config": {
+          "channels": ["email"],
+          "recipients": [],
+          "message": "DEADLINE ESCALATION: NIS2 report has not been generated within the 4-hour window. Admin intervention required."
+        }
+      },
+      {
+        "id": "nis2-4",
+        "type": "add_note",
+        "label": "Add deadline reminder note",
+        "config": {
+          "noteTemplate": "NIS2 deadline reminder sent. Awaiting report generation and submission."
+        }
+      }
+    ]
+  }
+]
