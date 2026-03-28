@@ -75,10 +75,13 @@ services:
       - ./apps/web/tailwind.config.ts:/app/apps/web/tailwind.config.ts
       - ./apps/web/postcss.config.js:/app/apps/web/postcss.config.js
       - ./packages/shared/src:/app/packages/shared/src
+      # Next.js writes .next/ cache during dev; use a named volume to avoid
+      # host permission issues and improve rebuild speed
+      - web-next-cache:/app/apps/web/.next
     depends_on:
       api:
         condition: service_healthy
-    working_dir: /app
+    working_dir: /app/apps/web
 
   # ---------------------------------------------------------------------------
   # Seed runner (one-shot - runs migrations and seeds, then exits)
@@ -98,3 +101,6 @@ services:
         condition: service_healthy
     profiles:
       - tools
+
+volumes:
+  web-next-cache:

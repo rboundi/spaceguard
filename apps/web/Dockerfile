@@ -45,6 +45,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL=http://localhost:3001
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+# Ensure public dir exists (may be empty in early development)
+RUN mkdir -p apps/web/public
+
 # Build Next.js in standalone mode
 RUN cd apps/web && npx next build
 
@@ -69,7 +72,7 @@ ENV HOSTNAME=0.0.0.0
 COPY --from=builder /app/apps/web/.next/standalone ./
 # Copy static assets
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-# Copy public folder (if it exists)
+# Copy public folder (mkdir in builder stage ensures it always exists)
 COPY --from=builder /app/apps/web/public ./apps/web/public
 
 # Switch to non-root user

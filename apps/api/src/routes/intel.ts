@@ -20,10 +20,9 @@ import {
 } from "../services/intel.service";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
 import { getAlert } from "../services/detection/alert.service";
+import { assertUUID, assertTenant } from "../middleware/validate";
 
 export const intelRoutes = new Hono();
-
-import { assertUUID, assertTenant } from "../middleware/validate";
 
 // ---------------------------------------------------------------------------
 // GET /api/v1/intel

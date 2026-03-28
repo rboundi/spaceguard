@@ -1,10 +1,37 @@
+# Dependencies (reinstalled inside container)
 node_modules
+
+# Build artifacts
 .next
 dist
-*.log
+*.tsbuildinfo
+
+# Git
 .git
+.gitignore
+
+# Environment files (secrets)
 .env
 .env.*
 !.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# SSL certificates and nginx runtime data
 nginx/ssl
 nginx/certbot
+**/*.pem
+**/*.key
+
+# IDE and OS
+.vscode
+.idea
+*.swp
+.DS_Store
+Thumbs.db
+
+# Docker files not needed in build context
+docker-compose.prod.yml
+docs/
