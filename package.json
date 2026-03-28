@@ -17,7 +17,11 @@
     "test:telemetry": "npx tsx scripts/test-telemetry.ts",
     "simulate": "npx tsx scripts/simulate-telemetry.ts",
     "simulate:anomaly": "npx tsx scripts/simulate-telemetry.ts --anomaly",
-    "setup": "bash scripts/setup.sh"
+    "setup": "bash scripts/setup.sh",
+    "docker:infra": "docker compose up",
+    "docker:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up",
+    "docker:dev:build": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "docker:seed": "docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm seed"
   },
   "devDependencies": {
     "turbo": "^2",

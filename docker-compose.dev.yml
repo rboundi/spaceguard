@@ -1,0 +1,100 @@
+# =============================================================================
+# SpaceGuard - Full-stack Dev (infra + app code in Docker)
+#
+# Extends docker-compose.yml (Postgres + Redis) with API and Web containers.
+# Uses bind mounts + tsx watch / next dev for hot reload.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Or with the shorthand (if you set COMPOSE_FILE in .env):
+#   docker compose up
+#
+# To run infra only (current workflow):
+#   docker compose up            # uses docker-compose.yml only
+#
+# To run everything in Docker:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # API (Hono backend - dev mode with hot reload)
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: docker/dev.Dockerfile
+    container_name: spaceguard-api-dev
+    command: npx tsx watch apps/api/src/index.ts
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://spaceguard:spaceguard_dev@postgres:5432/spaceguard
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: dev-secret-key-change-in-production
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./seed-data:/app/seed-data
+      - ./scripts:/app/scripts
+      - ./detection:/app/detection
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Web (Next.js frontend - dev mode with hot reload)
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: docker/dev.Dockerfile
+    container_name: spaceguard-web-dev
+    command: npx next dev --port 3000 --hostname 0.0.0.0
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    volumes:
+      - ./apps/web/app:/app/apps/web/app
+      - ./apps/web/components:/app/apps/web/components
+      - ./apps/web/lib:/app/apps/web/lib
+      - ./apps/web/next.config.js:/app/apps/web/next.config.js
+      - ./apps/web/tailwind.config.ts:/app/apps/web/tailwind.config.ts
+      - ./apps/web/postcss.config.js:/app/apps/web/postcss.config.js
+      - ./packages/shared/src:/app/packages/shared/src
+    depends_on:
+      api:
+        condition: service_healthy
+    working_dir: /app
+
+  # ---------------------------------------------------------------------------
+  # Seed runner (one-shot - runs migrations and seeds, then exits)
+  # Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm seed
+  # ---------------------------------------------------------------------------
+  seed:
+    build:
+      context: .
+      dockerfile: docker/dev.Dockerfile
+    container_name: spaceguard-seed
+    command: >
+      sh -c "npx tsx seed-data/seed.ts && echo 'Seed complete'"
+    environment:
+      DATABASE_URL: postgresql://spaceguard:spaceguard_dev@postgres:5432/spaceguard
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools
