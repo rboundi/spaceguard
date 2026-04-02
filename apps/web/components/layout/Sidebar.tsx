@@ -26,6 +26,7 @@ import {
   Code2,
   Bug,
   Orbit,
+  Crosshair,
 } from "lucide-react";
 import { useAlerts } from "@/lib/alerts-context";
 import { useIncidents } from "@/lib/incidents-context";
@@ -112,6 +113,13 @@ const navItems = [
     label: "Vulnerabilities",
     href: "/vulnerabilities",
     icon: Bug,
+    exact: false,
+    badge: false,
+  },
+  {
+    label: "Tailoring",
+    href: "/tailoring",
+    icon: Crosshair,
     exact: false,
     badge: false,
   },

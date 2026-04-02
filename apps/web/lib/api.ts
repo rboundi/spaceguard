@@ -1656,6 +1656,57 @@ export interface TlptScheduleEntry {
   overdue: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// SPARTA Control Tailoring
+// ---------------------------------------------------------------------------
+
+export interface ThreatProfileResponse {
+  id: string;
+  organizationId: string;
+  assetId: string | null;
+  name: string;
+  missionType: string;
+  orbitRegime: string;
+  adversaryCapability: string;
+  spacecraftConstraints: Record<string, unknown> | null;
+  groundSegmentProfile: Record<string, unknown> | null;
+  generatedBaseline: Record<string, unknown> | null;
+  generatedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TailoredBaselineResponse {
+  profileSummary: { name: string; missionType: string; orbitRegime: string; adversaryCapability: string; generatedAt: string };
+  techniqueCount: { total: number; applicable: number; highRelevance: number };
+  applicableTechniques: Array<{ spartaId: string; name: string; tactic: string; relevanceScore: number }>;
+  countermeasures: Array<{ spartaId: string; name: string; category: string; priority: number; feasible: boolean; nistControls: string[]; techniquesAddressed: number }>;
+  controlBaseline: { total: number; alreadyCompliant: number; newGaps: number; notFeasible: number };
+  recommendations: Array<{ priority: number; action: string; effort: string; nistControls: string[] }>;
+}
+
+export const getTailoringProfiles = (organizationId: string) =>
+  api.get<{ data: ThreatProfileResponse[]; total: number }>(
+    `/api/v1/tailoring/profiles?organizationId=${organizationId}`
+  );
+
+export const createTailoringProfile = (data: Record<string, unknown>) =>
+  api.post<ThreatProfileResponse>("/api/v1/tailoring/profiles", data);
+
+export const generateTailoredBaseline = (profileId: string) =>
+  api.post<TailoredBaselineResponse>(
+    `/api/v1/tailoring/profiles/${profileId}/generate`,
+    {}
+  );
+
+export const getTailoringBaseline = (profileId: string) =>
+  api.get<TailoredBaselineResponse>(
+    `/api/v1/tailoring/profiles/${profileId}/baseline`
+  );
+
+export const deleteTailoringProfile = (profileId: string) =>
+  api.delete(`/api/v1/tailoring/profiles/${profileId}`);
+
 export const importSbomApi = (data: {
   organizationId: string;
   assetId?: string | null;
