@@ -56,3 +56,6 @@ export * from "./vulnerability";
 
 // Threat Profiles / SPARTA Tailoring
 export * from "./threat-profiles";
+
+// Cryptographic Posture Management
+export * from "./crypto";

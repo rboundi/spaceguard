@@ -1707,6 +1707,66 @@ export const getTailoringBaseline = (profileId: string) =>
 export const deleteTailoringProfile = (profileId: string) =>
   api.delete(`/api/v1/tailoring/profiles/${profileId}`);
 
+// ---------------------------------------------------------------------------
+// Cryptographic Posture Management
+// ---------------------------------------------------------------------------
+
+export interface CryptoEntryResponse {
+  id: string;
+  organizationId: string;
+  assetId: string | null;
+  name: string;
+  mechanismType: string;
+  algorithm: string;
+  keyLengthBits: number | null;
+  protocol: string | null;
+  implementation: string | null;
+  pqcVulnerable: boolean;
+  pqcMigrationStatus: string;
+  keyLastRotated: string | null;
+  keyRotationIntervalDays: number | null;
+  keyNextRotation: string | null;
+  certificateExpiry: string | null;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CryptoPostureResponse {
+  total: number;
+  activeCount: number;
+  pqcVulnerableCount: number;
+  pqcVulnerablePercent: number;
+  pqcByStatus: Record<string, number>;
+  keyRotationOverdue: number;
+  certsExpiringSoon: number;
+  certsExpired: number;
+  deprecatedCount: number;
+  postureScore: number;
+}
+
+export const getCryptoInventory = (organizationId: string) =>
+  api.get<{ data: CryptoEntryResponse[]; total: number }>(
+    `/api/v1/crypto/inventory?organizationId=${organizationId}`
+  );
+
+export const createCryptoEntryApi = (data: Record<string, unknown>) =>
+  api.post<CryptoEntryResponse>("/api/v1/crypto/inventory", data);
+
+export const deleteCryptoEntryApi = (id: string) =>
+  api.delete(`/api/v1/crypto/inventory/${id}`);
+
+export const getCryptoPosture = (organizationId: string) =>
+  api.get<CryptoPostureResponse>(
+    `/api/v1/crypto/posture?organizationId=${organizationId}`
+  );
+
+export const getPqcReadiness = (organizationId: string) =>
+  api.get<{ totalVulnerable: number; mechanisms: CryptoEntryResponse[]; byStatus: Record<string, number> }>(
+    `/api/v1/crypto/pqc-readiness?organizationId=${organizationId}`
+  );
+
 export const importSbomApi = (data: {
   organizationId: string;
   assetId?: string | null;
