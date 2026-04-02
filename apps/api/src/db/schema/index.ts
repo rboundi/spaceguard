@@ -53,3 +53,6 @@ export * from "./dashboard-layouts";
 
 // Vulnerability / SBOM Management
 export * from "./vulnerability";
+
+// Threat Profiles / SPARTA Tailoring
+export * from "./threat-profiles";
