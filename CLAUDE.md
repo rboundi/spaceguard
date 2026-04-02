@@ -1,416 +1,347 @@
-# SpaceGuard - Operational Cybersecurity Platform for European Space Infrastructure
+# SpaceGuard - CLAUDE.md
 
-## What This Project Is
+## What is this project?
 
-SpaceGuard is a cybersecurity SaaS platform for European satellite operators. It helps them comply with NIS2, monitor space systems for threats, and generate incident reports. The target customers are small-to-medium satellite operators (10-200 person companies) who have no existing security tooling.
+SpaceGuard is a cybersecurity SaaS platform for European satellite operators.
+It provides NIS2/CRA/ENISA compliance tracking, real-time telemetry monitoring,
+statistical anomaly detection, threat intelligence (SPARTA framework), incident
+management with automated NIS2 reporting, and response playbooks.
 
-## Tech Stack (Non-Negotiable)
+Target customers: small-to-medium European satellite operators who need to
+comply with NIS2 (active), CRA (rolling out), and the upcoming EU Space Act.
 
-- **Language**: TypeScript everywhere (frontend + backend + shared)
-- **Backend**: Hono (lightweight, fast HTTP framework)
-- **ORM**: Drizzle ORM (type-safe, schema-first, generates migrations)
-- **Database**: PostgreSQL 16 with TimescaleDB extension (for telemetry time-series)
-- **Validation**: Zod (shared schemas between frontend and backend)
-- **Cache/PubSub**: Redis 7 (caching + real-time alert pub/sub via WebSocket)
-- **Frontend**: Next.js 14+ (App Router), TypeScript, Tailwind CSS, shadcn/ui
-- **Auth**: Better Auth (simple, TypeScript-native auth library)
-- **Runtime**: Node.js 22
-- **Monorepo**: Turborepo with npm workspaces
-- **PDF Generation**: @react-pdf/renderer (JSX-based PDF, stays in TypeScript)
-- **Containerization**: Docker Compose for local dev
+GitHub: github.com/rboundi/SpaceGuard
 
-## Architecture Principles
+## Tech Stack
 
-1. **Monorepo with shared packages**: One repo, three workspaces: `apps/api` (Hono backend), `apps/web` (Next.js frontend), `packages/shared` (Zod schemas, types, constants shared by both).
-2. **Single source of truth for types**: Zod schemas live in `packages/shared`. Drizzle schema references them. Frontend imports them. Never duplicate a type definition.
-3. **Hono runs as a standalone Node.js server**: Not inside Next.js. Separate process on port 3001. Next.js runs on port 3000.
-4. **PostgreSQL for everything**: Assets, incidents, intel, compliance data in regular tables. Only telemetry time-series goes into TimescaleDB hypertables.
-5. **Redis for real-time only**: Pub/sub for pushing alerts to the frontend via WebSocket. Not for persistent storage.
-
-## Code Conventions
-
-- **TypeScript**: Strict mode everywhere. No `any` types. Use `as const` for literal types. Prefer `interface` for object shapes, `type` for unions/intersections.
-- **Imports**: Use path aliases: `@spaceguard/shared` for shared package, `@/` for local imports within each app.
-- **API Design**: REST with consistent URL patterns: `/api/v1/{resource}`. Return JSON. Use HTTP status codes correctly. Paginate list endpoints with `?page=1&perPage=20`.
-- **Database**: Snake_case for all column and table names. UUID primary keys. Always include `created_at` and `updated_at` timestamps. Use Drizzle for all schema changes and migrations.
-- **Error Handling**: Use Hono's HTTPException. Return consistent error shapes: `{ error: string, details?: unknown }`.
-- **Zod Schemas**: Define in `packages/shared/src/schemas/`. Name pattern: `createAssetSchema`, `updateAssetSchema`, `assetResponseSchema`. Export inferred types alongside: `type CreateAsset = z.infer<typeof createAssetSchema>`.
-- **No em dashes**: Never use "---" (em dash) in any text, comments, or documentation.
+- Monorepo: Turborepo with npm workspaces
+- Backend: Hono (lightweight HTTP framework) on Node.js
+- ORM: Drizzle ORM (type-safe, schema-first, PostgreSQL)
+- Database: PostgreSQL 16 + TimescaleDB (telemetry time-series hypertables)
+- Validation: Zod (shared schemas between frontend and backend)
+- Frontend: Next.js 14+ (App Router) + Tailwind CSS + shadcn/ui
+- Auth: Custom JWT with scryptSync (node:crypto) password hashing and jose for tokens
+- Cache/PubSub: Redis 7
+- Real-time: WebSocket via Hono + Redis pub/sub
+- PDF generation: @react-pdf/renderer
+- Email: Resend (direct REST API calls, no npm package)
+- Charts: Recharts
+- Icons: lucide-react
 
 ## Project Structure
 
 ```
 spaceguard/
-├── CLAUDE.md                        # THIS FILE
-├── turbo.json                       # Turborepo config
-├── package.json                     # Root workspace config
-├── docker-compose.yml               # PostgreSQL + Redis
-├── .env.example                     # Environment variables template
-├── .gitignore
-│
-├── packages/
-│   └── shared/                      # Shared types, schemas, constants
-│       ├── package.json
-│       ├── tsconfig.json
-│       └── src/
-│           ├── index.ts             # Re-exports everything
-│           ├── schemas/
-│           │   ├── organization.ts  # Zod schemas for Organization
-│           │   ├── asset.ts         # Zod schemas for SpaceAsset
-│           │   ├── compliance.ts    # Zod schemas for requirements & mappings
-│           │   ├── incident.ts      # (Module 4, later)
-│           │   └── intel.ts         # (Module 5, later)
-│           ├── enums.ts             # All enum definitions (shared)
-│           └── constants.ts         # NIS2 categories, SPARTA tactics, etc.
-│
-├── apps/
-│   ├── api/                         # Hono backend
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   ├── drizzle.config.ts        # Drizzle Kit config
-│   │   └── src/
-│   │       ├── index.ts             # Hono app entry point, starts server
-│   │       ├── db/
-│   │       │   ├── client.ts        # Drizzle + PostgreSQL connection
-│   │       │   ├── schema/
-│   │       │   │   ├── index.ts     # Re-exports all schemas
-│   │       │   │   ├── organizations.ts
-│   │       │   │   ├── assets.ts
-│   │       │   │   ├── compliance.ts
-│   │       │   │   └── telemetry.ts # (Module 2, later)
-│   │       │   └── migrations/      # Drizzle-generated SQL migrations
-│   │       ├── routes/
-│   │       │   ├── organizations.ts # /api/v1/organizations routes
-│   │       │   ├── assets.ts        # /api/v1/assets routes
-│   │       │   ├── compliance.ts    # /api/v1/compliance/* routes
-│   │       │   └── reports.ts       # /api/v1/reports/* routes
-│   │       ├── services/
-│   │       │   ├── organization.service.ts
-│   │       │   ├── asset.service.ts
-│   │       │   ├── compliance.service.ts
-│   │       │   └── report.service.ts
-│   │       └── middleware/
-│   │           ├── auth.ts          # JWT auth middleware
-│   │           └── error.ts         # Global error handler
-│   │
-│   └── web/                         # Next.js frontend
-│       ├── package.json
-│       ├── tsconfig.json
-│       ├── tailwind.config.ts
-│       ├── next.config.js
-│       ├── app/
-│       │   ├── layout.tsx           # Root layout with sidebar
-│       │   ├── page.tsx             # Dashboard
-│       │   ├── assets/
-│       │   │   ├── page.tsx         # Asset list
-│       │   │   └── [id]/page.tsx    # Asset detail
-│       │   ├── compliance/
-│       │   │   └── page.tsx         # Compliance mapping
-│       │   └── reports/
-│       │       └── page.tsx         # Report generation
-│       ├── components/
-│       │   ├── ui/                  # shadcn/ui components
-│       │   ├── layout/              # Sidebar, header
-│       │   └── charts/              # Dashboard charts
-│       └── lib/
-│           ├── api.ts               # Typed fetch client using shared schemas
-│           └── utils.ts             # Helpers
-│
-├── seed-data/
-│   ├── nis2-requirements.json       # Pre-populated NIS2 Article 21 controls
-│   ├── enisa-controls.json          # ENISA Space Threat Landscape 125 controls
-│   ├── sparta-techniques.json       # SPARTA matrix (STIX 2.1 format)
-│   └── seed.ts                      # Script to load all seed data
-│
-├── detection/                       # Detection engine (Module 3, later)
-│   └── rules/                       # YAML rule definitions
-│
-├── scripts/
-│   ├── setup.sh                     # One-command dev setup
-│   └── generate-telemetry.ts        # Simulated CCSDS data (Module 2, later)
-│
-└── docs/
-    ├── CLAUDE_CODE_SESSIONS.md      # Step-by-step build guide
-    └── api.md                       # API notes
+  packages/
+    shared/                  # Zod schemas, enums, TypeScript types
+      src/
+        enums.ts             # All enums with display labels and colors
+        index.ts             # Re-exports everything
+        schemas/
+          alert.ts
+          anomaly.ts
+          asset.ts
+          compliance.ts
+          incident.ts
+          intel.ts
+          organization.ts
+          playbook.ts
+          risk.ts
+          scheduled-report.ts
+          sparta.ts
+          supplier.ts
+          telemetry.ts
+  apps/
+    api/                     # Hono backend
+      src/
+        index.ts             # App entry, middleware, route mounting
+        db/
+          client.ts          # Drizzle + postgres connection
+          schema/            # Drizzle table definitions
+          migrations/
+        routes/              # 22 Hono route files (see inventory below)
+        services/            # Business logic layer
+          detection/         # 5 files: engine, anomaly-detector, correlator, rule-loader, alert.service
+          telemetry/         # 3 files: telemetry.service, ccsds-parser, ccsds-parser.test
+          # Plus 18 top-level service files (see inventory below)
+        middleware/           # 8 files: audit, auth-guard, error, rate-limit, sanitize, security-headers, tenant-scope, validate
+      drizzle.config.ts
+    web/                     # Next.js frontend
+      app/                   # 17 authenticated pages + login (see inventory below)
+      lib/
+        api.ts               # Typed API client
+        context.ts           # Org context provider
+        ws.ts                # WebSocket hook
+  seed-data/
+    nis2-requirements.json          # 18 space-specific NIS2 requirements
+    enisa-controls.json             # 125 ENISA Space Threat Landscape controls
+    cra-requirements.json           # CRA requirements
+    sparta-full-matrix.json         # Complete SPARTA v3.2 (4.2 MB)
+    sparta-countermeasures.json     # SPARTA countermeasures with NIST mappings
+    sparta-techniques.json          # SPARTA techniques reference data
+    playbook-templates.json         # Predefined response playbook templates
+    seed.ts                         # Seed data loader (idempotent)
+    seed-incidents.mjs              # Incident seed data
+    seed-playbooks.ts               # Playbook seed data
+  scripts/
+    realistic-data.ts               # 4 European space company profiles (45 KB)
+    simulate-telemetry.ts           # Telemetry simulator with anomaly injection (22 KB)
+    full-demo.ts                    # Complete demo scenario loader (88 KB)
+    test-telemetry.ts               # Telemetry endpoint testing
+    seed-audit-trail.ts             # Audit trail seed data
+    seed-users.ts                   # User account seed data
+    run-migration.ts                # Database migration runner
+    setup.sh                        # Dev environment setup
+    deploy.sh                       # Deployment script
+  detection/
+    rules/                          # 50 YAML detection rules across 9 files
+      access-control.yaml           # 6 rules (SG-AC-001 to SG-AC-006)
+      command-security.yaml         # 5 rules (SG-TC-001 to SG-TC-005)
+      data-exfiltration.yaml        # 6 rules (SG-DX-001 to SG-DX-006)
+      data-integrity.yaml           # 5 rules (SG-DI-001 to SG-DI-005)
+      ground-segment.yaml           # 5 rules (SG-GS-001 to SG-GS-005)
+      link-security.yaml            # 6 rules (SG-RF-001 to SG-RF-006)
+      persistence-evasion.yaml      # 6 rules (SG-PE-001 to SG-PE-006)
+      spacecraft-health.yaml        # 6 rules (SG-SC-001 to SG-SC-006)
+      telemetry-anomalies.yaml      # 5 rules (SG-TM-001 to SG-TM-005)
+  docs/
+    SpaceGuard_Gap_Analysis_Report.md
+  docker-compose.yml                # Dev: PostgreSQL (TimescaleDB) + Redis
+  docker-compose.prod.yml           # Prod: + Nginx 1.27 + certbot SSL
 ```
 
-## How Types Flow Through the Stack
+## How Types Flow (Critical Architecture Pattern)
 
-This is the key architectural insight. A single Zod schema drives everything:
+This is the key architectural pattern. Understand this and everything else follows.
 
-```
-packages/shared/src/schemas/asset.ts
-  │
-  ├── Zod schema: createAssetSchema
-  │     └── Inferred type: CreateAsset
-  │
-  ├── Used in apps/api:
-  │     ├── Drizzle schema references the enum values
-  │     ├── Route handler validates request body with zod .parse()
-  │     └── Service layer uses the inferred types
-  │
-  └── Used in apps/web:
-        ├── Form validation uses the same zod schema
-        ├── API client returns the inferred response type
-        └── Components use the shared types for props
-```
+1. Zod schema defined ONCE in packages/shared (e.g., createAssetSchema)
+2. TypeScript type inferred: type CreateAsset = z.infer<typeof createAssetSchema>
+3. Drizzle schema in apps/api mirrors the Zod shape (column names match)
+4. API route validates request body with the Zod schema
+5. Frontend imports the same types for API calls and form validation
+6. One change to the Zod schema propagates everywhere via TypeScript
 
-Example:
-```typescript
-// packages/shared/src/schemas/asset.ts
-import { z } from "zod";
-import { AssetType, AssetStatus, Criticality } from "../enums";
+NEVER define types separately in the API or frontend. Always import from @spaceguard/shared.
 
-export const createAssetSchema = z.object({
-  organizationId: z.string().uuid(),
-  name: z.string().min(1).max(255),
-  assetType: z.nativeEnum(AssetType),
-  description: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
-  status: z.nativeEnum(AssetStatus).default("OPERATIONAL"),
-  criticality: z.nativeEnum(Criticality).default("MEDIUM"),
-});
+## Conventions
 
-export type CreateAsset = z.infer<typeof createAssetSchema>;
+- Database columns: snake_case (organization_id, created_at)
+- TypeScript/JSON fields: camelCase (organizationId, createdAt)
+- Drizzle handles the casing transformation
+- API responses always camelCase
+- All API routes under /api/v1/
+- All state-changing operations create an audit log entry
+- All queries filter by organization_id (multi-tenant isolation)
+- Error responses: { error: string, details?: any }
+- HTTP status codes: 200 OK, 201 Created, 400 Bad Request, 401 Unauthorized,
+  403 Forbidden, 404 Not Found, 429 Rate Limited, 500 Internal Error
+- Never use em dashes in any output or documentation
+- Commit messages: "feat:", "fix:", "docs:", "chore:" prefixes
 
-// apps/api uses: createAssetSchema.parse(body)
-// apps/web uses: CreateAsset as the form type
-// Both import from: @spaceguard/shared
+## Database Commands
+
+```bash
+docker compose up -d                    # Start PostgreSQL + Redis
+npx drizzle-kit push                    # Sync schema to database (dev)
+npx drizzle-kit generate                # Generate migration files (prod)
+npx tsx seed-data/seed.ts               # Load all seed data
+npx tsx scripts/realistic-data.ts       # Load demo company data
+npx tsx scripts/simulate-telemetry.ts   # Generate telemetry (--anomaly flag)
+npx tsx scripts/full-demo.ts            # Full demo scenario
 ```
 
-## Completed Modules
+## Development Commands
 
-### Module 1 - Asset Registry & Compliance Mapper (COMPLETE)
-
-Delivered a fully working web application where satellite operators can:
-1. Register their organization and space assets
-2. See which NIS2 requirements apply to them
-3. Map each requirement to their assets and track compliance status
-4. View a compliance dashboard with scores and gaps
-5. Export a compliance status report as PDF
-
-All Module 1 endpoints are live and tested. The frontend covers Dashboard, Assets, Asset Detail, Compliance Mapper, and Reports pages.
-
----
-
-## Current Phase: Phase 2 - Realistic Data, Telemetry Ingestion, Detection Engine, Incident Management, Threat Intel
-
-### Overview
-
-Phase 2 extends SpaceGuard beyond the MVP compliance baseline into a full operational cybersecurity platform. The phases are:
-
-- **Phase 2A (Now)**: Realistic multi-org test data + organization switcher UI
-- **Module 2**: Telemetry ingestion (CCSDS frames, TimescaleDB hypertables, anomaly detection)
-- **Module 3**: Detection engine (YAML rules, alert generation, Redis pub/sub, WebSocket push)
-- **Module 4**: Incident management (CRUD, timeline, regulatory notification tracking)
-- **Module 5**: Threat intelligence (SPARTA/ATT&CK mapping, IOCs, intel feeds)
-
-### Module 2 Data Model (Telemetry)
-
-TimescaleDB hypertable for raw telemetry frames:
-
-```typescript
-// apps/api/src/db/schema/telemetry.ts
-export const telemetryFrames = pgTable("telemetry_frames", {
-  time: timestamp("time", { withTimezone: true }).notNull(),        // partition key
-  assetId: uuid("asset_id").notNull().references(() => spaceAssets.id),
-  frameType: varchar("frame_type", { length: 50 }).notNull(),       // "TM" | "TC" | "HK"
-  apid: integer("apid"),                                            // CCSDS APID
-  sequenceCount: integer("sequence_count"),
-  dataLength: integer("data_length"),
-  rawData: text("raw_data"),                                        // base64 CCSDS frame
-  parameters: jsonb("parameters"),                                  // decoded telemetry KVPs
-  qualityFlag: varchar("quality_flag", { length: 20 }).default("NOMINAL"), // "NOMINAL" | "DEGRADED" | "INVALID"
-  groundStationId: uuid("ground_station_id"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-// Hypertable: SELECT create_hypertable('telemetry_frames', 'time');
-// Index: CREATE INDEX ON telemetry_frames (asset_id, time DESC);
+```bash
+npm run dev                             # Start API + Web via Turborepo
+npm run dev -w apps/api                 # API only (port 3001)
+npm run dev -w apps/web                 # Frontend only (port 3000)
+npm run db:studio -w apps/api           # Drizzle Studio (DB browser)
 ```
 
-Housekeeping (HK) telemetry parameters schema (stored in `parameters` jsonb):
-- `battery_voltage_v`, `solar_power_w`, `bus_current_ma`
-- `attitude_quaternion` (array of 4 floats)
-- `angular_velocity_deg_s` (array of 3 floats)
-- `on_board_time`, `cpu_load_pct`, `memory_free_kb`
-- `temperature_obc_c`, `temperature_battery_c`, `temperature_panel_c`
-- `link_snr_db`, `bit_error_rate`, `doppler_offset_hz`
-
-### Enums (defined in packages/shared/src/enums.ts)
-
-```typescript
-export enum AssetType {
-  LEO_SATELLITE = "LEO_SATELLITE",
-  MEO_SATELLITE = "MEO_SATELLITE",
-  GEO_SATELLITE = "GEO_SATELLITE",
-  GROUND_STATION = "GROUND_STATION",
-  CONTROL_CENTER = "CONTROL_CENTER",
-  UPLINK = "UPLINK",
-  DOWNLINK = "DOWNLINK",
-  INTER_SATELLITE_LINK = "INTER_SATELLITE_LINK",
-  DATA_CENTER = "DATA_CENTER",
-  NETWORK_SEGMENT = "NETWORK_SEGMENT",
-}
-
-export enum AssetStatus {
-  OPERATIONAL = "OPERATIONAL",
-  DEGRADED = "DEGRADED",
-  MAINTENANCE = "MAINTENANCE",
-  DECOMMISSIONED = "DECOMMISSIONED",
-}
-
-export enum Criticality {
-  LOW = "LOW",
-  MEDIUM = "MEDIUM",
-  HIGH = "HIGH",
-  CRITICAL = "CRITICAL",
-}
-
-export enum NIS2Classification {
-  ESSENTIAL = "ESSENTIAL",
-  IMPORTANT = "IMPORTANT",
-}
-
-export enum Regulation {
-  NIS2 = "NIS2",
-  CRA = "CRA",
-  EU_SPACE_ACT = "EU_SPACE_ACT",
-  ENISA_SPACE = "ENISA_SPACE",
-}
-
-export enum ComplianceStatus {
-  NOT_ASSESSED = "NOT_ASSESSED",
-  NON_COMPLIANT = "NON_COMPLIANT",
-  PARTIALLY_COMPLIANT = "PARTIALLY_COMPLIANT",
-  COMPLIANT = "COMPLIANT",
-}
-```
-
-### Drizzle Schema (for apps/api/src/db/schema/)
-
-```typescript
-// organizations.ts
-import { pgTable, uuid, varchar, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
-
-export const nis2ClassificationEnum = pgEnum("nis2_classification", ["ESSENTIAL", "IMPORTANT"]);
-
-export const organizations = pgTable("organizations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 255 }).notNull(),
-  nis2Classification: nis2ClassificationEnum("nis2_classification").notNull(),
-  country: varchar("country", { length: 2 }).notNull(),
-  sector: varchar("sector", { length: 100 }).notNull().default("space"),
-  contactEmail: varchar("contact_email", { length: 255 }).notNull(),
-  contactName: varchar("contact_name", { length: 255 }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-// assets.ts - similar pattern for space_assets table
-// compliance.ts - compliance_requirements and compliance_mappings tables
-```
-
-### API Endpoints for Module 1
+## Environment Variables
 
 ```
-# Organizations
-POST   /api/v1/organizations
-GET    /api/v1/organizations
-GET    /api/v1/organizations/:id
-PUT    /api/v1/organizations/:id
-
-# Space Assets
-POST   /api/v1/assets
-GET    /api/v1/assets?organizationId=&type=&status=
-GET    /api/v1/assets/:id
-PUT    /api/v1/assets/:id
-DELETE /api/v1/assets/:id
-
-# Compliance Requirements (read-only, pre-populated)
-GET    /api/v1/compliance/requirements?regulation=&category=
-GET    /api/v1/compliance/requirements/:id
-
-# Compliance Mappings
-POST   /api/v1/compliance/mappings
-GET    /api/v1/compliance/mappings?organizationId=&assetId=&status=
-PUT    /api/v1/compliance/mappings/:id
-DELETE /api/v1/compliance/mappings/:id
-
-# Dashboard & Reports
-GET    /api/v1/compliance/dashboard?organizationId=
-GET    /api/v1/reports/compliance/pdf?organizationId=
+DATABASE_URL=postgresql://spaceguard:spaceguard_dev@localhost:5432/spaceguard
+REDIS_URL=redis://localhost:6379/0
+JWT_SECRET=dev-secret-key-change-in-production
+PORT=3001
+NEXT_PUBLIC_API_URL=http://localhost:3001
+RESEND_API_KEY=                         # Optional, logs to console if missing
+WEBHOOK_ENCRYPTION_KEY=                 # For encrypting webhook auth values
 ```
 
-### Frontend Pages for Module 1
+## Current State: What Actually Exists
 
-1. **Dashboard** (`/`): Compliance score donut, asset count by type, gaps, category breakdown bar chart
-2. **Assets** (`/assets`): Table with filters, add/edit dialogs
-3. **Asset Detail** (`/assets/[id]`): Asset info + compliance mappings
-4. **Compliance** (`/compliance`): Requirements grouped by category, mapping interface
-5. **Reports** (`/reports`): Preview and download PDF compliance report
+### Completed Modules
 
-### UI Design Direction
+Module 1 - Asset Registry and Compliance:
+  Organization CRUD, asset CRUD, compliance mapping supporting NIS2, CRA,
+  EU Space Act, and ENISA Space regulations via shared mapper, compliance
+  dashboard with scoring per regulation, PDF report generation
 
+Module 2 - Telemetry Ingestion:
+  CCSDS Space Packet parser (TM and TC) with unit tests, TimescaleDB
+  hypertable storage, JSON and binary ingestion endpoints with per-stream
+  API key auth, telemetry simulator (3 concurrent streams), time-series
+  visualization with Recharts
+
+Module 3 - Detection Engine:
+  50 YAML detection rules across 9 categories mapped to SPARTA tactics,
+  rule evaluation engine, statistical anomaly detection with rolling
+  baselines and z-score alerting, alert correlation engine (temporal
+  clustering, kill chain progression, cross-asset spread)
+
+Module 4 - Incident Management:
+  Full incident lifecycle (8 states: DETECTED through CLOSED + FALSE_POSITIVE),
+  NIS2 Article 23 reporting (24h/72h/7d/30d deadlines), timeline tracking,
+  linked alerts, investigator notes, MTTD/MTTR metrics, NIS2 classification
+  (SIGNIFICANT/NON_SIGNIFICANT)
+
+Module 5 - Threat Intelligence:
+  Complete SPARTA v3.2 matrix (159 techniques, 268 countermeasures,
+  860 indicators, 3,484 relationships) in STIX 2.1 format, live sync
+  from sparta.aerospace.org with deterministic change detection,
+  interactive SPARTA matrix navigator, admin interface for STIX bundle
+  import and server fetch
+
+### Verified Features
+
+Authentication and Access Control:
+- User auth with RBAC (Admin, Operator, Viewer, Auditor)
+- Custom JWT with scryptSync + jose
+- Multi-tenancy hardening with tenant-scope middleware
+- Rate limiting per endpoint category
+
+Monitoring and Detection:
+- 50 detection rules across 9 categories mapped to SPARTA tactics
+- Statistical anomaly detection with rolling baselines and z-score alerting
+- Alert correlation engine (temporal, kill chain, cross-asset)
+- WebSocket real-time alert push via Redis pub/sub
+
+Incident Response:
+- Full incident lifecycle (8 states)
+- NIS2 Article 23 reporting (24h/72h/7d/30d deadlines)
+- Response playbook engine with visual builder (6 step types:
+  notify, isolate, diagnostic, mitigate, escalate, report)
+- Webhook dispatch as playbook action step (placeholder implementation)
+- MTTD/MTTR metrics
+
+Reporting and Integration:
+- 5 PDF report types (compliance, incident summary, threat briefing,
+  supply chain risk, audit trail)
+- Scheduled automatic report generation with Resend email delivery
+- Syslog CEF/LEEF output for SIEM integration
+- STIX 2.1 export (alerts and threat intel)
+- OpenAPI documentation at /api/docs with interactive explorer
+- CSV export for alerts, incidents, compliance, audit data
+
+Risk and Supply Chain:
+- 5-dimension risk scoring engine (0-100 per asset and org):
+  compliance 30%, threat exposure 25%, alerts 25%, supply chain 10%, config 10%
+- Supply chain management with supplier risk tracking and certification inventory
+- Complete audit trail with middleware logging on all state changes
+
+User Interface:
+- Customizable dashboard with 12 drag-and-drop widgets
+- 5-step onboarding wizard
 - Dark theme with space/aerospace aesthetic
-- Background: slate-950 (#020617)
-- Sidebar: slate-900
-- Primary accent: blue-500 (#3b82f6)
-- Warning/alert: amber-500 (#f59e0b)
-- Critical: red-500
-- Success/compliant: emerald-500
-- Data-dense dashboards, not marketing pages
-- shadcn/ui components throughout
-- Recharts for all data visualization
+- Email notifications via Resend REST API (console fallback when key absent)
 
-### Seed Data
+Infrastructure:
+- Docker production configuration with Nginx 1.27 reverse proxy + certbot SSL
+- docker-compose.prod.yml ready for deployment
 
-The `seed-data/nis2-requirements.json` file is already created with 18 space-specific NIS2 requirements covering all 10 categories from Article 21(2).
+### NOT Built Yet (From Phase 5 Prompts)
 
-## Database Migrations
+These features were planned but not implemented:
+- Claude-powered AI assistant with streaming chat
+- AI report drafting and SPARTA explanations
+- PWA with push notifications for mobile alerts
+- Public NIS2 self-assessment tool (lead generation)
+- Landing page and demo booking
+- Industry benchmarking (anonymous peer comparison)
+- Regulatory change tracker
+- Tabletop exercise module
 
-When you need to run raw SQL against the database (e.g. creating tables, adding columns), always provide the command as a Node.js one-liner using the project's `postgres` driver. The user does not have `psql` installed. Format:
+### Demo Data
 
-```bash
-node -e "
-const postgres = require('postgres');
-const sql = postgres('postgresql://spaceguard:spaceguard_dev@localhost:5432/spaceguard');
-const fs = require('fs');
-const migration = fs.readFileSync('path/to/migration.sql', 'utf8');
-sql.unsafe(migration).then(() => { console.log('Done'); return sql.end(); }).catch(e => { console.error(e); sql.end(); });
-"
-```
+4 realistic European space company profiles:
+- Proba Space Systems (Belgium, EO constellation, ESSENTIAL)
+  Ground stations: Svalbard (KSAT), Matera (e-GEOS)
+- NordSat IoT (Sweden, CubeSat IoT, IMPORTANT)
+  Ground station: Kiruna (SSC)
+- MediterraneanSat Communications (Greece, GEO SATCOM, ESSENTIAL)
+  Teleports: Thermopylae, Limassol
+- Orbital Watch Europe (France, SSA/surveillance, IMPORTANT)
+  Sensors: Aire-sur-l'Adour radar, Tenerife optical
 
-Or for inline SQL:
+## Verified Codebase Inventory
 
-```bash
-node -e "
-const sql = require('postgres')('postgresql://spaceguard:spaceguard_dev@localhost:5432/spaceguard');
-sql.unsafe(\`YOUR SQL HERE\`).then(() => { console.log('Done'); return sql.end(); }).catch(e => { console.error(e); sql.end(); });
-"
-```
+### Frontend Pages (apps/web/app/)
+page.tsx (dashboard), login/, onboarding/, admin/ (SPARTA navigator),
+alerts/, assets/, audit/, compliance/, developers/, exports/,
+incidents/, intel/, playbooks/, reports/, risk/, settings/,
+supply-chain/, telemetry/
 
-Never suggest `psql`, `docker exec psql`, or other tools the user may not have. Always use Node.js + the `postgres` package that is already installed in the project.
+### API Routes (apps/api/src/routes/) - 22 files
+admin-sparta.ts, alerts.ts, anomaly.ts, assets.ts, audit.ts, auth.ts,
+compliance.ts, dashboard-layouts.ts, docs.ts, enisa.ts, exports.ts,
+incidents.ts, intel.ts, organizations.ts, playbooks.ts, reports.ts,
+risk.ts, scheduled-reports.ts, settings.ts, supply-chain.ts, syslog.ts,
+telemetry.ts
 
-## Git Workflow
+### Services (apps/api/src/services/) - 18 top-level + 2 subdirectories
+asset.service.ts, audit.service.ts, auth.service.ts, compliance.service.ts,
+dashboard-layout.service.ts, export.service.ts, incident.service.ts,
+intel.service.ts, notification.service.ts, organization.service.ts,
+playbook.service.ts, realtime.service.ts, report.service.tsx,
+risk.service.ts, scheduler.service.ts, sparta.service.ts,
+supply-chain.service.ts, syslog.service.ts
+detection/ (5 files), telemetry/ (3 files)
 
-After completing any meaningful unit of work:
-1. Stage changes: `git add -A`
-2. Commit with conventional message:
-   - `feat:` new features
-   - `fix:` bug fixes
-   - `chore:` setup, config, dependencies
-   - `docs:` documentation
-3. Push: `git push origin main`
+### Middleware (apps/api/src/middleware/) - 8 files
+audit.ts, auth-guard.ts, error.ts, rate-limit.ts, sanitize.ts,
+security-headers.ts, tenant-scope.ts, validate.ts
 
-Commit frequently. Each logical piece of work = one commit.
-Never leave uncommitted work at the end of a task.
+## Roadmap
 
-## What NOT to Build Yet
+### Phase 5: Gap Analysis Remediation
+Reference: docs/SpaceGuard_Gap_Analysis_Report.md
 
-- No telemetry ingestion (Module 2 - coming next)
-- No detection/alerting (Module 3)
-- No incident management (Module 4)
-- No threat intelligence (Module 5)
-- No AI/ML anything
-- No multi-tenancy/billing
-- No SSO/SAML
+Tier 1 - Immediate Priority:
+1. Hierarchical asset taxonomy (ENISA Annex B 4-segment model)
+2. SBOM and vulnerability management (CRA compliance)
+3. Satellite lifecycle phase tracking (Phase 0-F)
+4. NIS2 awareness/guidance layer
+
+Tier 2 - Strategic Differentiation:
+5. SPARTA control tailoring workflow (TOR-2023-02161 methodology)
+6. Cryptographic posture management (PQC readiness)
+7. ENISA three-tier crisis escalation model
+8. Enhanced supply chain (vendor questionnaires, component tracking)
+
+Tier 3 - Future (build when customers request):
+9. STIX/TAXII feed ingestion and information sharing
+10. Command authorization workflow
+11. Firmware integrity verification
+12. Crisis exercise tracking
+
+## What NOT to Build (Until Customers Ask)
+
+- Active IPS / command blocking (too risky for mission-critical systems)
+- Native mobile apps (PWA is sufficient once built)
+- Multi-language i18n (English only)
+- White-label / OEM features
+- On-premise deployment automation (Docker compose is enough)
+- Integration with specific MCS software (SCOS-2000, etc.)
+
+### Unbuilt Features (DO NOT BUILD YET)
+
+1. Claude-powered AI assistant (Anthropic API + streaming chat UI)
+2. Public NIS2 self-assessment tool (lead generation, no auth)
+3. Landing page and demo booking
+4. PWA with push notifications
+5. Industry benchmarking
+6. Regulatory change tracker
+7. Tabletop exercise module (3 scenarios)
