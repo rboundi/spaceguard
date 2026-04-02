@@ -13,6 +13,15 @@ import type {
   UpdateMapping,
   StreamResponse,
   CreateStream,
+  ComponentResponse,
+  ComponentQuery,
+  CreateComponent,
+  VulnerabilityResponse,
+  VulnerabilityQuery,
+  CreateVulnerability,
+  UpdateVulnerability,
+  VulnerabilityStats,
+  SbomImportResponse,
 } from "@spaceguard/shared";
 
 // NOTE: Alert, Incident, Intel, and enrichment response types are defined
@@ -1534,3 +1543,66 @@ export const saveDashboardLayout = (layout: WidgetConfigApi[]) =>
 
 export const resetDashboardLayout = () =>
   api.delete("/api/v1/dashboard/layout");
+
+// ---------------------------------------------------------------------------
+// Vulnerability / SBOM Management
+// ---------------------------------------------------------------------------
+
+export const getVulnerabilityComponents = (query?: Partial<ComponentQuery>) => {
+  const params = new URLSearchParams();
+  if (query?.organizationId) params.set("organizationId", query.organizationId);
+  if (query?.assetId) params.set("assetId", query.assetId);
+  if (query?.componentType) params.set("componentType", query.componentType);
+  if (query?.source) params.set("source", query.source);
+  if (query?.search) params.set("search", query.search);
+  if (query?.page) params.set("page", String(query.page));
+  if (query?.perPage) params.set("perPage", String(query.perPage));
+  const qs = params.toString();
+  return api.get<{ data: ComponentResponse[]; total: number; page: number; perPage: number }>(
+    `/api/v1/vulnerability/components${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const createComponentApi = (data: CreateComponent) =>
+  api.post<ComponentResponse>("/api/v1/vulnerability/components", data);
+
+export const getComponentsByAsset = (assetId: string) =>
+  api.get<{ data: ComponentResponse[]; total: number }>(
+    `/api/v1/vulnerability/assets/${assetId}/components`
+  );
+
+export const getVulnerabilities = (query?: Partial<VulnerabilityQuery>) => {
+  const params = new URLSearchParams();
+  if (query?.organizationId) params.set("organizationId", query.organizationId);
+  if (query?.componentId) params.set("componentId", query.componentId);
+  if (query?.severity) params.set("severity", query.severity);
+  if (query?.status) params.set("status", query.status);
+  if (query?.search) params.set("search", query.search);
+  if (query?.page) params.set("page", String(query.page));
+  if (query?.perPage) params.set("perPage", String(query.perPage));
+  const qs = params.toString();
+  return api.get<{ data: VulnerabilityResponse[]; total: number; page: number; perPage: number }>(
+    `/api/v1/vulnerability/vulnerabilities${qs ? `?${qs}` : ""}`
+  );
+};
+
+export const createVulnerabilityApi = (data: CreateVulnerability) =>
+  api.post<VulnerabilityResponse>("/api/v1/vulnerability/vulnerabilities", data);
+
+export const updateVulnerabilityApi = (id: string, data: UpdateVulnerability) =>
+  api.put<VulnerabilityResponse>(`/api/v1/vulnerability/vulnerabilities/${id}`, data);
+
+export const getVulnerabilityStats = (organizationId: string) =>
+  api.get<VulnerabilityStats>(`/api/v1/vulnerability/stats?organizationId=${organizationId}`);
+
+export const importSbomApi = (data: {
+  organizationId: string;
+  assetId?: string | null;
+  filename: string;
+  format: string;
+  content: string | Record<string, unknown>;
+}) =>
+  api.post<{ import: SbomImportResponse; components: ComponentResponse[] }>(
+    "/api/v1/vulnerability/sbom/import",
+    data
+  );

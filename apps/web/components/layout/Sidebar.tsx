@@ -24,6 +24,7 @@ import {
   Download,
   BookOpen,
   Code2,
+  Bug,
 } from "lucide-react";
 import { useAlerts } from "@/lib/alerts-context";
 import { useIncidents } from "@/lib/incidents-context";
@@ -96,6 +97,13 @@ const navItems = [
     label: "Supply Chain",
     href: "/supply-chain",
     icon: LinkIcon,
+    exact: false,
+    badge: false,
+  },
+  {
+    label: "Vulnerabilities",
+    href: "/vulnerabilities",
+    icon: Bug,
     exact: false,
     badge: false,
   },
