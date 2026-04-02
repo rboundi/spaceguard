@@ -1,4 +1,5 @@
 export enum AssetType {
+  // Original top-level types
   LEO_SATELLITE = "LEO_SATELLITE",
   MEO_SATELLITE = "MEO_SATELLITE",
   GEO_SATELLITE = "GEO_SATELLITE",
@@ -9,7 +10,119 @@ export enum AssetType {
   INTER_SATELLITE_LINK = "INTER_SATELLITE_LINK",
   DATA_CENTER = "DATA_CENTER",
   NETWORK_SEGMENT = "NETWORK_SEGMENT",
+
+  // Space Segment subsystems (ENISA Annex B)
+  CDHS = "CDHS",
+  COM_SUBSYSTEM = "COM_SUBSYSTEM",
+  ADCS = "ADCS",
+  EPS = "EPS",
+  PAYLOAD = "PAYLOAD",
+  PROPULSION = "PROPULSION",
+  THERMAL = "THERMAL",
+
+  // Ground Segment subsystems (ENISA Annex B)
+  TTC_ANTENNA = "TTC_ANTENNA",
+  SLE_INTERFACE = "SLE_INTERFACE",
+  CRYPTO_UNIT_GROUND = "CRYPTO_UNIT_GROUND",
+  MISSION_PLANNING = "MISSION_PLANNING",
+  FLIGHT_DYNAMICS = "FLIGHT_DYNAMICS",
+  GROUND_NETWORK = "GROUND_NETWORK",
+
+  // User Segment (ENISA Annex B)
+  VSAT_TERMINAL = "VSAT_TERMINAL",
+  USER_MODEM = "USER_MODEM",
+  USER_APPLICATION = "USER_APPLICATION",
+
+  // Human Resources (security tracking)
+  OPERATIONS_TEAM = "OPERATIONS_TEAM",
+  ENGINEERING_TEAM = "ENGINEERING_TEAM",
+  SECURITY_TEAM = "SECURITY_TEAM",
 }
+
+// ---------------------------------------------------------------------------
+// ENISA Annex B 4-segment taxonomy
+// ---------------------------------------------------------------------------
+
+export enum AssetSegment {
+  SPACE = "SPACE",
+  GROUND = "GROUND",
+  USER = "USER",
+  HUMAN_RESOURCES = "HUMAN_RESOURCES",
+}
+
+export const assetSegmentLabels: Record<AssetSegment, string> = {
+  [AssetSegment.SPACE]: "Space Segment",
+  [AssetSegment.GROUND]: "Ground Segment",
+  [AssetSegment.USER]: "User Segment",
+  [AssetSegment.HUMAN_RESOURCES]: "Human Resources",
+};
+
+// ---------------------------------------------------------------------------
+// Satellite lifecycle phases (ENISA / ECSS)
+// ---------------------------------------------------------------------------
+
+export enum LifecyclePhase {
+  PHASE_0_MISSION_ANALYSIS = "PHASE_0_MISSION_ANALYSIS",
+  PHASE_A_FEASIBILITY = "PHASE_A_FEASIBILITY",
+  PHASE_B_DEFINITION = "PHASE_B_DEFINITION",
+  PHASE_C_QUALIFICATION = "PHASE_C_QUALIFICATION",
+  PHASE_D_PRODUCTION = "PHASE_D_PRODUCTION",
+  PHASE_E_OPERATIONS = "PHASE_E_OPERATIONS",
+  PHASE_F_DISPOSAL = "PHASE_F_DISPOSAL",
+}
+
+export const lifecyclePhaseLabels: Record<LifecyclePhase, string> = {
+  [LifecyclePhase.PHASE_0_MISSION_ANALYSIS]: "Phase 0 - Mission Analysis",
+  [LifecyclePhase.PHASE_A_FEASIBILITY]: "Phase A - Feasibility",
+  [LifecyclePhase.PHASE_B_DEFINITION]: "Phase B - Definition",
+  [LifecyclePhase.PHASE_C_QUALIFICATION]: "Phase C - Qualification",
+  [LifecyclePhase.PHASE_D_PRODUCTION]: "Phase D - Production",
+  [LifecyclePhase.PHASE_E_OPERATIONS]: "Phase E - Operations",
+  [LifecyclePhase.PHASE_F_DISPOSAL]: "Phase F - Disposal",
+};
+
+// ---------------------------------------------------------------------------
+// Segment mapping: which asset types belong to which ENISA segment
+// ---------------------------------------------------------------------------
+
+export const assetTypeSegment: Record<AssetType, AssetSegment> = {
+  // Space segment
+  [AssetType.LEO_SATELLITE]: AssetSegment.SPACE,
+  [AssetType.MEO_SATELLITE]: AssetSegment.SPACE,
+  [AssetType.GEO_SATELLITE]: AssetSegment.SPACE,
+  [AssetType.INTER_SATELLITE_LINK]: AssetSegment.SPACE,
+  [AssetType.CDHS]: AssetSegment.SPACE,
+  [AssetType.COM_SUBSYSTEM]: AssetSegment.SPACE,
+  [AssetType.ADCS]: AssetSegment.SPACE,
+  [AssetType.EPS]: AssetSegment.SPACE,
+  [AssetType.PAYLOAD]: AssetSegment.SPACE,
+  [AssetType.PROPULSION]: AssetSegment.SPACE,
+  [AssetType.THERMAL]: AssetSegment.SPACE,
+
+  // Ground segment
+  [AssetType.GROUND_STATION]: AssetSegment.GROUND,
+  [AssetType.CONTROL_CENTER]: AssetSegment.GROUND,
+  [AssetType.UPLINK]: AssetSegment.GROUND,
+  [AssetType.DOWNLINK]: AssetSegment.GROUND,
+  [AssetType.DATA_CENTER]: AssetSegment.GROUND,
+  [AssetType.NETWORK_SEGMENT]: AssetSegment.GROUND,
+  [AssetType.TTC_ANTENNA]: AssetSegment.GROUND,
+  [AssetType.SLE_INTERFACE]: AssetSegment.GROUND,
+  [AssetType.CRYPTO_UNIT_GROUND]: AssetSegment.GROUND,
+  [AssetType.MISSION_PLANNING]: AssetSegment.GROUND,
+  [AssetType.FLIGHT_DYNAMICS]: AssetSegment.GROUND,
+  [AssetType.GROUND_NETWORK]: AssetSegment.GROUND,
+
+  // User segment
+  [AssetType.VSAT_TERMINAL]: AssetSegment.USER,
+  [AssetType.USER_MODEM]: AssetSegment.USER,
+  [AssetType.USER_APPLICATION]: AssetSegment.USER,
+
+  // Human resources
+  [AssetType.OPERATIONS_TEAM]: AssetSegment.HUMAN_RESOURCES,
+  [AssetType.ENGINEERING_TEAM]: AssetSegment.HUMAN_RESOURCES,
+  [AssetType.SECURITY_TEAM]: AssetSegment.HUMAN_RESOURCES,
+};
 
 export enum AssetStatus {
   OPERATIONAL = "OPERATIONAL",
@@ -45,6 +158,7 @@ export enum ComplianceStatus {
 }
 
 export const assetTypeLabels: Record<AssetType, string> = {
+  // Original types
   [AssetType.LEO_SATELLITE]: "LEO Satellite",
   [AssetType.MEO_SATELLITE]: "MEO Satellite",
   [AssetType.GEO_SATELLITE]: "GEO Satellite",
@@ -55,6 +169,33 @@ export const assetTypeLabels: Record<AssetType, string> = {
   [AssetType.INTER_SATELLITE_LINK]: "Inter-Satellite Link",
   [AssetType.DATA_CENTER]: "Data Center",
   [AssetType.NETWORK_SEGMENT]: "Network Segment",
+
+  // Space Segment subsystems
+  [AssetType.CDHS]: "CDHS (Command & Data Handling)",
+  [AssetType.COM_SUBSYSTEM]: "COM Subsystem",
+  [AssetType.ADCS]: "ADCS (Attitude Determination & Control)",
+  [AssetType.EPS]: "EPS (Electrical Power System)",
+  [AssetType.PAYLOAD]: "Payload",
+  [AssetType.PROPULSION]: "Propulsion",
+  [AssetType.THERMAL]: "Thermal Control",
+
+  // Ground Segment subsystems
+  [AssetType.TTC_ANTENNA]: "TTC Antenna",
+  [AssetType.SLE_INTERFACE]: "SLE Interface",
+  [AssetType.CRYPTO_UNIT_GROUND]: "Crypto Unit (Ground)",
+  [AssetType.MISSION_PLANNING]: "Mission Planning System",
+  [AssetType.FLIGHT_DYNAMICS]: "Flight Dynamics System",
+  [AssetType.GROUND_NETWORK]: "Ground Network",
+
+  // User Segment
+  [AssetType.VSAT_TERMINAL]: "VSAT Terminal",
+  [AssetType.USER_MODEM]: "User Modem",
+  [AssetType.USER_APPLICATION]: "User Application",
+
+  // Human Resources
+  [AssetType.OPERATIONS_TEAM]: "Operations Team",
+  [AssetType.ENGINEERING_TEAM]: "Engineering Team",
+  [AssetType.SECURITY_TEAM]: "Security Team",
 };
 
 export const complianceStatusLabels: Record<ComplianceStatus, string> = {

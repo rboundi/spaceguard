@@ -11,6 +11,8 @@ import {
   listAssets,
   updateAsset,
   deleteAsset,
+  getAssetTree,
+  getAssetWithChildren,
 } from "../services/asset.service";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
@@ -32,14 +34,20 @@ assetRoutes.post(
       action: "CREATE",
       resourceType: "asset",
       resourceId: asset.id,
-      details: { name: asset.name, assetType: asset.assetType, criticality: asset.criticality },
+      details: {
+        name: asset.name,
+        assetType: asset.assetType,
+        criticality: asset.criticality,
+        segment: asset.segment,
+        parentAssetId: asset.parentAssetId,
+      },
       ipAddress: extractIp(c),
     });
     return c.json(asset, 201);
   }
 );
 
-// GET /api/v1/assets?organizationId=&type=&status=&page=&perPage=
+// GET /api/v1/assets?organizationId=&type=&status=&segment=&parentAssetId=&topLevelOnly=&page=&perPage=
 assetRoutes.get(
   "/assets",
   zValidator("query", assetQuerySchema),
@@ -51,6 +59,18 @@ assetRoutes.get(
   }
 );
 
+// GET /api/v1/assets/tree?organizationId=
+// Returns the full asset hierarchy as a nested tree
+assetRoutes.get("/assets/tree", async (c) => {
+  const user = c.get("user");
+  const organizationId = c.req.query("organizationId") ?? user.organizationId;
+  assertUUID(organizationId, "organizationId");
+  assertTenant(c, organizationId);
+
+  const tree = await getAssetTree(organizationId);
+  return c.json({ data: tree, total: tree.length });
+});
+
 // GET /api/v1/assets/:id
 assetRoutes.get("/assets/:id", async (c) => {
   const id = c.req.param("id");
@@ -58,6 +78,16 @@ assetRoutes.get("/assets/:id", async (c) => {
   const asset = await getAsset(id);
   assertTenant(c, asset.organizationId);
   return c.json(asset);
+});
+
+// GET /api/v1/assets/:id/children
+// Returns the asset with its direct subsystems
+assetRoutes.get("/assets/:id/children", async (c) => {
+  const id = c.req.param("id");
+  assertUUID(id, "id");
+  const tree = await getAssetWithChildren(id);
+  assertTenant(c, tree.organizationId);
+  return c.json(tree);
 });
 
 // PUT /api/v1/assets/:id
