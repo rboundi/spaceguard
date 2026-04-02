@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Crosshair,
   Plus,
@@ -112,6 +113,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 // ---------------------------------------------------------------------------
 
 export default function TailoringPage() {
+  const router = useRouter();
   const { orgId, loading: orgLoading } = useOrg();
   const [profiles, setProfiles] = useState<ThreatProfileResponse[]>([]);
   const [assets, setAssets] = useState<AssetResponse[]>([]);
@@ -216,9 +218,10 @@ export default function TailoringPage() {
           staff_count: parseInt(wStaff) || 25,
         },
       });
-      const baseline = await generateTailoredBaseline(profile.id);
-      setWResult(baseline);
-      loadData();
+      await generateTailoredBaseline(profile.id);
+      setWizardOpen(false);
+      resetWizard();
+      router.push(`/tailoring/${profile.id}`);
     } catch (err) {
       setWError(err instanceof Error ? err.message : "Generation failed");
     } finally {
@@ -244,8 +247,7 @@ export default function TailoringPage() {
 
   function openResults(profile: ThreatProfileResponse) {
     if (profile.generatedBaseline) {
-      setViewProfile(profile);
-      setViewResult(profile.generatedBaseline as unknown as TailoredBaselineResponse);
+      router.push(`/tailoring/${profile.id}`);
     }
   }
 
