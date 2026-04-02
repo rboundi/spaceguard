@@ -2,17 +2,41 @@
 
 import { use, useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft, Pencil, ShieldAlert, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
+  ArrowLeft,
+  Pencil,
+  ShieldAlert,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Plus,
+  AlertTriangle,
+  Clock,
+} from "lucide-react";
+import {
+  AssetType,
+  AssetSegment,
+  LifecyclePhase,
   assetTypeLabels,
+  assetSegmentLabels,
+  lifecyclePhaseLabels,
   complianceStatusLabels,
 } from "@spaceguard/shared";
 import type {
   AssetResponse,
+  AssetTreeNode,
   MappingResponse,
   ComplianceRequirement,
 } from "@spaceguard/shared";
-import { getAsset, getMappings, getRequirements, getAssetRisk, type AssetRiskApi } from "@/lib/api";
+import {
+  getAsset,
+  getAssetWithChildren,
+  getMappings,
+  getRequirements,
+  getAssetRisk,
+  type AssetRiskApi,
+} from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,6 +86,22 @@ const COMPLIANCE_VARIANT: Record<string, "success" | "warning" | "danger" | "mut
   NON_COMPLIANT: "danger",
   NOT_ASSESSED: "muted",
 };
+const SEGMENT_COLORS: Record<string, string> = {
+  SPACE: "text-violet-400 bg-violet-500/10 border-violet-500/20",
+  GROUND: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  USER: "text-sky-400 bg-sky-500/10 border-sky-500/20",
+  HUMAN_RESOURCES: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+};
+
+const PHASE_COLORS: Record<string, string> = {
+  PHASE_0_MISSION_ANALYSIS: "text-slate-400",
+  PHASE_A_FEASIBILITY: "text-blue-400",
+  PHASE_B_DEFINITION: "text-cyan-400",
+  PHASE_C_QUALIFICATION: "text-teal-400",
+  PHASE_D_PRODUCTION: "text-amber-400",
+  PHASE_E_OPERATIONS: "text-emerald-400",
+  PHASE_F_DISPOSAL: "text-red-400",
+};
 
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-slate-800 ${className}`} />;
@@ -69,13 +109,18 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 export default function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [asset, setAsset] = useState<AssetResponse | null>(null);
+  const router = useRouter();
+  const [assetTree, setAssetTree] = useState<AssetTreeNode | null>(null);
+  const [parentAsset, setParentAsset] = useState<AssetResponse | null>(null);
   const [mappings, setMappings] = useState<MappingResponse[]>([]);
   const [requirements, setRequirements] = useState<ComplianceRequirement[]>([]);
   const [riskData, setRiskData] = useState<AssetRiskApi | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [addSubOpen, setAddSubOpen] = useState(false);
+
+  const asset = assetTree as AssetResponse | null;
 
   const reqById = useMemo(
     () => new Map(requirements.map((r) => [r.id, r])),
@@ -86,15 +131,18 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     try {
       setLoading(true);
       setError(null);
-      const [assetData, mappingsData, requirementsData] = await Promise.all([
-        getAsset(id),
+      const [treeData, mappingsData, requirementsData] = await Promise.all([
+        getAssetWithChildren(id),
         getMappings({ assetId: id }),
         getRequirements(),
       ]);
-      setAsset(assetData);
+      setAssetTree(treeData);
       setMappings(mappingsData.data);
       setRequirements(requirementsData.data);
-      // Fire-and-forget risk score load
+      // Load parent if this is a child
+      if (treeData.parentAssetId) {
+        getAsset(treeData.parentAssetId).then(setParentAsset).catch(() => {});
+      }
       getAssetRisk(id).then(setRiskData).catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load asset");
@@ -113,7 +161,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
         <div className="flex gap-2 mt-2">
           <Skeleton className="h-5 w-24 rounded-full" />
           <Skeleton className="h-5 w-20 rounded-full" />
-          <Skeleton className="h-5 w-16 rounded-full" />
         </div>
         <div className="grid grid-cols-3 gap-4">
           <Skeleton className="h-24 rounded-lg" />
@@ -142,12 +189,34 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     ? Object.entries(asset.metadata as Record<string, unknown>).filter(([, v]) => v !== null && String(v).trim() !== "")
     : [];
 
+  // End-of-life warning
+  const eolDate = asset.endOfLifeDate ? new Date(asset.endOfLifeDate) : null;
+  const now = new Date();
+  const twoYearsFromNow = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate());
+  const eolWarning = eolDate && eolDate <= twoYearsFromNow;
+  const eolPast = eolDate && eolDate <= now;
+
+  const children = assetTree?.children ?? [];
+
   return (
     <div className="p-6 max-w-4xl space-y-6">
       <Link href="/assets" className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors">
         <ArrowLeft size={12} />
         Back to Assets
       </Link>
+
+      {/* Parent link */}
+      {parentAsset && (
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span>Subsystem of</span>
+          <Link href={`/assets/${parentAsset.id}`} className="text-blue-400 hover:text-blue-300 font-medium">
+            {parentAsset.name}
+          </Link>
+          <Badge variant="default" className="text-[10px] px-1.5 py-0">
+            {assetTypeLabels[parentAsset.assetType as AssetType] ?? parentAsset.assetType}
+          </Badge>
+        </div>
+      )}
 
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -162,6 +231,17 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
             <Badge variant={CRIT_VARIANT[asset.criticality] ?? "muted"} className="text-xs">
               {asset.criticality}
             </Badge>
+            {asset.segment && (
+              <Badge className={`text-xs border ${SEGMENT_COLORS[asset.segment] ?? "text-slate-400"}`}>
+                {assetSegmentLabels[asset.segment as AssetSegment] ?? asset.segment}
+              </Badge>
+            )}
+            {asset.lifecyclePhase && (
+              <Badge className={`text-xs border border-slate-700 bg-slate-800 ${PHASE_COLORS[asset.lifecyclePhase] ?? "text-slate-400"}`}>
+                <Clock size={10} className="mr-1" />
+                {lifecyclePhaseLabels[asset.lifecyclePhase as LifecyclePhase] ?? asset.lifecyclePhase}
+              </Badge>
+            )}
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}
@@ -173,6 +253,20 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
 
       {asset.description && (
         <p className="text-slate-400 text-sm leading-relaxed -mt-2">{asset.description}</p>
+      )}
+
+      {/* EOL warning */}
+      {eolWarning && (
+        <div className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm ${
+          eolPast
+            ? "border-red-500/30 bg-red-500/10 text-red-400"
+            : "border-amber-500/30 bg-amber-500/10 text-amber-400"
+        }`}>
+          <AlertTriangle size={16} />
+          {eolPast
+            ? `End of life date has passed (${eolDate!.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })})`
+            : `End of life approaching: ${eolDate!.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`}
+        </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -196,11 +290,13 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
         </Card>
         <Card className="bg-slate-900 border-slate-800">
           <CardHeader className="pb-1 pt-4 px-4">
-            <CardTitle className="text-[10px] font-medium uppercase tracking-widest text-slate-600">Last Updated</CardTitle>
+            <CardTitle className="text-[10px] font-medium uppercase tracking-widest text-slate-600">
+              {asset.lifecyclePhaseEnteredAt ? "Phase Since" : "Last Updated"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <p className="text-sm text-slate-300">
-              {new Date(asset.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+              {new Date(asset.lifecyclePhaseEnteredAt ?? asset.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
             </p>
           </CardContent>
         </Card>
@@ -217,7 +313,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <div className="flex items-start gap-6">
-              {/* Score + Trend */}
               <div className="text-center">
                 <span className={`text-4xl font-bold tabular-nums ${riskData.risk.overall > 60 ? "text-red-400" : riskData.risk.overall > 30 ? "text-amber-400" : "text-emerald-400"}`}>
                   {riskData.risk.overall}
@@ -229,8 +324,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                   </span>
                 </div>
               </div>
-
-              {/* Breakdown bars */}
               <div className="flex-1 space-y-1.5">
                 {[
                   { label: "Compliance", value: riskData.risk.breakdown.compliance, color: "bg-blue-500" },
@@ -248,8 +341,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 ))}
               </div>
-
-              {/* Top risks */}
               {riskData.risk.topRisks.length > 0 && (
                 <div className="w-56">
                   <p className="text-[9px] uppercase tracking-widest text-slate-600 mb-1.5">Top Risks</p>
@@ -264,6 +355,80 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Subsystems */}
+      {(children.length > 0 || !asset.parentAssetId) && (
+        <Card className="bg-slate-900 border-slate-800">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold text-slate-200">
+                Subsystems
+                {children.length > 0 && (
+                  <span className="text-slate-600 font-normal ml-2">({children.length})</span>
+                )}
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAddSubOpen(true)}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800 gap-1 h-7 text-xs"
+              >
+                <Plus size={12} />
+                Add Subsystem
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="px-0 pb-0">
+            {children.length === 0 ? (
+              <div className="px-4 py-6 text-center">
+                <p className="text-slate-500 text-sm">No subsystems registered yet.</p>
+                <p className="text-slate-600 text-xs mt-1">
+                  Add CDHS, COM, ADCS, EPS, Payload, or other subsystems to decompose this asset.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-auto rounded-b-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-slate-800 hover:bg-transparent">
+                      <TableHead className="text-slate-500 text-xs px-4 py-2">Name</TableHead>
+                      <TableHead className="text-slate-500 text-xs px-4 py-2">Type</TableHead>
+                      <TableHead className="text-slate-500 text-xs px-4 py-2">Status</TableHead>
+                      <TableHead className="text-slate-500 text-xs px-4 py-2">Criticality</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {children.map((child) => (
+                      <TableRow
+                        key={child.id}
+                        onClick={() => router.push(`/assets/${child.id}`)}
+                        className="border-slate-800 hover:bg-slate-800/40 cursor-pointer"
+                      >
+                        <TableCell className="px-4 py-2.5 text-sm text-slate-300 font-medium">{child.name}</TableCell>
+                        <TableCell className="px-4 py-2.5">
+                          <Badge variant="default" className="text-[10px] px-1.5 py-0">
+                            {assetTypeLabels[child.assetType as AssetType] ?? child.assetType}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-4 py-2.5">
+                          <Badge variant={STATUS_VARIANT[child.status] ?? "muted"} className="text-[10px] px-1.5 py-0">
+                            {STATUS_LABEL[child.status] ?? child.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-4 py-2.5">
+                          <Badge variant={CRIT_VARIANT[child.criticality] ?? "muted"} className="text-[10px] px-1.5 py-0">
+                            {child.criticality}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -320,7 +485,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                       <TableRow key={mapping.id} className="border-slate-800 hover:bg-slate-800/40">
                         <TableCell className="px-4 py-2.5 text-xs text-slate-300 max-w-[220px]">
                           <span className="line-clamp-2">
-                            {req?.title ?? mapping.requirementId.slice(0, 8) + "…"}
+                            {req?.title ?? mapping.requirementId.slice(0, 8) + "..."}
                           </span>
                           {req?.articleReference && (
                             <span className="block text-slate-600 text-[10px] mt-0.5">{req.articleReference}</span>
@@ -345,6 +510,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
         </CardContent>
       </Card>
 
+      {/* Edit sheet */}
       <Sheet open={editOpen} onOpenChange={setEditOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md bg-slate-900 border-slate-800 overflow-y-auto">
           <SheetHeader className="mb-4">
@@ -357,6 +523,25 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
             organizationId={asset.organizationId}
             onSuccess={() => { setEditOpen(false); loadData(); }}
             onClose={() => setEditOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Add subsystem sheet */}
+      <Sheet open={addSubOpen} onOpenChange={setAddSubOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md bg-slate-900 border-slate-800 overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="text-slate-100">Add Subsystem</SheetTitle>
+            <SheetDescription className="text-slate-500">
+              Add a subsystem to {asset.name}.
+            </SheetDescription>
+          </SheetHeader>
+          <AssetForm
+            mode="create"
+            organizationId={asset.organizationId}
+            parentAssetId={asset.id}
+            onSuccess={() => { setAddSubOpen(false); loadData(); }}
+            onClose={() => setAddSubOpen(false)}
           />
         </SheetContent>
       </Sheet>

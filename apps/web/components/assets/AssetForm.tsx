@@ -5,10 +5,15 @@ import {
   AssetType,
   AssetStatus,
   Criticality,
+  LifecyclePhase,
+  AssetSegment,
   assetTypeLabels,
+  lifecyclePhaseLabels,
+  assetSegmentLabels,
+  assetTypeSegment,
 } from "@spaceguard/shared";
 import type { AssetResponse, CreateAsset, UpdateAsset } from "@spaceguard/shared";
-import { createAsset, updateAsset } from "@/lib/api";
+import { createAsset, updateAsset, getAssets } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,35 +39,27 @@ interface MetaField {
 const METADATA_FIELDS: Partial<Record<AssetType, MetaField[]>> = {
   [AssetType.LEO_SATELLITE]: [
     { key: "altitude_km", label: "Altitude (km)", placeholder: "550" },
-    { key: "inclination", label: "Inclination (°)", placeholder: "53.0" },
+    { key: "inclination", label: "Inclination", placeholder: "53.0" },
     { key: "norad_id", label: "NORAD ID", placeholder: "25544" },
   ],
   [AssetType.MEO_SATELLITE]: [
     { key: "altitude_km", label: "Altitude (km)", placeholder: "20200" },
-    { key: "inclination", label: "Inclination (°)", placeholder: "55.0" },
+    { key: "inclination", label: "Inclination", placeholder: "55.0" },
     { key: "norad_id", label: "NORAD ID", placeholder: "" },
   ],
   [AssetType.GEO_SATELLITE]: [
     { key: "altitude_km", label: "Altitude (km)", placeholder: "35786" },
-    { key: "orbital_slot", label: "Orbital Slot", placeholder: "13.0°E" },
+    { key: "orbital_slot", label: "Orbital Slot", placeholder: "13.0E" },
     { key: "norad_id", label: "NORAD ID", placeholder: "" },
   ],
   [AssetType.GROUND_STATION]: [
     { key: "location", label: "Location", placeholder: "Paris, France" },
     { key: "antenna_type", label: "Antenna Type", placeholder: "Parabolic" },
-    {
-      key: "frequency_bands",
-      label: "Frequency Bands",
-      placeholder: "S-band, X-band",
-    },
+    { key: "frequency_bands", label: "Frequency Bands", placeholder: "S-band, X-band" },
   ],
   [AssetType.CONTROL_CENTER]: [
     { key: "location", label: "Location", placeholder: "Berlin, Germany" },
-    {
-      key: "redundancy_level",
-      label: "Redundancy Level",
-      placeholder: "Active-Active",
-    },
+    { key: "redundancy_level", label: "Redundancy Level", placeholder: "Active-Active" },
   ],
   [AssetType.DATA_CENTER]: [
     { key: "location", label: "Location", placeholder: "Amsterdam, NL" },
@@ -70,19 +67,11 @@ const METADATA_FIELDS: Partial<Record<AssetType, MetaField[]>> = {
   ],
   [AssetType.UPLINK]: [
     { key: "location", label: "Location", placeholder: "Toulouse, France" },
-    {
-      key: "frequency_bands",
-      label: "Frequency Bands",
-      placeholder: "Ku-band",
-    },
+    { key: "frequency_bands", label: "Frequency Bands", placeholder: "Ku-band" },
   ],
   [AssetType.DOWNLINK]: [
     { key: "location", label: "Location", placeholder: "Darmstadt, Germany" },
-    {
-      key: "frequency_bands",
-      label: "Frequency Bands",
-      placeholder: "X-band",
-    },
+    { key: "frequency_bands", label: "Frequency Bands", placeholder: "X-band" },
   ],
 };
 
@@ -100,6 +89,34 @@ const CRITICALITY_LABELS: Record<Criticality, string> = {
   [Criticality.CRITICAL]: "Critical",
 };
 
+// Group asset types by segment for display
+const ASSET_TYPES_BY_SEGMENT: { label: string; types: AssetType[] }[] = [
+  {
+    label: "Space Segment",
+    types: Object.values(AssetType).filter(
+      (t) => assetTypeSegment[t] === AssetSegment.SPACE
+    ),
+  },
+  {
+    label: "Ground Segment",
+    types: Object.values(AssetType).filter(
+      (t) => assetTypeSegment[t] === AssetSegment.GROUND
+    ),
+  },
+  {
+    label: "User Segment",
+    types: Object.values(AssetType).filter(
+      (t) => assetTypeSegment[t] === AssetSegment.USER
+    ),
+  },
+  {
+    label: "Human Resources",
+    types: Object.values(AssetType).filter(
+      (t) => assetTypeSegment[t] === AssetSegment.HUMAN_RESOURCES
+    ),
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Component props
 // ---------------------------------------------------------------------------
@@ -108,6 +125,7 @@ interface AssetFormProps {
   mode: "create" | "edit";
   asset?: AssetResponse;
   organizationId: string;
+  parentAssetId?: string | null;
   onSuccess: () => void;
   onClose: () => void;
 }
@@ -120,6 +138,7 @@ export function AssetForm({
   mode,
   asset,
   organizationId,
+  parentAssetId: initialParentId,
   onSuccess,
   onClose,
 }: AssetFormProps) {
@@ -134,16 +153,33 @@ export function AssetForm({
   const [criticality, setCriticality] = useState<Criticality>(
     (asset?.criticality as Criticality) ?? Criticality.MEDIUM
   );
+  const [lifecyclePhase, setLifecyclePhase] = useState<LifecyclePhase>(
+    (asset?.lifecyclePhase as LifecyclePhase) ?? LifecyclePhase.PHASE_E_OPERATIONS
+  );
+  const [parentAssetId, setParentAssetId] = useState<string>(
+    asset?.parentAssetId ?? initialParentId ?? ""
+  );
+  const [endOfLifeDate, setEndOfLifeDate] = useState(asset?.endOfLifeDate ?? "");
   const [metadata, setMetadata] = useState<Record<string, string>>(() => {
     if (!asset?.metadata) return {};
     return Object.fromEntries(
       Object.entries(asset.metadata).map(([k, v]) => [k, String(v)])
     );
   });
+  const [parentAssets, setParentAssets] = useState<AssetResponse[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync form state when the asset prop changes (e.g. switching between edit targets)
+  // Load potential parent assets
+  useEffect(() => {
+    if (mode === "create" || !initialParentId) {
+      getAssets({ organizationId, topLevelOnly: true, perPage: 100 })
+        .then((res) => setParentAssets(res.data))
+        .catch(() => {});
+    }
+  }, [organizationId, mode, initialParentId]);
+
+  // Sync form state when the asset prop changes
   useEffect(() => {
     if (asset) {
       setName(asset.name);
@@ -151,6 +187,11 @@ export function AssetForm({
       setDescription(asset.description ?? "");
       setStatus((asset.status as AssetStatus) ?? AssetStatus.OPERATIONAL);
       setCriticality((asset.criticality as Criticality) ?? Criticality.MEDIUM);
+      setLifecyclePhase(
+        (asset.lifecyclePhase as LifecyclePhase) ?? LifecyclePhase.PHASE_E_OPERATIONS
+      );
+      setParentAssetId(asset.parentAssetId ?? "");
+      setEndOfLifeDate(asset.endOfLifeDate ?? "");
       setMetadata(
         asset.metadata
           ? Object.fromEntries(
@@ -165,7 +206,7 @@ export function AssetForm({
 
   function handleTypeChange(value: string) {
     setAssetType(value as AssetType);
-    setMetadata({}); // reset metadata when type changes
+    setMetadata({});
   }
 
   function handleMetadata(key: string, value: string) {
@@ -194,6 +235,9 @@ export function AssetForm({
           description: description.trim() || undefined,
           status,
           criticality,
+          lifecyclePhase,
+          parentAssetId: parentAssetId || null,
+          endOfLifeDate: endOfLifeDate || null,
           metadata: metaValue,
         };
         await createAsset(data);
@@ -204,6 +248,9 @@ export function AssetForm({
           description: description.trim() || undefined,
           status,
           criticality,
+          lifecyclePhase,
+          parentAssetId: parentAssetId || null,
+          endOfLifeDate: endOfLifeDate || null,
           metadata: metaValue,
         };
         await updateAsset(asset!.id, data);
@@ -219,7 +266,6 @@ export function AssetForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 py-1">
-      {/* Error banner */}
       {error && (
         <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
           {error}
@@ -241,7 +287,7 @@ export function AssetForm({
         />
       </div>
 
-      {/* Asset Type */}
+      {/* Asset Type - grouped by segment */}
       <div className="space-y-1.5">
         <Label className="text-slate-300 text-xs">
           Asset Type <span className="text-red-400">*</span>
@@ -250,66 +296,144 @@ export function AssetForm({
           <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
             <SelectValue />
           </SelectTrigger>
+          <SelectContent className="bg-slate-800 border-slate-700 max-h-72">
+            {ASSET_TYPES_BY_SEGMENT.map((group) => (
+              <div key={group.label}>
+                <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                  {group.label}
+                </div>
+                {group.types.map((t) => (
+                  <SelectItem
+                    key={t}
+                    value={t}
+                    className="text-slate-200 focus:bg-slate-700"
+                  >
+                    {assetTypeLabels[t]}
+                  </SelectItem>
+                ))}
+              </div>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Parent Asset */}
+      {!initialParentId && parentAssets.length > 0 && (
+        <div className="space-y-1.5">
+          <Label className="text-slate-300 text-xs">Parent Asset</Label>
+          <Select value={parentAssetId || "none"} onValueChange={(v) => setParentAssetId(v === "none" ? "" : v)}>
+            <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
+              <SelectValue placeholder="None (top-level)" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-800 border-slate-700 max-h-60">
+              <SelectItem value="none" className="text-slate-200 focus:bg-slate-700">
+                None (top-level asset)
+              </SelectItem>
+              {parentAssets
+                .filter((a) => a.id !== asset?.id)
+                .map((a) => (
+                  <SelectItem
+                    key={a.id}
+                    value={a.id}
+                    className="text-slate-200 focus:bg-slate-700"
+                  >
+                    {a.name}
+                    <span className="text-slate-500 ml-1 text-[10px]">
+                      ({assetTypeLabels[a.assetType as AssetType] ?? a.assetType})
+                    </span>
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        {/* Status */}
+        <div className="space-y-1.5">
+          <Label className="text-slate-300 text-xs">Status</Label>
+          <Select
+            value={status}
+            onValueChange={(v) => setStatus(v as AssetStatus)}
+          >
+            <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-800 border-slate-700">
+              {Object.values(AssetStatus).map((s) => (
+                <SelectItem
+                  key={s}
+                  value={s}
+                  className="text-slate-200 focus:bg-slate-700"
+                >
+                  {STATUS_LABELS[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Criticality */}
+        <div className="space-y-1.5">
+          <Label className="text-slate-300 text-xs">Criticality</Label>
+          <Select
+            value={criticality}
+            onValueChange={(v) => setCriticality(v as Criticality)}
+          >
+            <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-800 border-slate-700">
+              {Object.values(Criticality).map((c) => (
+                <SelectItem
+                  key={c}
+                  value={c}
+                  className="text-slate-200 focus:bg-slate-700"
+                >
+                  {CRITICALITY_LABELS[c]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Lifecycle Phase */}
+      <div className="space-y-1.5">
+        <Label className="text-slate-300 text-xs">Lifecycle Phase</Label>
+        <Select
+          value={lifecyclePhase}
+          onValueChange={(v) => setLifecyclePhase(v as LifecyclePhase)}
+        >
+          <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent className="bg-slate-800 border-slate-700">
-            {Object.values(AssetType).map((t) => (
+            {Object.values(LifecyclePhase).map((p) => (
               <SelectItem
-                key={t}
-                value={t}
+                key={p}
+                value={p}
                 className="text-slate-200 focus:bg-slate-700"
               >
-                {assetTypeLabels[t]}
+                {lifecyclePhaseLabels[p]}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Status */}
+      {/* End of Life Date */}
       <div className="space-y-1.5">
-        <Label className="text-slate-300 text-xs">Status</Label>
-        <Select
-          value={status}
-          onValueChange={(v) => setStatus(v as AssetStatus)}
-        >
-          <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-slate-800 border-slate-700">
-            {Object.values(AssetStatus).map((s) => (
-              <SelectItem
-                key={s}
-                value={s}
-                className="text-slate-200 focus:bg-slate-700"
-              >
-                {STATUS_LABELS[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Criticality */}
-      <div className="space-y-1.5">
-        <Label className="text-slate-300 text-xs">Criticality</Label>
-        <Select
-          value={criticality}
-          onValueChange={(v) => setCriticality(v as Criticality)}
-        >
-          <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-slate-800 border-slate-700">
-            {Object.values(Criticality).map((c) => (
-              <SelectItem
-                key={c}
-                value={c}
-                className="text-slate-200 focus:bg-slate-700"
-              >
-                {CRITICALITY_LABELS[c]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label htmlFor="eol-date" className="text-slate-300 text-xs">
+          End of Life Date
+        </Label>
+        <Input
+          id="eol-date"
+          type="date"
+          value={endOfLifeDate}
+          onChange={(e) => setEndOfLifeDate(e.target.value)}
+          className="bg-slate-800 border-slate-700 text-slate-100 focus:border-blue-500"
+        />
       </div>
 
       {/* Description */}

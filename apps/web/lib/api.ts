@@ -2,6 +2,7 @@ import type {
   OrganizationResponse,
   AssetResponse,
   AssetQuery,
+  AssetTreeNode,
   DashboardResponse,
   ComplianceRequirement,
   MappingResponse,
@@ -110,6 +111,9 @@ export const getAssets = (query?: Partial<AssetQuery>) => {
   if (query?.organizationId) params.set("organizationId", query.organizationId);
   if (query?.type) params.set("type", query.type);
   if (query?.status) params.set("status", query.status);
+  if (query?.segment) params.set("segment", query.segment);
+  if (query?.parentAssetId) params.set("parentAssetId", query.parentAssetId);
+  if (query?.topLevelOnly) params.set("topLevelOnly", "true");
   if (query?.page) params.set("page", String(query.page));
   if (query?.perPage) params.set("perPage", String(query.perPage));
   const qs = params.toString();
@@ -117,6 +121,14 @@ export const getAssets = (query?: Partial<AssetQuery>) => {
     `/api/v1/assets${qs ? `?${qs}` : ""}`
   );
 };
+
+export const getAssetTree = (organizationId: string) =>
+  api.get<{ data: AssetTreeNode[]; total: number }>(
+    `/api/v1/assets/tree?organizationId=${organizationId}`
+  );
+
+export const getAssetWithChildren = (id: string) =>
+  api.get<AssetTreeNode>(`/api/v1/assets/${id}/children`);
 
 export const getAsset = (id: string) =>
   api.get<AssetResponse>(`/api/v1/assets/${id}`);
