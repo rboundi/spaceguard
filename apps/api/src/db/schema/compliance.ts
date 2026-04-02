@@ -5,6 +5,7 @@ import {
   text,
   timestamp,
   pgEnum,
+  jsonb,
   index,
   unique,
   uniqueIndex,
@@ -39,6 +40,9 @@ export const complianceRequirements = pgTable(
     evidenceGuidance: text("evidence_guidance").notNull(),
     category: varchar("category", { length: 100 }).notNull(),
     applicabilityNotes: text("applicability_notes"),
+    plainLanguageExplanation: text("plain_language_explanation"),
+    evidenceExamples: jsonb("evidence_examples"),
+    commonMistakes: jsonb("common_mistakes"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -39,6 +39,13 @@ const navItems = [
     badge: false,
   },
   {
+    label: "NIS2 Guide",
+    href: "/guide",
+    icon: BookOpen,
+    exact: false,
+    badge: false,
+  },
+  {
     label: "Assets",
     href: "/assets",
     icon: Satellite,

@@ -17,6 +17,9 @@ interface NIS2Requirement {
   description: string;
   evidenceGuidance: string;
   applicabilityNotes?: string;
+  plainLanguageExplanation?: string;
+  evidenceExamples?: string[];
+  commonMistakes?: string[];
 }
 
 interface CraRequirement {
@@ -156,10 +159,14 @@ async function seedNis2Requirements(sql: postgres.Sql): Promise<void> {
   let skipped = 0;
 
   for (const r of requirements) {
+    const evidenceExamples = r.evidenceExamples ? JSON.stringify(r.evidenceExamples) : null;
+    const commonMistakes = r.commonMistakes ? JSON.stringify(r.commonMistakes) : null;
+
     const result = await sql`
       INSERT INTO compliance_requirements
         (regulation, article_reference, title, description,
-         evidence_guidance, category, applicability_notes)
+         evidence_guidance, category, applicability_notes,
+         plain_language_explanation, evidence_examples, common_mistakes)
       VALUES (
         ${r.regulation}::regulation,
         ${r.articleReference},
@@ -167,9 +174,15 @@ async function seedNis2Requirements(sql: postgres.Sql): Promise<void> {
         ${r.description},
         ${r.evidenceGuidance},
         ${r.category},
-        ${r.applicabilityNotes ?? null}
+        ${r.applicabilityNotes ?? null},
+        ${r.plainLanguageExplanation ?? null},
+        ${evidenceExamples}::jsonb,
+        ${commonMistakes}::jsonb
       )
-      ON CONFLICT (title) DO NOTHING
+      ON CONFLICT (title) DO UPDATE SET
+        plain_language_explanation = EXCLUDED.plain_language_explanation,
+        evidence_examples = EXCLUDED.evidence_examples,
+        common_mistakes = EXCLUDED.common_mistakes
       RETURNING id
     `;
 

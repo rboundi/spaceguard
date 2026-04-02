@@ -484,6 +484,62 @@ function RequirementDetail({
         </Card>
       )}
 
+      {/* NIS2 Guidance sections */}
+      {requirement.plainLanguageExplanation && (
+        <Card className="bg-emerald-950/20 border-emerald-500/20">
+          <CardHeader className="pb-1 pt-3 px-4">
+            <CardTitle className="text-[10px] font-semibold uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
+              What This Means For You
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {requirement.plainLanguageExplanation}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {requirement.evidenceExamples && (requirement.evidenceExamples as string[]).length > 0 && (
+        <Card className="bg-cyan-950/20 border-cyan-500/20">
+          <CardHeader className="pb-1 pt-3 px-4">
+            <CardTitle className="text-[10px] font-semibold uppercase tracking-widest text-cyan-400">
+              Evidence Examples
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <ul className="space-y-1.5">
+              {(requirement.evidenceExamples as string[]).map((ex: string, i: number) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-slate-300">
+                  <span className="text-cyan-500 shrink-0 mt-0.5">&#x2713;</span>
+                  <span>{ex}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {requirement.commonMistakes && (requirement.commonMistakes as string[]).length > 0 && (
+        <Card className="bg-red-950/20 border-red-500/20">
+          <CardHeader className="pb-1 pt-3 px-4">
+            <CardTitle className="text-[10px] font-semibold uppercase tracking-widest text-red-400">
+              Common Mistakes to Avoid
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <ul className="space-y-1.5">
+              {(requirement.commonMistakes as string[]).map((m: string, i: number) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-slate-300">
+                  <span className="text-red-500 shrink-0 mt-0.5">&#x26A0;</span>
+                  <span>{m}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Org-level status */}
       <div className="rounded-md border border-slate-700/50 bg-slate-800/20 px-4 py-3">
         <OrgLevelStatus

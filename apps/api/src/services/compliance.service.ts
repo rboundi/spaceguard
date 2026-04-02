@@ -32,6 +32,9 @@ function requirementToResponse(
     evidenceGuidance: row.evidenceGuidance,
     category: row.category,
     applicabilityNotes: row.applicabilityNotes ?? undefined,
+    plainLanguageExplanation: row.plainLanguageExplanation ?? null,
+    evidenceExamples: (row.evidenceExamples as string[] | null) ?? null,
+    commonMistakes: (row.commonMistakes as string[] | null) ?? null,
     createdAt: row.createdAt.toISOString(),
   };
 }

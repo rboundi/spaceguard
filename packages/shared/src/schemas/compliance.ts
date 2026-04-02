@@ -10,6 +10,9 @@ export const complianceRequirementSchema = z.object({
   evidenceGuidance: z.string(),
   category: z.string(),
   applicabilityNotes: z.string().optional(),
+  plainLanguageExplanation: z.string().nullable().optional(),
+  evidenceExamples: z.array(z.string()).nullable().optional(),
+  commonMistakes: z.array(z.string()).nullable().optional(),
   createdAt: z.string().datetime(),
 });
 
