@@ -1595,6 +1595,67 @@ export const updateVulnerabilityApi = (id: string, data: UpdateVulnerability) =>
 export const getVulnerabilityStats = (organizationId: string) =>
   api.get<VulnerabilityStats>(`/api/v1/vulnerability/stats?organizationId=${organizationId}`);
 
+// ---------------------------------------------------------------------------
+// Lifecycle Management
+// ---------------------------------------------------------------------------
+
+export const getFleetLifecycle = (organizationId: string) =>
+  api.get<{ data: FleetLifecycleEntry[]; total: number }>(
+    `/api/v1/lifecycle/fleet?organizationId=${organizationId}`
+  );
+
+export const getLifecycleMilestones = (assetId: string, organizationId: string) =>
+  api.get<{ data: SecurityMilestoneEntry[] }>(
+    `/api/v1/lifecycle/milestones/${assetId}?organizationId=${organizationId}`
+  );
+
+export const transitionLifecyclePhase = (
+  assetId: string,
+  newPhase: string,
+  organizationId: string,
+) =>
+  api.post<{ asset: { id: string; name: string; lifecyclePhase: string }; previousPhase: string; newPhase: string }>(
+    `/api/v1/lifecycle/phases/${assetId}/transition?organizationId=${organizationId}`,
+    { newPhase }
+  );
+
+export const getTlptSchedule = (organizationId: string) =>
+  api.get<{ data: TlptScheduleEntry[]; total: number }>(
+    `/api/v1/lifecycle/tlpt-schedule?organizationId=${organizationId}`
+  );
+
+export interface FleetLifecycleEntry {
+  id: string;
+  name: string;
+  assetType: string;
+  segment: string | null;
+  lifecyclePhase: string;
+  lifecyclePhaseEnteredAt: string | null;
+  endOfLifeDate: string | null;
+  criticality: string;
+  status: string;
+}
+
+export interface SecurityMilestoneEntry {
+  id: string;
+  phase: string;
+  name: string;
+  description: string;
+  required: boolean;
+  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "NOT_APPLICABLE";
+  dueDescription: string;
+}
+
+export interface TlptScheduleEntry {
+  assetId: string;
+  assetName: string;
+  assetType: string;
+  lifecyclePhase: string;
+  lastConducted: string | null;
+  nextDue: string | null;
+  overdue: boolean;
+}
+
 export const importSbomApi = (data: {
   organizationId: string;
   assetId?: string | null;

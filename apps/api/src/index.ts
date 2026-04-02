@@ -30,6 +30,7 @@ import { riskRoutes } from "./routes/risk";
 import { playbookRoutes } from "./routes/playbooks";
 import { dashboardLayoutRoutes } from "./routes/dashboard-layouts";
 import { vulnerabilityRoutes } from "./routes/vulnerability";
+import { lifecycleRoutes } from "./routes/lifecycle";
 import { auditMiddleware } from "./middleware/audit";
 import { authMiddleware, adminOnly } from "./middleware/auth-guard";
 import { startScheduler } from "./services/scheduler.service";
@@ -142,6 +143,8 @@ app.use("/api/v1/dashboard/*", authMiddleware);
 app.use("/api/v1/dashboard", authMiddleware);
 app.use("/api/v1/vulnerability/*", authMiddleware);
 app.use("/api/v1/vulnerability", authMiddleware);
+app.use("/api/v1/lifecycle/*", authMiddleware);
+app.use("/api/v1/lifecycle", authMiddleware);
 app.use("/api/v1/admin/*", authMiddleware);
 app.use("/api/v1/admin/*", adminOnly);
 
@@ -201,6 +204,9 @@ app.route("/api/v1/dashboard/layout", dashboardLayoutRoutes);
 
 // Vulnerability / SBOM Management routes
 app.route("/api/v1", vulnerabilityRoutes);
+
+// Lifecycle Management routes
+app.route("/api/v1", lifecycleRoutes);
 
 // Admin routes
 app.route("/api/v1", adminSpartaRoutes);
