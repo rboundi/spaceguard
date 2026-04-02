@@ -46,13 +46,15 @@ async function request<T>(
     authHeaders["Authorization"] = `Bearer ${token}`;
   }
 
+  const { headers: optHeaders, ...restOptions } = options ?? {};
+
   const res = await fetch(`${API_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
       ...authHeaders,
-      ...options?.headers,
+      ...(optHeaders as Record<string, string>),
     },
-    ...options,
+    ...restOptions,
   });
 
   if (!res.ok) {
@@ -64,6 +66,11 @@ async function request<T>(
     const body = await res.json().catch(() => ({ error: res.statusText }));
     const msg = typeof body.error === "string" ? body.error : (body.message ?? res.statusText);
     throw new ApiError(res.status, msg);
+  }
+
+  // Handle 204 No Content and empty responses
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return undefined as T;
   }
 
   return res.json() as Promise<T>;

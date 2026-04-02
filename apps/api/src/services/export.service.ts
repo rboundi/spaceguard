@@ -55,6 +55,8 @@ export async function exportAlertsCsv(
   const conditions = [eq(alerts.organizationId, organizationId)];
   if (filters.from) conditions.push(gte(alerts.triggeredAt, new Date(filters.from)));
   if (filters.to) conditions.push(lte(alerts.triggeredAt, new Date(filters.to)));
+  if (filters.severity) conditions.push(eq(alerts.severity, filters.severity as typeof alerts.severity.enumValues[number]));
+  if (filters.status) conditions.push(eq(alerts.status, filters.status as typeof alerts.status.enumValues[number]));
 
   const rows = await db
     .select({
@@ -129,6 +131,8 @@ export async function exportIncidentsCsv(
   const conditions = [eq(incidents.organizationId, organizationId)];
   if (filters.from) conditions.push(gte(incidents.detectedAt, new Date(filters.from)));
   if (filters.to) conditions.push(lte(incidents.detectedAt, new Date(filters.to)));
+  if (filters.severity) conditions.push(eq(incidents.severity, filters.severity as typeof incidents.severity.enumValues[number]));
+  if (filters.status) conditions.push(eq(incidents.status, filters.status as typeof incidents.status.enumValues[number]));
 
   const rows = await db
     .select({

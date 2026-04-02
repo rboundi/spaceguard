@@ -398,16 +398,28 @@ async function checkKillChainProgression(
 
   // Check for sequential progression (at least minTactics consecutive or near-consecutive)
   const sorted = [...tacticSet.entries()].sort((a, b) => a[1].order - b[1].order);
-  let longestChain = 1;
-  let chainStart = 0;
+  let currentChain = 1;
+  let currentStart = 0;
+  let bestChain = 1;
+  let bestStart = 0;
   for (let i = 1; i < sorted.length; i++) {
     if (sorted[i][1].order - sorted[i - 1][1].order <= 2) {
-      longestChain++;
+      currentChain++;
     } else {
-      if (longestChain < minTactics) chainStart = i;
-      longestChain = 1;
+      if (currentChain > bestChain) {
+        bestChain = currentChain;
+        bestStart = currentStart;
+      }
+      currentStart = i;
+      currentChain = 1;
     }
   }
+  if (currentChain > bestChain) {
+    bestChain = currentChain;
+    bestStart = currentStart;
+  }
+  const longestChain = bestChain;
+  const chainStart = bestStart;
 
   if (longestChain < minTactics) return { action: "no_correlation" };
 

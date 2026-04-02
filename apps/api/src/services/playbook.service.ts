@@ -182,11 +182,12 @@ export async function listExecutions(
 
 export async function getExecution(
   id: string,
-): Promise<PlaybookExecutionResponse> {
+): Promise<PlaybookExecutionResponse & { organizationId: string | null }> {
   const rows = await db
     .select({
       execution: playbookExecutions,
       playbookName: playbooks.name,
+      organizationId: playbooks.organizationId,
     })
     .from(playbookExecutions)
     .innerJoin(playbooks, eq(playbookExecutions.playbookId, playbooks.id))
@@ -197,7 +198,10 @@ export async function getExecution(
     throw new HTTPException(404, { message: `Execution ${id} not found` });
   }
 
-  return executionToResponse(rows[0].execution, rows[0].playbookName);
+  return {
+    ...executionToResponse(rows[0].execution, rows[0].playbookName),
+    organizationId: rows[0].organizationId,
+  };
 }
 
 // ---------------------------------------------------------------------------

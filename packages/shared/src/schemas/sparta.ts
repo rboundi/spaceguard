@@ -12,7 +12,7 @@ export const stixObjectSchema = z.object({
   modified: z.string().optional(),
   name: z.string().optional(),
   description: z.string().optional(),
-}).passthrough().strict();
+}).passthrough();
 
 export type StixObject = z.infer<typeof stixObjectSchema>;
 
@@ -21,7 +21,7 @@ export const stixBundleSchema = z.object({
   type: z.literal("bundle"),
   id: z.string().min(1),
   objects: z.array(stixObjectSchema).min(1),
-}).strict();
+}).passthrough();
 
 export type StixBundle = z.infer<typeof stixBundleSchema>;
 

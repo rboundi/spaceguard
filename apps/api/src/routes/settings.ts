@@ -119,7 +119,7 @@ settingsRoutes.post("/settings/notifications/test", async (c) => {
 // GET /settings/detection/rules - list all with overrides
 // ---------------------------------------------------------------------------
 
-// In-memory rule overrides (persists until server restart)
+// In-memory rule overrides keyed by "orgId:ruleId" (persists until server restart).
 // In a production system, these would be stored in the database per org.
 const ruleOverrides = new Map<string, {
   enabled: boolean;
@@ -127,9 +127,11 @@ const ruleOverrides = new Map<string, {
 }>();
 
 settingsRoutes.get("/settings/detection/rules", async (c) => {
+  const user = c.get("user");
+  const orgId = c.req.query("organizationId") ?? user.organizationId;
   const rules = loadRules();
   const mapped = rules.map((r) => {
-    const override = ruleOverrides.get(r.id);
+    const override = ruleOverrides.get(`${orgId}:${r.id}`);
     return {
       id: r.id,
       name: r.name,
@@ -175,7 +177,8 @@ settingsRoutes.put(
     const body = c.req.valid("json");
     const user = c.get("user");
 
-    const existing = ruleOverrides.get(ruleId) ?? { enabled: true, thresholdOverride: null };
+    const orgKey = `${user.organizationId}:${ruleId}`;
+    const existing = ruleOverrides.get(orgKey) ?? { enabled: true, thresholdOverride: null };
 
     if (body.enabled !== undefined) {
       existing.enabled = body.enabled;
@@ -184,7 +187,7 @@ settingsRoutes.put(
       existing.thresholdOverride = body.thresholdOverride;
     }
 
-    ruleOverrides.set(ruleId, existing);
+    ruleOverrides.set(orgKey, existing);
 
     logAudit({
       organizationId: user.organizationId,

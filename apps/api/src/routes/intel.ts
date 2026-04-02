@@ -148,6 +148,18 @@ intelRoutes.get(
 );
 
 // ---------------------------------------------------------------------------
+// GET /api/v1/intel/techniques/:stixId/countermeasures
+// Return all countermeasures mapped to a technique (by STIX ID)
+// NOTE: Must be registered BEFORE the /:id catch-all to avoid shadowing
+// ---------------------------------------------------------------------------
+
+intelRoutes.get("/intel/techniques/:stixId/countermeasures", async (c) => {
+  const stixId = c.req.param("stixId");
+  const countermeasures = await getCountermeasures(stixId);
+  return c.json({ data: countermeasures, total: countermeasures.length });
+});
+
+// ---------------------------------------------------------------------------
 // GET /api/v1/intel/techniques/:id
 // Return a technique with its sub-techniques and countermeasures
 // Accepts a SpaceGuard UUID or a STIX ID (attack-pattern--<uuid>)
@@ -160,17 +172,6 @@ intelRoutes.get("/intel/techniques/:id", async (c) => {
   }
   const detail = await getTechniqueWithCountermeasures(id);
   return c.json(detail);
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/v1/intel/techniques/:stixId/countermeasures
-// Return all countermeasures mapped to a technique (by STIX ID)
-// ---------------------------------------------------------------------------
-
-intelRoutes.get("/intel/techniques/:stixId/countermeasures", async (c) => {
-  const stixId = c.req.param("stixId");
-  const countermeasures = await getCountermeasures(stixId);
-  return c.json({ data: countermeasures, total: countermeasures.length });
 });
 
 // ---------------------------------------------------------------------------

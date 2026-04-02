@@ -124,7 +124,7 @@ export const auditMiddleware: MiddlewareHandler = async (c, next) => {
   if (status < 200 || status >= 300) return; // only log successful mutations
 
   logAudit({
-    organizationId: c.req.query("organizationId") ?? null,
+    organizationId: c.req.query("organizationId") ?? c.get("user")?.organizationId ?? null,
     actor: extractActor(c),
     action,
     resourceType: inferResourceType(c.req.path),

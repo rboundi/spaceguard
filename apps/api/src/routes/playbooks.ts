@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { createPlaybookSchema, updatePlaybookSchema, executePlaybookSchema } from "@spaceguard/shared";
 import {
   createPlaybook,
@@ -47,8 +48,14 @@ app.get("/playbooks/:id", async (c) => {
 // Create playbook
 app.post("/playbooks", async (c) => {
   const user = c.get("user");
-  const body = await c.req.json();
-  const parsed = createPlaybookSchema.parse(body);
+  const body = await c.req.json().catch(() => {
+    throw new HTTPException(400, { message: "Request body must be valid JSON" });
+  });
+  const result = createPlaybookSchema.safeParse(body);
+  if (!result.success) {
+    return c.json({ success: false, error: result.error.flatten() }, 400);
+  }
+  const parsed = result.data;
 
   // Default to user's org if not specified
   if (!parsed.organizationId) {
@@ -72,8 +79,14 @@ app.put("/playbooks/:id", async (c) => {
     assertTenant(c, existing.organizationId);
   }
 
-  const body = await c.req.json();
-  const parsed = updatePlaybookSchema.parse(body);
+  const body = await c.req.json().catch(() => {
+    throw new HTTPException(400, { message: "Request body must be valid JSON" });
+  });
+  const result = updatePlaybookSchema.safeParse(body);
+  if (!result.success) {
+    return c.json({ success: false, error: result.error.flatten() }, 400);
+  }
+  const parsed = result.data;
 
   const playbook = await updatePlaybookService(id, parsed);
   return c.json(playbook);
@@ -108,8 +121,14 @@ app.post("/playbooks/:id/execute", async (c) => {
   }
 
   const user = c.get("user");
-  const body = await c.req.json().catch(() => ({}));
-  const parsed = executePlaybookSchema.parse(body);
+  const body = await c.req.json().catch(() => {
+    throw new HTTPException(400, { message: "Request body must be valid JSON" });
+  });
+  const result = executePlaybookSchema.safeParse(body);
+  if (!result.success) {
+    return c.json({ success: false, error: result.error.flatten() }, 400);
+  }
+  const parsed = result.data;
 
   const execution = await executePlaybook(id, {
     alertId: parsed.alertId,
@@ -141,6 +160,9 @@ app.get("/playbooks/executions/:executionId", async (c) => {
   assertUUID(executionId, "executionId");
 
   const execution = await getExecution(executionId);
+  if (execution.organizationId) {
+    assertTenant(c, execution.organizationId);
+  }
   return c.json(execution);
 });
 
