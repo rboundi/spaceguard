@@ -50,3 +50,6 @@ export * from "./playbooks";
 
 // Dashboard Layouts
 export * from "./dashboard-layouts";
+
+// Vulnerability / SBOM Management
+export * from "./vulnerability";

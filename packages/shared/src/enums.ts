@@ -404,3 +404,76 @@ export const playbookExecutionStatusLabels: Record<PlaybookExecutionStatus, stri
   [PlaybookExecutionStatus.FAILED]: "Failed",
   [PlaybookExecutionStatus.CANCELLED]: "Cancelled",
 };
+
+// ---------------------------------------------------------------------------
+// SBOM / Vulnerability Management (CRA Annex I)
+// ---------------------------------------------------------------------------
+
+export enum ComponentType {
+  OPERATING_SYSTEM = "OPERATING_SYSTEM",
+  FIRMWARE = "FIRMWARE",
+  APPLICATION = "APPLICATION",
+  LIBRARY = "LIBRARY",
+  DRIVER = "DRIVER",
+  MIDDLEWARE = "MIDDLEWARE",
+  PROTOCOL_STACK = "PROTOCOL_STACK",
+}
+
+export const componentTypeLabels: Record<ComponentType, string> = {
+  [ComponentType.OPERATING_SYSTEM]: "Operating System",
+  [ComponentType.FIRMWARE]: "Firmware",
+  [ComponentType.APPLICATION]: "Application",
+  [ComponentType.LIBRARY]: "Library",
+  [ComponentType.DRIVER]: "Driver",
+  [ComponentType.MIDDLEWARE]: "Middleware",
+  [ComponentType.PROTOCOL_STACK]: "Protocol Stack",
+};
+
+export enum ComponentSource {
+  PROPRIETARY = "PROPRIETARY",
+  COTS = "COTS",
+  OPEN_SOURCE = "OPEN_SOURCE",
+  CUSTOM = "CUSTOM",
+}
+
+export const componentSourceLabels: Record<ComponentSource, string> = {
+  [ComponentSource.PROPRIETARY]: "Proprietary",
+  [ComponentSource.COTS]: "COTS",
+  [ComponentSource.OPEN_SOURCE]: "Open Source",
+  [ComponentSource.CUSTOM]: "Custom",
+};
+
+export enum VulnerabilitySeverity {
+  NONE = "NONE",
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+  CRITICAL = "CRITICAL",
+}
+
+export enum VulnerabilityStatus {
+  IDENTIFIED = "IDENTIFIED",
+  ASSESSING = "ASSESSING",
+  RISK_ACCEPTED = "RISK_ACCEPTED",
+  REMEDIATION_PLANNED = "REMEDIATION_PLANNED",
+  REMEDIATION_IN_PROGRESS = "REMEDIATION_IN_PROGRESS",
+  VERIFIED_FIXED = "VERIFIED_FIXED",
+  NOT_APPLICABLE = "NOT_APPLICABLE",
+}
+
+export const vulnerabilityStatusLabels: Record<VulnerabilityStatus, string> = {
+  [VulnerabilityStatus.IDENTIFIED]: "Identified",
+  [VulnerabilityStatus.ASSESSING]: "Assessing",
+  [VulnerabilityStatus.RISK_ACCEPTED]: "Risk Accepted",
+  [VulnerabilityStatus.REMEDIATION_PLANNED]: "Remediation Planned",
+  [VulnerabilityStatus.REMEDIATION_IN_PROGRESS]: "Remediation In Progress",
+  [VulnerabilityStatus.VERIFIED_FIXED]: "Verified Fixed",
+  [VulnerabilityStatus.NOT_APPLICABLE]: "Not Applicable",
+};
+
+export enum SbomFormat {
+  CYCLONEDX = "CYCLONEDX",
+  SPDX = "SPDX",
+  CSV = "CSV",
+  MANUAL = "MANUAL",
+}
