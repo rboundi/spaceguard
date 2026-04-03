@@ -73,12 +73,22 @@ interface SatelliteProfile {
   hasTransponderStream: boolean;
 }
 
+interface GroundStationConfig {
+  name: string;
+  assetNamePattern: string;
+  latitude: number;           // for contact window calculation
+  passesPerDay: number;       // approximate LEO passes visible
+  geoVisible: boolean;        // can see GEO belt
+  contactDurationMin: number; // typical LEO pass duration in minutes
+}
+
 interface CompanyConfig {
   name: string;
   cliKey: string;
   orgNamePattern: string;
   assetType: string;
   satellites: SatelliteProfile[];
+  groundStations: GroundStationConfig[];
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +151,11 @@ const COMPANIES: CompanyConfig[] = [
       { ...PROBA_PROFILE, name: "Proba-EO-2", assetNamePattern: "Proba-EO-2", degradedAocs: false },
       { ...PROBA_PROFILE, name: "Proba-EO-3", assetNamePattern: "Proba-EO-3", degradedAocs: true },
     ],
+    groundStations: [
+      { name: "Brussels MCC", assetNamePattern: "Brussels", latitude: 50.8, passesPerDay: 0, geoVisible: false, contactDurationMin: 0 },
+      { name: "Svalbard GS", assetNamePattern: "Svalbard", latitude: 78.2, passesPerDay: 12, geoVisible: false, contactDurationMin: 10 },
+      { name: "Matera GS", assetNamePattern: "Matera", latitude: 40.7, passesPerDay: 6, geoVisible: false, contactDurationMin: 8 },
+    ],
   },
   {
     name: "NordSat IoT",
@@ -153,6 +168,10 @@ const COMPANIES: CompanyConfig[] = [
       { ...NORDSAT_PROFILE, name: "NordSat-Gamma", assetNamePattern: "NordSat-Gamma", degradedAocs: false },
       { ...NORDSAT_PROFILE, name: "NordSat-Delta", assetNamePattern: "NordSat-Delta", degradedAocs: false },
     ],
+    groundStations: [
+      { name: "Stockholm Ops", assetNamePattern: "Stockholm", latitude: 59.3, passesPerDay: 0, geoVisible: false, contactDurationMin: 0 },
+      { name: "Kiruna GS", assetNamePattern: "Kiruna", latitude: 67.9, passesPerDay: 8, geoVisible: false, contactDurationMin: 9 },
+    ],
   },
   {
     name: "MediterraneanSat Communications",
@@ -161,6 +180,23 @@ const COMPANIES: CompanyConfig[] = [
     assetType: "GEO_SATELLITE",
     satellites: [
       { ...MEDSAT_PROFILE, name: "MedSat-1", assetNamePattern: "MedSat-1", degradedAocs: false },
+    ],
+    groundStations: [
+      { name: "Athens NOC", assetNamePattern: "Athens", latitude: 37.9, passesPerDay: 0, geoVisible: true, contactDurationMin: 0 },
+      { name: "Thermopylae", assetNamePattern: "Thermopylae", latitude: 38.8, passesPerDay: 0, geoVisible: true, contactDurationMin: 1440 },
+      { name: "Limassol", assetNamePattern: "Limassol", latitude: 34.7, passesPerDay: 0, geoVisible: true, contactDurationMin: 1440 },
+    ],
+  },
+  {
+    name: "Orbital Watch Europe",
+    cliKey: "owe",
+    orgNamePattern: "Orbital Watch",
+    assetType: "GROUND_STATION",
+    satellites: [],
+    groundStations: [
+      { name: "Toulouse Ops", assetNamePattern: "Toulouse", latitude: 43.6, passesPerDay: 0, geoVisible: false, contactDurationMin: 0 },
+      { name: "OWE Radar Alpha", assetNamePattern: "Radar Station", latitude: 43.7, passesPerDay: 0, geoVisible: false, contactDurationMin: 0 },
+      { name: "OWE Optical Beta", assetNamePattern: "Optical Sensor", latitude: 28.3, passesPerDay: 0, geoVisible: false, contactDurationMin: 0 },
     ],
   },
 ];
@@ -335,6 +371,146 @@ function stationKeepingDeltaV(t: number): number {
   // Slowly depleting budget (m/s remaining)
   const remaining = 120 - 0.00001 * t + noise(0.01);
   return +clamp(remaining, 0, 150).toFixed(2);
+}
+
+// ---------------------------------------------------------------------------
+// Ground segment telemetry generators
+// ---------------------------------------------------------------------------
+
+/** Is a LEO satellite in a contact window over this ground station? */
+function gsInContact(t: number, gs: GroundStationConfig, passIdx: number): boolean {
+  if (gs.contactDurationMin >= 1440) return true; // GEO: always in contact
+  if (gs.passesPerDay === 0) return false; // operations center, no antenna
+  const orbitPeriodS = 86400 / gs.passesPerDay;
+  const contactS = gs.contactDurationMin * 60;
+  const passOffset = passIdx * 97 * 60 * 0.3; // stagger passes
+  const phase = ((t + passOffset) % orbitPeriodS) / orbitPeriodS;
+  return phase < contactS / orbitPeriodS;
+}
+
+function gsNominalPoints(t: number, gs: GroundStationConfig): Point[] {
+  const ts = new Date(t * 1000 + Date.now()).toISOString(); // will be overridden by caller
+  const points: Point[] = [];
+
+  // gs.* namespace
+  const authFail = Math.random() < 0.05 ? 1 : 0; // Poisson lambda=0.05
+  points.push({ time: ts, parameterName: "gs.auth_failure_count", valueNumeric: authFail, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "gs.unknown_ip_flag", valueNumeric: 0, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "gs.config_change_flag", valueNumeric: 0, quality: "GOOD" });
+  const inContact = gsInContact(t, gs, 0);
+  const uplinkVol = inContact && gs.passesPerDay > 0
+    ? +(100 + 1900 * Math.random()).toFixed(0)
+    : 0;
+  points.push({ time: ts, parameterName: "gs.uplink_volume_kb", valueNumeric: uplinkVol, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "gs.heartbeat", valueNumeric: 1, quality: "GOOD" });
+
+  // ac.* namespace
+  points.push({ time: ts, parameterName: "ac.privilege_escalation_flag", valueNumeric: 0, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "ac.service_account_login_flag", valueNumeric: 0, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "ac.mfa_bypass_flag", valueNumeric: 0, quality: "GOOD" });
+  const sessions = 1 + Math.floor(Math.random() * 2); // 1-2 normal sessions
+  points.push({ time: ts, parameterName: "ac.concurrent_session_count", valueNumeric: sessions, quality: "GOOD" });
+  // After-hours: very occasionally 1 during 22:00-06:00 UTC
+  const hourUTC = (t / 3600) % 24;
+  const afterHours = (hourUTC >= 22 || hourUTC < 6) && Math.random() < 0.01 ? 1 : 0;
+  points.push({ time: ts, parameterName: "ac.after_hours_login_flag", valueNumeric: afterHours, quality: afterHours ? "SUSPECT" : "GOOD" });
+  points.push({ time: ts, parameterName: "ac.api_key_misuse_count", valueNumeric: 0, quality: "GOOD" });
+
+  // dx.* namespace
+  const outboundVol = +(10 + 40 * Math.random()).toFixed(1); // 10-50 MB normal
+  points.push({ time: ts, parameterName: "dx.outbound_volume_mb", valueNumeric: outboundVol, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "dx.unauthorized_dest_flag", valueNumeric: 0, quality: "GOOD" });
+  const dlRate = inContact ? +(5 + 25 * Math.random()).toFixed(1) : 0;
+  points.push({ time: ts, parameterName: "dx.payload_download_rate_mbps", valueNumeric: dlRate, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "dx.key_export_flag", valueNumeric: 0, quality: "GOOD" });
+  const queries = 1 + Math.floor(Math.random() * 5); // 1-5 normal queries
+  points.push({ time: ts, parameterName: "dx.bulk_query_count", valueNumeric: queries, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "dx.tle_access_anomaly_flag", valueNumeric: 0, quality: "GOOD" });
+
+  // pe.* namespace
+  points.push({ time: ts, parameterName: "pe.firmware_hash_mismatch_flag", valueNumeric: 0, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "pe.scheduled_task_anomaly_flag", valueNumeric: 0, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "pe.log_deletion_flag", valueNumeric: 0, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "pe.process_injection_flag", valueNumeric: 0, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "pe.comms_schedule_change_flag", valueNumeric: 0, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "pe.encryption_downgrade_flag", valueNumeric: 0, quality: "GOOD" });
+
+  return points;
+}
+
+function gsRfPoints(t: number, gs: GroundStationConfig): Point[] {
+  const ts = ""; // overridden by caller
+  const points: Point[] = [];
+  const inContact = gsInContact(t, gs, 0);
+
+  if (!inContact && gs.contactDurationMin < 1440) {
+    // Not in contact: minimal RF background
+    points.push({ time: ts, parameterName: "rf.snr_db", valueNumeric: +(2 + noise(1)).toFixed(1), quality: "GOOD" });
+    points.push({ time: ts, parameterName: "rf.adjacent_channel_power_db", valueNumeric: +(-45 + noise(3)).toFixed(1), quality: "GOOD" });
+    return points;
+  }
+
+  // In contact: realistic RF parameters
+  const orbitPhase = gs.contactDurationMin >= 1440
+    ? 0.5 // GEO: always mid-pass
+    : (t % (gs.contactDurationMin * 60)) / (gs.contactDurationMin * 60);
+  const elevation = Math.sin(Math.PI * clamp(orbitPhase, 0, 1));
+
+  // SNR: 10-25 dB, peaks at zenith
+  const snr = 10 + 15 * elevation + noise(0.5);
+  points.push({ time: ts, parameterName: "rf.snr_db", valueNumeric: +clamp(snr, 5, 28).toFixed(1), quality: "GOOD" });
+
+  // Carrier offset: Doppler, sinusoidal during pass (-500 to +500 Hz for LEO)
+  const maxDoppler = gs.contactDurationMin >= 1440 ? 50 : 500;
+  const carrierOffset = maxDoppler * Math.cos(Math.PI * orbitPhase);
+  points.push({ time: ts, parameterName: "rf.carrier_offset_hz", valueNumeric: +carrierOffset.toFixed(0), quality: "GOOD" });
+
+  // BER: inversely proportional to elevation
+  const ber = 1e-9 * Math.pow(100, 1 - elevation);
+  points.push({ time: ts, parameterName: "rf.ber", valueNumeric: +ber.toExponential(2), quality: "GOOD" });
+
+  // AGC level: stable, slow drift
+  const agc = noise(1.5) + 0.5 * Math.sin(0.001 * t);
+  points.push({ time: ts, parameterName: "rf.agc_level_db", valueNumeric: +clamp(agc, -5, 5).toFixed(1), quality: "GOOD" });
+
+  // Polarization angle: small tracking error
+  const pol = 1.5 + noise(0.5) + 0.3 * Math.sin(0.01 * t);
+  points.push({ time: ts, parameterName: "rf.polarization_angle_deg", valueNumeric: +clamp(pol, 0, 4).toFixed(1), quality: "GOOD" });
+
+  // Adjacent channel power
+  const acp = -45 + 5 * (1 - elevation) + noise(1);
+  points.push({ time: ts, parameterName: "rf.adjacent_channel_power_db", valueNumeric: +clamp(acp, -55, -30).toFixed(1), quality: "GOOD" });
+
+  return points;
+}
+
+function generateGroundSegmentPoints(
+  startMs: number,
+  durationS: number,
+  gs: GroundStationConfig,
+): Point[] {
+  const points: Point[] = [];
+  const STEP = 10; // 0.1 Hz
+
+  for (let t = 0; t < durationS; t += STEP) {
+    const ts = new Date(startMs + t * 1000).toISOString();
+
+    // Nominal ground segment telemetry
+    const nomPoints = gsNominalPoints(t, gs);
+    for (const p of nomPoints) {
+      points.push({ ...p, time: ts });
+    }
+
+    // RF link telemetry (only for stations with antennas)
+    if (gs.passesPerDay > 0 || gs.contactDurationMin >= 1440) {
+      const rfPoints = gsRfPoints(t, gs);
+      for (const p of rfPoints) {
+        points.push({ ...p, time: ts });
+      }
+    }
+  }
+
+  return points;
 }
 
 // ---------------------------------------------------------------------------
@@ -856,16 +1032,27 @@ async function simulateCompany(company: CompanyConfig, durationS: number, startM
     return;
   }
 
-  // Find assets
-  const assetsRes = await apiFetch<{ data: Array<{ id: string; name: string; assetType: string }> }>(
-    `/assets?organizationId=${org.id}&type=${company.assetType}&perPage=50`
+  // Find satellite assets
+  const satAssetsRes = company.satellites.length > 0
+    ? await apiFetch<{ data: Array<{ id: string; name: string; assetType: string }> }>(
+        `/assets?organizationId=${org.id}&type=${company.assetType}&perPage=50`
+      )
+    : { data: [] };
+
+  // Find ground station/control center assets
+  const gsAssetsRes = await apiFetch<{ data: Array<{ id: string; name: string; assetType: string }> }>(
+    `/assets?organizationId=${org.id}&perPage=100`
+  );
+  const gsAssets = gsAssetsRes.data.filter(
+    (a) => a.assetType === "GROUND_STATION" || a.assetType === "CONTROL_CENTER"
   );
 
   let totalPoints = 0;
   const results: Array<{ name: string; totalPoints: number; elapsedMs: number }> = [];
 
+  // Simulate satellites
   for (const profile of company.satellites) {
-    const asset = assetsRes.data.find((a) => a.name.includes(profile.assetNamePattern));
+    const asset = satAssetsRes.data.find((a) => a.name.includes(profile.assetNamePattern));
     if (!asset) {
       console.log(`  SKIP: Asset "${profile.assetNamePattern}" not found`);
       continue;
@@ -877,12 +1064,33 @@ async function simulateCompany(company: CompanyConfig, durationS: number, startM
     totalPoints += result.totalPoints;
   }
 
+  // Simulate ground stations
+  for (const gsConfig of company.groundStations) {
+    const gsAsset = gsAssets.find((a) => a.name.includes(gsConfig.assetNamePattern));
+    if (!gsAsset) {
+      console.log(`  SKIP: Ground station "${gsConfig.assetNamePattern}" not found`);
+      continue;
+    }
+    console.log(`\n  Ground Station: ${gsConfig.name} (${gsAsset.id.slice(0, 8)}...)`);
+    const t0 = Date.now();
+
+    const apidBase = Math.abs(gsConfig.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % 900 + 500;
+    const gsStream = await createStream(org.id, gsAsset.id, `${gsConfig.name} Security TM`, apidBase, 0.1);
+    const gsPoints = generateGroundSegmentPoints(startMs, durationS, gsConfig);
+
+    await ingestStream(gsStream, gsPoints, 200);
+
+    const elapsed = Date.now() - t0;
+    results.push({ name: gsConfig.name, totalPoints: gsPoints.length, elapsedMs: elapsed });
+    totalPoints += gsPoints.length;
+  }
+
   // Company summary
   console.log(`\n  ${company.name} Summary:`);
   for (const r of results) {
-    console.log(`    ${r.name.padEnd(20)} ${r.totalPoints.toLocaleString().padStart(10)} pts  (${(r.elapsedMs / 1000).toFixed(1)}s)`);
+    console.log(`    ${r.name.padEnd(24)} ${r.totalPoints.toLocaleString().padStart(10)} pts  (${(r.elapsedMs / 1000).toFixed(1)}s)`);
   }
-  console.log(`    ${"TOTAL".padEnd(20)} ${totalPoints.toLocaleString().padStart(10)} pts`);
+  console.log(`    ${"TOTAL".padEnd(24)} ${totalPoints.toLocaleString().padStart(10)} pts`);
 }
 
 // ---------------------------------------------------------------------------
