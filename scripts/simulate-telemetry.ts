@@ -14,6 +14,8 @@
  *   npx tsx scripts/simulate-telemetry.ts --scenario supply-chain-compromise
  *   npx tsx scripts/simulate-telemetry.ts --scenario insider-threat
  *   npx tsx scripts/simulate-telemetry.ts --scenario all         # all scenarios staggered
+ *   npx tsx scripts/simulate-telemetry.ts --live                 # real-time streaming
+ *   npx tsx scripts/simulate-telemetry.ts --live --scenario rf-jamming --scenario-delay 2
  *
  * Satellite profiles:
  *   Proba Space Systems:  3 LEO (EO constellation), SSO 615 km
@@ -42,6 +44,11 @@ const SCENARIO_NAME = scenarioFlag
   ? (args[args.indexOf("--scenario") + 1] ?? "").toLowerCase()
   : args.includes("--anomaly") ? "spacecraft-failure" : null;
 const INJECT_ANOMALY = SCENARIO_NAME === "spacecraft-failure" || args.includes("--anomaly");
+const LIVE_MODE = args.includes("--live");
+const scenarioDelayFlag = args.find((a) => a === "--scenario-delay");
+const SCENARIO_DELAY_S = scenarioDelayFlag
+  ? Math.max(0, parseFloat(args[args.indexOf("--scenario-delay") + 1] ?? "5")) * 60
+  : 5 * 60; // default 5 minutes
 
 // ---------------------------------------------------------------------------
 // Satellite profile interface
@@ -879,6 +886,321 @@ async function simulateCompany(company: CompanyConfig, durationS: number, startM
 }
 
 // ---------------------------------------------------------------------------
+// Live streaming mode
+// ---------------------------------------------------------------------------
+
+interface LiveSatellite {
+  profile: SatelliteProfile;
+  assetName: string;
+  hkStream: StreamInfo;
+  aocsStream: StreamInfo | null;
+  commsStream: StreamInfo | null;
+  scenarioStreams: Array<{ stream: StreamInfo; scenario: ScenarioDefinition; offsetS: number }>;
+}
+
+async function setupLiveSatellites(
+  companies: CompanyConfig[],
+  scenarios: ScenarioDefinition[],
+): Promise<LiveSatellite[]> {
+  const liveSats: LiveSatellite[] = [];
+
+  for (const company of companies) {
+    const orgsRes = await apiFetch<{ data: Array<{ id: string; name: string }> }>("/organizations");
+    const org = orgsRes.data.find((o) => o.name.includes(company.orgNamePattern));
+    if (!org) continue;
+
+    const assetsRes = await apiFetch<{ data: Array<{ id: string; name: string }> }>(
+      `/assets?organizationId=${org.id}&type=${company.assetType}&perPage=50`
+    );
+
+    for (const profile of company.satellites) {
+      const asset = assetsRes.data.find((a) => a.name.includes(profile.assetNamePattern));
+      if (!asset) continue;
+
+      const apidBase = Math.abs(profile.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % 900 + 100;
+      const hkRate = profile.geoStationary ? 1 : (profile.hasAocsStream ? 1 : 0.5);
+
+      const hkStream = await createStream(org.id, asset.id, `${profile.name} HK Live`, apidBase, hkRate);
+      const aocsStream = profile.hasAocsStream
+        ? await createStream(org.id, asset.id, `${profile.name} AOCS Live`, apidBase + 100, profile.aocsRateHz)
+        : null;
+      const commsStream = profile.hasCommsStream
+        ? await createStream(org.id, asset.id, `${profile.name} COMMS Live`, apidBase + 200, profile.commsRateHz)
+        : null;
+
+      // Create scenario streams for matching scenarios
+      const companyScenarios = scenarios.filter((s) => s.targetCompany === company.cliKey);
+      const matchingScenarios = companyScenarios.filter(
+        (s) => asset.name.includes(s.targetAssetPattern) || profile.name.includes(s.targetAssetPattern)
+      );
+      const scenarioStreams: LiveSatellite["scenarioStreams"] = [];
+      for (let i = 0; i < matchingScenarios.length; i++) {
+        const stream = await createStream(org.id, asset.id, `${profile.name} ${matchingScenarios[i].name} Live`, apidBase + 300 + i, 1);
+        scenarioStreams.push({ stream, scenario: matchingScenarios[i], offsetS: i * 1200 });
+      }
+
+      liveSats.push({ profile, assetName: asset.name, hkStream, aocsStream, commsStream, scenarioStreams });
+      console.log(`    ${profile.name}: HK${aocsStream ? " + AOCS" : ""}${commsStream ? " + COMMS" : ""}${scenarioStreams.length > 0 ? ` + ${scenarioStreams.length} scenario(s)` : ""}`);
+    }
+  }
+
+  return liveSats;
+}
+
+function generateLiveHkTick(t: number, p: SatelliteProfile, anomalyStart: number): Point[] {
+  const ts = new Date().toISOString();
+  const anomaly = INJECT_ANOMALY;
+  const points: Point[] = [];
+
+  const bv = batteryVoltage(t, p, anomaly, anomalyStart);
+  const sc = solarCurrent(t, p);
+  const tobc = temperatureObc(t, p, anomaly, anomalyStart);
+  const tbatt = temperatureBattery(t, p);
+
+  points.push({ time: ts, parameterName: "battery_voltage_v", valueNumeric: bv, quality: quality(bv, [p.batteryRange[0] + 2, p.batteryRange[1]]) });
+  points.push({ time: ts, parameterName: "solar_current_a", valueNumeric: sc, quality: quality(sc, [0, p.solarMaxA + 0.1]) });
+  points.push({ time: ts, parameterName: "temperature_obc_c", valueNumeric: tobc, quality: quality(tobc, p.thermalRange) });
+  points.push({ time: ts, parameterName: "temperature_batt_c", valueNumeric: tbatt, quality: quality(tbatt, [p.thermalRange[0], p.thermalRange[1] - 10]) });
+
+  if (p.hasAocsStream || !p.geoStationary) {
+    for (let w = 0; w < 3; w++) {
+      const rpm = reactionWheelRpm(t, w, p, anomaly, anomalyStart);
+      points.push({ time: ts, parameterName: `reaction_wheel_${w}_rpm`, valueNumeric: rpm, quality: quality(rpm, [0, 5000]) });
+    }
+  }
+  return points;
+}
+
+function generateLiveAocsTick(t: number, p: SatelliteProfile): Point[] {
+  if (!p.hasAocsStream) return [];
+  const points: Point[] = [];
+  const step = 1 / p.aocsRateHz;
+
+  for (let dt = 0; dt < 1; dt = +(dt + step).toFixed(3)) {
+    const subT = t + dt;
+    const ts = new Date(Date.now() - (1 - dt) * 1000).toISOString();
+    points.push({ time: ts, parameterName: "attitude_q1", valueNumeric: quaternionComponent(subT, 0, p), quality: "GOOD" });
+    points.push({ time: ts, parameterName: "attitude_q2", valueNumeric: quaternionComponent(subT, 1, p), quality: "GOOD" });
+    points.push({ time: ts, parameterName: "attitude_q3", valueNumeric: quaternionComponent(subT, 2, p), quality: "GOOD" });
+    points.push({ time: ts, parameterName: "attitude_q4", valueNumeric: quaternionComponent(subT, 3, p), quality: "GOOD" });
+    const wx = angularRate(subT, 0, p); const wy = angularRate(subT, 1, p); const wz = angularRate(subT, 2, p);
+    points.push({ time: ts, parameterName: "angular_rate_x_deg_s", valueNumeric: wx, quality: quality(wx, [-0.1, 0.1]) });
+    points.push({ time: ts, parameterName: "angular_rate_y_deg_s", valueNumeric: wy, quality: quality(wy, [-0.1, 0.1]) });
+    points.push({ time: ts, parameterName: "angular_rate_z_deg_s", valueNumeric: wz, quality: quality(wz, [-0.1, 0.1]) });
+    const st = starTrackerStatus(subT, p);
+    points.push({ time: ts, parameterName: "star_tracker_status", valueNumeric: st, quality: st < 2 ? "SUSPECT" : "GOOD" });
+    points.push({ time: ts, parameterName: "gps_altitude_km", valueNumeric: gpsAltitude(subT, p), quality: "GOOD" });
+  }
+  return points;
+}
+
+function generateLiveCommsTick(t: number, elapsedS: number, p: SatelliteProfile, anomalyStart: number): Point[] {
+  // COMMS at 0.1 Hz: only emit every 10s
+  if (Math.floor(elapsedS) % 10 !== 0) return [];
+  const ts = new Date().toISOString();
+  const anomaly = INJECT_ANOMALY;
+  const points: Point[] = [];
+
+  const sig = signalStrength(t, p, anomaly, anomalyStart);
+  const locked = uplinkLocked(t, p);
+  const ber = bitErrorRate(t, p);
+  const margin = linkMargin(t, p, anomaly, anomalyStart);
+  const inContact = sig > -98;
+
+  points.push({ time: ts, parameterName: "signal_strength_dbm", valueNumeric: sig, quality: quality(sig, [-90, -55]) });
+  points.push({ time: ts, parameterName: "uplink_locked", valueNumeric: locked, quality: "GOOD" });
+  points.push({ time: ts, parameterName: "bit_error_rate_log", valueNumeric: inContact ? ber : undefined, quality: quality(ber, [-12, -5]) });
+  points.push({ time: ts, parameterName: "link_margin_db", valueNumeric: margin, quality: quality(margin, [0, 25]) });
+
+  if (p.hasTransponderStream) {
+    points.push({ time: ts, parameterName: "transponder_load_pct", valueNumeric: transponderLoad(t), quality: "GOOD" });
+    points.push({ time: ts, parameterName: "eirp_dbw", valueNumeric: eirpPerBeam(t), quality: "GOOD" });
+    points.push({ time: ts, parameterName: "sk_delta_v_remaining_ms", valueNumeric: stationKeepingDeltaV(t), quality: "GOOD" });
+  }
+  return points;
+}
+
+function generateLiveScenarioTick(elapsedS: number, scenario: ScenarioDefinition, scenarioStartS: number): Point[] {
+  const t = elapsedS;
+  const points: Point[] = [];
+  const ts = new Date().toISOString();
+
+  for (const step of scenario.steps) {
+    const stepStart = scenarioStartS + step.offsetSeconds;
+    const stepEnd = stepStart + step.durationSeconds;
+    if (t >= stepStart && t < stepEnd) {
+      const value = step.generator(t, stepStart);
+      points.push({ time: ts, parameterName: step.parameterName, valueNumeric: +value.toFixed(6), quality: "SUSPECT" });
+    }
+  }
+  return points;
+}
+
+function getActiveScenarioStep(elapsedS: number, scenario: ScenarioDefinition, scenarioStartS: number): ScenarioStep | null {
+  for (const step of scenario.steps) {
+    const stepStart = scenarioStartS + step.offsetSeconds;
+    const stepEnd = stepStart + step.durationSeconds;
+    if (elapsedS >= stepStart && elapsedS < stepEnd) return step;
+  }
+  return null;
+}
+
+async function runLiveMode(
+  companies: CompanyConfig[],
+  scenarios: ScenarioDefinition[],
+): Promise<void> {
+  console.log("  Setting up live streams...");
+  const liveSats = await setupLiveSatellites(companies, scenarios);
+  if (liveSats.length === 0) {
+    console.error("  No satellites found for live mode.");
+    return;
+  }
+  console.log(`  ${liveSats.length} satellite(s) streaming live.\n`);
+
+  const scenarioStartS = SCENARIO_DELAY_S;
+  const durationS = HOURS < 24 ? Math.round(HOURS * 3600) : Infinity;
+  const anomalyStart = Infinity; // spacecraft-failure anomaly at scenario start in live mode
+
+  let totalHk = 0;
+  let totalAocs = 0;
+  let totalComms = 0;
+  let totalScenario = 0;
+  let elapsedS = 0;
+  let running = true;
+  let aocsSkipped = 0;
+
+  // Graceful shutdown
+  process.on("SIGINT", () => {
+    running = false;
+    console.log("\n\n  Shutting down...");
+  });
+
+  if (scenarios.length > 0) {
+    const delayMin = (SCENARIO_DELAY_S / 60).toFixed(0);
+    console.log(`  Scenario "${scenarios[0].name}" will start in ${delayMin} min (--scenario-delay ${delayMin})`);
+  }
+
+  while (running && elapsedS < durationS) {
+    const tickStart = Date.now();
+    const t = elapsedS; // physics time
+
+    // Build status line
+    const mm = String(Math.floor(elapsedS / 60)).padStart(2, "0");
+    const ss = String(Math.floor(elapsedS) % 60).padStart(2, "0");
+
+    // Determine scenario state
+    let scenarioStatus = "Nominal";
+    let activeStep: ScenarioStep | null = null;
+    for (const sat of liveSats) {
+      for (const sc of sat.scenarioStreams) {
+        const step = getActiveScenarioStep(elapsedS, sc.scenario, scenarioStartS + sc.offsetS);
+        if (step) {
+          activeStep = step;
+          scenarioStatus = `ACTIVE: ${sc.scenario.name} | ${step.parameterName}`;
+        }
+      }
+    }
+
+    // Countdown
+    if (scenarios.length > 0 && !activeStep) {
+      const timeToScenario = scenarioStartS - elapsedS;
+      if (timeToScenario > 0 && timeToScenario <= 10) {
+        scenarioStatus = `"${scenarios[0].name}" starts in ${Math.ceil(timeToScenario)}s...`;
+      }
+    }
+
+    // Generate and send for each satellite
+    const sendPromises: Promise<void>[] = [];
+
+    for (const sat of liveSats) {
+      // HK: every tick
+      const hkPts = generateLiveHkTick(t, sat.profile, anomalyStart);
+      if (hkPts.length > 0) {
+        sendPromises.push(
+          apiFetch(`/telemetry/ingest/${sat.hkStream.id}`, {
+            method: "POST",
+            headers: { "X-API-Key": sat.hkStream.apiKey },
+            body: JSON.stringify({ streamId: sat.hkStream.id, points: hkPts }),
+          }).then(() => { totalHk += hkPts.length; })
+        );
+      }
+
+      // AOCS: every tick (high volume, skip under backpressure)
+      if (sat.aocsStream) {
+        const tickElapsed = Date.now() - tickStart;
+        if (tickElapsed < 700) { // only if we have time budget
+          const aocsPts = generateLiveAocsTick(t, sat.profile);
+          if (aocsPts.length > 0) {
+            sendPromises.push(
+              apiFetch(`/telemetry/ingest/${sat.aocsStream.id}`, {
+                method: "POST",
+                headers: { "X-API-Key": sat.aocsStream.apiKey },
+                body: JSON.stringify({ streamId: sat.aocsStream.id, points: aocsPts }),
+              }).then(() => { totalAocs += aocsPts.length; })
+            );
+          }
+        } else {
+          aocsSkipped++;
+        }
+      }
+
+      // COMMS: every 10 ticks
+      if (sat.commsStream) {
+        const commsPts = generateLiveCommsTick(t, elapsedS, sat.profile, anomalyStart);
+        if (commsPts.length > 0) {
+          sendPromises.push(
+            apiFetch(`/telemetry/ingest/${sat.commsStream.id}`, {
+              method: "POST",
+              headers: { "X-API-Key": sat.commsStream.apiKey },
+              body: JSON.stringify({ streamId: sat.commsStream.id, points: commsPts }),
+            }).then(() => { totalComms += commsPts.length; })
+          );
+        }
+      }
+
+      // Scenario: if active
+      for (const sc of sat.scenarioStreams) {
+        const scPts = generateLiveScenarioTick(elapsedS, sc.scenario, scenarioStartS + sc.offsetS);
+        if (scPts.length > 0) {
+          sendPromises.push(
+            apiFetch(`/telemetry/ingest/${sc.stream.id}`, {
+              method: "POST",
+              headers: { "X-API-Key": sc.stream.apiKey },
+              body: JSON.stringify({ streamId: sc.stream.id, points: scPts }),
+            }).then(() => { totalScenario += scPts.length; })
+          );
+        }
+      }
+    }
+
+    await Promise.all(sendPromises).catch(() => {}); // swallow individual errors
+
+    // Status line
+    const total = totalHk + totalAocs + totalComms + totalScenario;
+    process.stdout.write(
+      `\r  [${mm}:${ss}] ${scenarioStatus.padEnd(50)} HK:${totalHk} AOCS:${totalAocs} COMMS:${totalComms} SCN:${totalScenario} (${total} total)${aocsSkipped > 0 ? ` [${aocsSkipped} AOCS skipped]` : ""}`
+    );
+
+    elapsedS++;
+
+    // Sleep until next tick (aim for 1s intervals)
+    const tickDuration = Date.now() - tickStart;
+    const sleepMs = Math.max(0, 1000 - tickDuration);
+    if (sleepMs > 0) await new Promise((r) => setTimeout(r, sleepMs));
+  }
+
+  // Final summary
+  const total = totalHk + totalAocs + totalComms + totalScenario;
+  console.log(`\n\n  Live mode summary:`);
+  console.log(`    Duration : ${Math.floor(elapsedS / 60)}m ${elapsedS % 60}s`);
+  console.log(`    HK       : ${totalHk.toLocaleString()} pts`);
+  console.log(`    AOCS     : ${totalAocs.toLocaleString()} pts${aocsSkipped > 0 ? ` (${aocsSkipped} ticks skipped)` : ""}`);
+  console.log(`    COMMS    : ${totalComms.toLocaleString()} pts`);
+  console.log(`    Scenario : ${totalScenario.toLocaleString()} pts`);
+  console.log(`    Total    : ${total.toLocaleString()} pts`);
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -886,18 +1208,16 @@ async function main(): Promise<void> {
   console.log("\n+----------------------------------------------------------+");
   console.log("|     SpaceGuard Multi-Satellite Telemetry Simulator        |");
   console.log("+----------------------------------------------------------+");
-  console.log(`  Duration  : ${HOURS} hour${HOURS !== 1 ? "s" : ""}`);
+  console.log(`  Mode      : ${LIVE_MODE ? "LIVE (real-time)" : "batch (backfill)"}`);
+  console.log(`  Duration  : ${HOURS} hour${HOURS !== 1 ? "s" : ""}${LIVE_MODE ? " (Ctrl+C to stop)" : ""}`);
   console.log(`  Anomalies : ${INJECT_ANOMALY ? "ENABLED" : "disabled"}`);
-  console.log(`  Scenario  : ${SCENARIO_NAME ?? "none"}`);
+  console.log(`  Scenario  : ${SCENARIO_NAME ?? "none"}${LIVE_MODE && SCENARIO_NAME ? ` (delay: ${(SCENARIO_DELAY_S / 60).toFixed(0)} min)` : ""}`);
   console.log(`  Company   : ${COMPANY_FILTER ?? "all"}`);
   console.log(`  API       : ${API}\n`);
 
   console.log("  Authenticating...");
   await login();
   console.log("  Authenticated.\n");
-
-  const durationS = Math.round(HOURS * 3600);
-  const startMs = Date.now() - durationS * 1000;
 
   const companies = COMPANY_FILTER
     ? COMPANIES.filter((c) => c.cliKey === COMPANY_FILTER)
@@ -913,24 +1233,29 @@ async function main(): Promise<void> {
     console.log(`  Active scenarios: ${activeScenarios.map((s) => s.name).join(", ")}\n`);
   }
 
-  const globalT0 = Date.now();
+  if (LIVE_MODE) {
+    await runLiveMode(companies, activeScenarios);
+  } else {
+    const durationS = Math.round(HOURS * 3600);
+    const startMs = Date.now() - durationS * 1000;
+    const globalT0 = Date.now();
 
-  for (const company of companies) {
-    await simulateCompany(company, durationS, startMs, activeScenarios);
-  }
-
-  // Print scenario timelines
-  if (activeScenarios.length > 0) {
-    console.log("\n  SCENARIO TIMELINE (expected detection rule triggers):");
-    for (let i = 0; i < activeScenarios.length; i++) {
-      printScenarioTimeline(activeScenarios[i], startMs, durationS, i * 1200);
+    for (const company of companies) {
+      await simulateCompany(company, durationS, startMs, activeScenarios);
     }
-  }
 
-  const totalElapsed = ((Date.now() - globalT0) / 1000).toFixed(1);
-  console.log(`\n+----------------------------------------------------------+`);
-  console.log(`|  All simulations complete in ${totalElapsed}s`);
-  console.log(`+----------------------------------------------------------+\n`);
+    if (activeScenarios.length > 0) {
+      console.log("\n  SCENARIO TIMELINE (expected detection rule triggers):");
+      for (let i = 0; i < activeScenarios.length; i++) {
+        printScenarioTimeline(activeScenarios[i], startMs, durationS, i * 1200);
+      }
+    }
+
+    const totalElapsed = ((Date.now() - globalT0) / 1000).toFixed(1);
+    console.log(`\n+----------------------------------------------------------+`);
+    console.log(`|  All simulations complete in ${totalElapsed}s`);
+    console.log(`+----------------------------------------------------------+\n`);
+  }
 }
 
 main().catch((err: unknown) => {
