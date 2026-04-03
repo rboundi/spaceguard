@@ -721,16 +721,168 @@ const SCENARIOS: Record<string, ScenarioDefinition> = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Cross-asset scenario definitions
+// ---------------------------------------------------------------------------
+
+interface CrossAssetStep {
+  offsetSeconds: number;
+  targetAssetName: string;
+  parameterName: string;
+  generator: (t: number, stepStart: number) => number;
+  durationSeconds: number;
+  ruleId: string;
+  severity: string;
+  description: string;
+  phase: string;
+}
+
+interface CrossAssetScenario {
+  name: string;
+  description: string;
+  targetCompany: string;
+  steps: CrossAssetStep[];
+  spartaTactics: string[];
+  expectedCorrelations: string[];
+}
+
+const CROSS_ASSET_SCENARIOS: Record<string, CrossAssetScenario> = {
+  "cross-asset-attack": {
+    name: "cross-asset-attack",
+    description: "Coordinated APT campaign: ground compromise -> spacecraft infection -> data exfiltration",
+    targetCompany: "proba",
+    spartaTactics: ["Initial Access", "Persistence", "Lateral Movement", "Execution", "Exfiltration", "Defense Evasion"],
+    expectedCorrelations: [
+      "Temporal cluster: 4 alerts within 2 min on ground assets",
+      "Kill chain: Initial Access -> Execution -> Persistence -> Exfiltration -> Defense Evasion",
+      "Cross-asset spread: Ground station -> Satellite 1 -> Satellite 2",
+      "Campaign: 14+ alerts across 4 assets within 45 minutes",
+    ],
+    steps: [
+      // Phase 1: Initial Access via Ground
+      { offsetSeconds: 0, targetAssetName: "Brussels", parameterName: "ac.after_hours_login_flag", generator: () => 1, durationSeconds: 2700, ruleId: "SG-AC-005", severity: "MEDIUM", description: "After-hours login to mission control", phase: "Initial Access (Ground)" },
+      { offsetSeconds: 30, targetAssetName: "Svalbard", parameterName: "gs.auth_failure_count", generator: () => 6 + Math.floor(Math.random() * 5), durationSeconds: 60, ruleId: "SG-GS-001", severity: "HIGH", description: "Brute-force authentication attempts on Svalbard", phase: "Initial Access (Ground)" },
+      { offsetSeconds: 60, targetAssetName: "Brussels", parameterName: "ac.privilege_escalation_flag", generator: () => 1, durationSeconds: 2640, ruleId: "SG-AC-001", severity: "CRITICAL", description: "Privilege escalation on Brussels MCC", phase: "Initial Access (Ground)" },
+      { offsetSeconds: 120, targetAssetName: "Svalbard", parameterName: "gs.config_change_flag", generator: () => 1, durationSeconds: 60, ruleId: "SG-GS-003", severity: "HIGH", description: "Unauthorized config change on Svalbard antenna", phase: "Initial Access (Ground)" },
+
+      // Phase 2: Lateral movement to Proba-EO-1
+      { offsetSeconds: 300, targetAssetName: "Svalbard", parameterName: "gs.uplink_volume_kb", generator: (t, s) => 5000 + 3000 * Math.min(1, (t - s) / 60), durationSeconds: 120, ruleId: "SG-GS-004", severity: "HIGH", description: "Anomalous uplink volume (malicious command upload)", phase: "Lateral Movement (Ground->Space)" },
+      { offsetSeconds: 360, targetAssetName: "Proba-EO-1", parameterName: "pe.firmware_hash_mismatch_flag", generator: () => 1, durationSeconds: 2340, ruleId: "SG-PE-001", severity: "CRITICAL", description: "Firmware hash mismatch on Proba-EO-1 OBC", phase: "Lateral Movement (Ground->Space)" },
+      { offsetSeconds: 420, targetAssetName: "Proba-EO-1", parameterName: "pe.process_injection_flag", generator: () => 1, durationSeconds: 2280, ruleId: "SG-PE-004", severity: "CRITICAL", description: "Unexpected process on Proba-EO-1", phase: "Lateral Movement (Ground->Space)" },
+
+      // Phase 3: Spread to Proba-EO-2
+      { offsetSeconds: 900, targetAssetName: "Svalbard", parameterName: "gs.uplink_volume_kb", generator: (t, s) => 5000 + 2000 * Math.min(1, (t - s) / 60), durationSeconds: 120, ruleId: "SG-GS-004", severity: "HIGH", description: "Second anomalous uplink (targeting Proba-EO-2)", phase: "Spread to Second Satellite" },
+      { offsetSeconds: 960, targetAssetName: "Proba-EO-2", parameterName: "pe.firmware_hash_mismatch_flag", generator: () => 1, durationSeconds: 1740, ruleId: "SG-PE-001", severity: "CRITICAL", description: "Firmware hash mismatch on Proba-EO-2", phase: "Spread to Second Satellite" },
+      { offsetSeconds: 1020, targetAssetName: "Proba-EO-2", parameterName: "pe.encryption_downgrade_flag", generator: () => 1, durationSeconds: 1680, ruleId: "SG-PE-006", severity: "CRITICAL", description: "Link encryption downgrade on Proba-EO-2", phase: "Spread to Second Satellite" },
+
+      // Phase 4: Data exfiltration
+      { offsetSeconds: 1500, targetAssetName: "Proba-EO-1", parameterName: "dx.payload_download_rate_mbps", generator: (t, s) => 100 + 50 * Math.min(1, (t - s) / 120), durationSeconds: 600, ruleId: "SG-DX-003", severity: "HIGH", description: "Excessive payload download from Proba-EO-1", phase: "Data Exfiltration" },
+      { offsetSeconds: 1500, targetAssetName: "Brussels", parameterName: "dx.outbound_volume_mb", generator: (t, s) => Math.min(800, 10 + 790 * ((t - s) / 300)), durationSeconds: 600, ruleId: "SG-DX-001", severity: "HIGH", description: "Outbound data volume spike on Brussels MCC", phase: "Data Exfiltration" },
+      { offsetSeconds: 1800, targetAssetName: "Proba-EO-1", parameterName: "dx.unauthorized_dest_flag", generator: () => 1, durationSeconds: 300, ruleId: "SG-DX-002", severity: "CRITICAL", description: "Unauthorized data destination from Proba-EO-1", phase: "Data Exfiltration" },
+      { offsetSeconds: 1800, targetAssetName: "Proba-EO-2", parameterName: "dx.unauthorized_dest_flag", generator: () => 1, durationSeconds: 300, ruleId: "SG-DX-002", severity: "CRITICAL", description: "Unauthorized data destination from Proba-EO-2", phase: "Data Exfiltration" },
+
+      // Phase 5: Cover tracks
+      { offsetSeconds: 2400, targetAssetName: "Brussels", parameterName: "pe.log_deletion_flag", generator: () => 1, durationSeconds: 60, ruleId: "SG-PE-003", severity: "CRITICAL", description: "Audit log deletion on Brussels MCC", phase: "Cover Tracks" },
+      { offsetSeconds: 2400, targetAssetName: "Svalbard", parameterName: "pe.log_deletion_flag", generator: () => 1, durationSeconds: 60, ruleId: "SG-PE-003", severity: "CRITICAL", description: "Audit log deletion on Svalbard GS", phase: "Cover Tracks" },
+    ],
+  },
+  "constellation-jamming": {
+    name: "constellation-jamming",
+    description: "Broadband RF jamming affecting multiple NordSat CubeSats through shared Kiruna ground station",
+    targetCompany: "nordsat",
+    spartaTactics: ["Initial Access", "Impact"],
+    expectedCorrelations: [
+      "Temporal cluster: SNR drops across multiple passes",
+      "Cross-asset spread: same pattern on Alpha, Beta, Gamma",
+      "Campaign: RF interference correlated across constellation",
+    ],
+    steps: [
+      // NordSat-Alpha pass (first orbit)
+      { offsetSeconds: 0, targetAssetName: "Kiruna", parameterName: "rf.snr_db", generator: (t, s) => { const e = t - s; return e < 30 ? 15 - 12 * (e / 30) : e < 500 ? 3 + noise(1) : 3 + 12 * ((e - 500) / 100); }, durationSeconds: 600, ruleId: "SG-RF-001", severity: "HIGH", description: "SNR drop during NordSat-Alpha pass", phase: "Jamming Pass 1 (Alpha)" },
+      { offsetSeconds: 15, targetAssetName: "Kiruna", parameterName: "rf.ber", generator: (t, s) => { const e = t - s; return e < 10 ? 1e-9 * Math.pow(1e6, e / 10) : e < 500 ? 0.005 + noise(0.003) : 1e-9; }, durationSeconds: 585, ruleId: "SG-RF-003", severity: "MEDIUM", description: "BER spike during Alpha pass", phase: "Jamming Pass 1 (Alpha)" },
+      { offsetSeconds: 20, targetAssetName: "Kiruna", parameterName: "rf.agc_level_db", generator: (t, s) => -35 + 20 * Math.sin((t - s) * 3.7) * Math.sin((t - s) * 0.5), durationSeconds: 580, ruleId: "SG-RF-004", severity: "HIGH", description: "AGC fluctuation during Alpha pass", phase: "Jamming Pass 1 (Alpha)" },
+
+      // NordSat-Beta pass (next orbit ~95 min later)
+      { offsetSeconds: 5700, targetAssetName: "Kiruna", parameterName: "rf.snr_db", generator: (t, s) => { const e = t - s; return e < 30 ? 15 - 12 * (e / 30) : e < 500 ? 3 + noise(1) : 3 + 12 * ((e - 500) / 100); }, durationSeconds: 600, ruleId: "SG-RF-001", severity: "HIGH", description: "SNR drop during NordSat-Beta pass", phase: "Jamming Pass 2 (Beta)" },
+      { offsetSeconds: 5720, targetAssetName: "Kiruna", parameterName: "rf.agc_level_db", generator: (t, s) => -35 + 20 * Math.sin((t - s) * 3.7) * Math.sin((t - s) * 0.5), durationSeconds: 580, ruleId: "SG-RF-004", severity: "HIGH", description: "AGC fluctuation during Beta pass", phase: "Jamming Pass 2 (Beta)" },
+
+      // NordSat-Gamma pass (another orbit ~95 min later)
+      { offsetSeconds: 11400, targetAssetName: "Kiruna", parameterName: "rf.snr_db", generator: (t, s) => { const e = t - s; return e < 30 ? 15 - 12 * (e / 30) : e < 500 ? 3 + noise(1) : 3 + 12 * ((e - 500) / 100); }, durationSeconds: 600, ruleId: "SG-RF-001", severity: "HIGH", description: "SNR drop during NordSat-Gamma pass", phase: "Jamming Pass 3 (Gamma)" },
+      { offsetSeconds: 11420, targetAssetName: "Kiruna", parameterName: "rf.agc_level_db", generator: (t, s) => -35 + 20 * Math.sin((t - s) * 3.7) * Math.sin((t - s) * 0.5), durationSeconds: 580, ruleId: "SG-RF-004", severity: "HIGH", description: "AGC fluctuation during Gamma pass", phase: "Jamming Pass 3 (Gamma)" },
+    ],
+  },
+};
+
+function generateCrossAssetPoints(
+  startMs: number,
+  durationS: number,
+  step: CrossAssetStep,
+  scenarioOffsetS: number,
+): Point[] {
+  const points: Point[] = [];
+  const t0 = durationS / 2 + scenarioOffsetS;
+  const stepStart = t0 + step.offsetSeconds;
+  const stepEnd = stepStart + step.durationSeconds;
+
+  for (let t = Math.max(0, stepStart); t < Math.min(durationS, stepEnd); t += 1) {
+    const ts = new Date(startMs + t * 1000).toISOString();
+    const value = step.generator(t, stepStart);
+    points.push({
+      time: ts,
+      parameterName: step.parameterName,
+      valueNumeric: +value.toFixed(6),
+      quality: "SUSPECT",
+    });
+  }
+  return points;
+}
+
+function printCrossAssetTimeline(scenario: CrossAssetScenario, startMs: number, durationS: number, offset: number = 0): void {
+  const t0Ms = startMs + (durationS / 2 + offset) * 1000;
+  console.log(`\n  Scenario: ${scenario.name}`);
+  console.log(`  ${scenario.description}`);
+  console.log(`  SPARTA tactics: ${scenario.spartaTactics.join(", ")}`);
+  console.log(`  ${"=".repeat(64)}`);
+
+  let lastPhase = "";
+  for (const step of scenario.steps) {
+    if (step.phase !== lastPhase) {
+      console.log(`  --- ${step.phase} ---`);
+      lastPhase = step.phase;
+    }
+    const mm = Math.floor(step.offsetSeconds / 60);
+    const ss = step.offsetSeconds % 60;
+    const timeStr = `t+${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+    const sev = step.severity === "CRITICAL" ? "!" : step.severity === "HIGH" ? "*" : " ";
+    console.log(`  ${timeStr}  ${step.targetAssetName.padEnd(22)} ${step.parameterName.padEnd(30)} -> ${step.ruleId} (${step.severity}) ${sev}`);
+  }
+
+  console.log(`\n  Expected correlations:`);
+  for (const c of scenario.expectedCorrelations) {
+    console.log(`    - ${c}`);
+  }
+  console.log(`  Absolute start: ${new Date(t0Ms).toISOString()}`);
+}
+
 function getActiveScenarios(): ScenarioDefinition[] {
   if (!SCENARIO_NAME) return [];
-  if (SCENARIO_NAME === "spacecraft-failure") return []; // handled by existing anomaly injection
+  if (SCENARIO_NAME === "spacecraft-failure") return [];
   if (SCENARIO_NAME === "all") return Object.values(SCENARIOS);
+  if (CROSS_ASSET_SCENARIOS[SCENARIO_NAME]) return []; // handled separately
   const s = SCENARIOS[SCENARIO_NAME];
   if (!s) {
-    console.error(`Unknown scenario: "${SCENARIO_NAME}". Options: ${Object.keys(SCENARIOS).join(", ")}, spacecraft-failure, all`);
+    const allNames = [...Object.keys(SCENARIOS), ...Object.keys(CROSS_ASSET_SCENARIOS), "spacecraft-failure", "all"].join(", ");
+    console.error(`Unknown scenario: "${SCENARIO_NAME}". Options: ${allNames}`);
     process.exit(1);
   }
   return [s];
+}
+
+function getActiveCrossAssetScenarios(): CrossAssetScenario[] {
+  if (!SCENARIO_NAME) return [];
+  if (SCENARIO_NAME === "all") return Object.values(CROSS_ASSET_SCENARIOS);
+  const s = CROSS_ASSET_SCENARIOS[SCENARIO_NAME];
+  return s ? [s] : [];
 }
 
 function generateScenarioPoints(
@@ -1019,7 +1171,7 @@ async function simulateSatellite(
 // Per-company simulation
 // ---------------------------------------------------------------------------
 
-async function simulateCompany(company: CompanyConfig, durationS: number, startMs: number, scenarios: ScenarioDefinition[]): Promise<void> {
+async function simulateCompany(company: CompanyConfig, durationS: number, startMs: number, scenarios: ScenarioDefinition[], crossScenarios: CrossAssetScenario[]): Promise<void> {
   console.log(`\n${"=".repeat(60)}`);
   console.log(`  ${company.name}`);
   console.log(`${"=".repeat(60)}`);
@@ -1085,12 +1237,59 @@ async function simulateCompany(company: CompanyConfig, durationS: number, startM
     totalPoints += gsPoints.length;
   }
 
+  // Cross-asset scenario injection
+  const companyCrossScenarios = crossScenarios.filter((s) => s.targetCompany === company.cliKey);
+  if (companyCrossScenarios.length > 0) {
+    // Collect all assets (satellites + ground stations) for target matching
+    const allAssets = gsAssetsRes.data;
+    for (const satAsset of satAssetsRes.data) {
+      if (!allAssets.find((a) => a.id === satAsset.id)) allAssets.push(satAsset);
+    }
+
+    for (let sci = 0; sci < companyCrossScenarios.length; sci++) {
+      const crossScenario = companyCrossScenarios[sci];
+      const offset = sci * 3600;
+      console.log(`\n  Cross-Asset Scenario: ${crossScenario.name}`);
+
+      // Group steps by target asset
+      const stepsByAsset = new Map<string, CrossAssetStep[]>();
+      for (const step of crossScenario.steps) {
+        const list = stepsByAsset.get(step.targetAssetName) ?? [];
+        list.push(step);
+        stepsByAsset.set(step.targetAssetName, list);
+      }
+
+      // Create a scenario stream per target asset and inject
+      for (const [targetName, steps] of stepsByAsset) {
+        const asset = allAssets.find((a) => a.name.includes(targetName));
+        if (!asset) {
+          console.log(`    SKIP: Target asset "${targetName}" not found`);
+          continue;
+        }
+
+        const allPoints: Point[] = [];
+        for (const step of steps) {
+          const pts = generateCrossAssetPoints(startMs, durationS, step, offset);
+          allPoints.push(...pts);
+        }
+
+        if (allPoints.length > 0) {
+          const apid = Math.abs(targetName.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % 900 + 800;
+          const stream = await createStream(org.id, asset.id, `${targetName} ${crossScenario.name} Events`, apid, 1);
+          await ingestStream(stream, allPoints.sort((a, b) => a.time.localeCompare(b.time)), 100);
+          results.push({ name: `${targetName} (scenario)`, totalPoints: allPoints.length, elapsedMs: 0 });
+          totalPoints += allPoints.length;
+        }
+      }
+    }
+  }
+
   // Company summary
   console.log(`\n  ${company.name} Summary:`);
   for (const r of results) {
-    console.log(`    ${r.name.padEnd(24)} ${r.totalPoints.toLocaleString().padStart(10)} pts  (${(r.elapsedMs / 1000).toFixed(1)}s)`);
+    console.log(`    ${r.name.padEnd(28)} ${r.totalPoints.toLocaleString().padStart(10)} pts  (${(r.elapsedMs / 1000).toFixed(1)}s)`);
   }
-  console.log(`    ${"TOTAL".padEnd(24)} ${totalPoints.toLocaleString().padStart(10)} pts`);
+  console.log(`    ${"TOTAL".padEnd(28)} ${totalPoints.toLocaleString().padStart(10)} pts`);
 }
 
 // ---------------------------------------------------------------------------
@@ -1437,8 +1636,10 @@ async function main(): Promise<void> {
   }
 
   const activeScenarios = getActiveScenarios();
-  if (activeScenarios.length > 0) {
-    console.log(`  Active scenarios: ${activeScenarios.map((s) => s.name).join(", ")}\n`);
+  const activeCrossScenarios = getActiveCrossAssetScenarios();
+  const allNames = [...activeScenarios.map((s) => s.name), ...activeCrossScenarios.map((s) => s.name)];
+  if (allNames.length > 0) {
+    console.log(`  Active scenarios: ${allNames.join(", ")}\n`);
   }
 
   if (LIVE_MODE) {
@@ -1449,13 +1650,20 @@ async function main(): Promise<void> {
     const globalT0 = Date.now();
 
     for (const company of companies) {
-      await simulateCompany(company, durationS, startMs, activeScenarios);
+      await simulateCompany(company, durationS, startMs, activeScenarios, activeCrossScenarios);
     }
 
     if (activeScenarios.length > 0) {
       console.log("\n  SCENARIO TIMELINE (expected detection rule triggers):");
       for (let i = 0; i < activeScenarios.length; i++) {
         printScenarioTimeline(activeScenarios[i], startMs, durationS, i * 1200);
+      }
+    }
+
+    if (activeCrossScenarios.length > 0) {
+      console.log("\n  CROSS-ASSET SCENARIO TIMELINE:");
+      for (let i = 0; i < activeCrossScenarios.length; i++) {
+        printCrossAssetTimeline(activeCrossScenarios[i], startMs, durationS, i * 3600);
       }
     }
 
