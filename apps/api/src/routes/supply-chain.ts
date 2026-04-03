@@ -13,6 +13,14 @@ import {
   deleteSupplier,
   getSupplierRiskSummary,
 } from "../services/supply-chain.service";
+import {
+  createQuestionnaire,
+  getQuestionnaire,
+  listQuestionnaires,
+  submitResponses,
+  sendQuestionnaire,
+  QUESTIONNAIRE_TEMPLATE,
+} from "../services/questionnaire.service";
 import { logAudit, extractActor, extractIp } from "../middleware/audit";
 
 export const supplyChainRoutes = new Hono();
@@ -122,4 +130,52 @@ supplyChainRoutes.get("/supply-chain/risk-summary", async (c) => {
   assertTenant(c, organizationId);
   const summary = await getSupplierRiskSummary(organizationId);
   return c.json(summary);
+});
+
+// ---------------------------------------------------------------------------
+// Vendor Questionnaires
+// ---------------------------------------------------------------------------
+
+// Get questionnaire template
+supplyChainRoutes.get("/supply-chain/questionnaire-template", async (c) => {
+  return c.json({ questions: QUESTIONNAIRE_TEMPLATE, totalQuestions: QUESTIONNAIRE_TEMPLATE.length });
+});
+
+// List questionnaires for a supplier
+supplyChainRoutes.get("/supply-chain/suppliers/:supplierId/questionnaires", async (c) => {
+  const supplierId = c.req.param("supplierId");
+  const questionnaires = await listQuestionnaires(supplierId);
+  return c.json({ data: questionnaires, total: questionnaires.length });
+});
+
+// Create new questionnaire for a supplier
+supplyChainRoutes.post("/supply-chain/suppliers/:supplierId/questionnaires", async (c) => {
+  const supplierId = c.req.param("supplierId");
+  const user = c.get("user");
+  const organizationId = c.req.query("organizationId") ?? user.organizationId;
+  assertTenant(c, organizationId);
+  const q = await createQuestionnaire(supplierId, organizationId);
+  return c.json(q, 201);
+});
+
+// Send questionnaire
+supplyChainRoutes.post("/supply-chain/questionnaires/:id/send", async (c) => {
+  const id = c.req.param("id");
+  const q = await sendQuestionnaire(id);
+  return c.json(q);
+});
+
+// Submit responses
+supplyChainRoutes.post("/supply-chain/questionnaires/:id/submit", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json();
+  const q = await submitResponses(id, body.responses ?? {});
+  return c.json(q);
+});
+
+// Get single questionnaire
+supplyChainRoutes.get("/supply-chain/questionnaires/:id", async (c) => {
+  const id = c.req.param("id");
+  const q = await getQuestionnaire(id);
+  return c.json(q);
 });
