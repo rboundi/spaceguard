@@ -33,6 +33,7 @@ import { vulnerabilityRoutes } from "./routes/vulnerability";
 import { lifecycleRoutes } from "./routes/lifecycle";
 import { tailoringRoutes } from "./routes/tailoring";
 import { cryptoRoutes } from "./routes/crypto";
+import { escalationRoutes } from "./routes/escalation";
 import { auditMiddleware } from "./middleware/audit";
 import { authMiddleware, adminOnly } from "./middleware/auth-guard";
 import { startScheduler } from "./services/scheduler.service";
@@ -151,6 +152,8 @@ app.use("/api/v1/tailoring/*", authMiddleware);
 app.use("/api/v1/tailoring", authMiddleware);
 app.use("/api/v1/crypto/*", authMiddleware);
 app.use("/api/v1/crypto", authMiddleware);
+app.use("/api/v1/escalation/*", authMiddleware);
+app.use("/api/v1/escalation", authMiddleware);
 app.use("/api/v1/admin/*", authMiddleware);
 app.use("/api/v1/admin/*", adminOnly);
 
@@ -219,6 +222,9 @@ app.route("/api/v1", tailoringRoutes);
 
 // Cryptographic Posture routes
 app.route("/api/v1", cryptoRoutes);
+
+// Crisis Escalation routes
+app.route("/api/v1", escalationRoutes);
 
 // Admin routes
 app.route("/api/v1", adminSpartaRoutes);

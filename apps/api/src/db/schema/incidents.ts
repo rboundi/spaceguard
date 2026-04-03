@@ -7,6 +7,7 @@ import {
   pgEnum,
   jsonb,
   integer,
+  boolean,
   doublePrecision,
   index,
   foreignKey,
@@ -47,6 +48,25 @@ export const incidentReportTypeEnum = pgEnum("incident_report_type", [
   "INCIDENT_NOTIFICATION",
   "INTERMEDIATE_REPORT",
   "FINAL_REPORT",
+]);
+
+export const escalationLevelEnum = pgEnum("escalation_level", [
+  "CYBER_INCIDENT",
+  "LARGE_SCALE_INCIDENT",
+  "CYBER_CRISIS",
+]);
+
+export const managementLevelEnum = pgEnum("management_level", [
+  "TECHNICAL",
+  "OPERATIONAL",
+  "STRATEGIC",
+]);
+
+export const csirtNotificationStatusEnum = pgEnum("csirt_notification_status", [
+  "NOT_REQUIRED",
+  "PENDING",
+  "NOTIFIED",
+  "ACKNOWLEDGED",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -93,6 +113,22 @@ export const incidents = pgTable(
     // Correlation engine metadata (nullable: only set for auto-correlated incidents)
     correlationRule: varchar("correlation_rule", { length: 100 }),
     correlationScore: doublePrecision("correlation_score"),
+
+    // ENISA three-tier crisis escalation
+    escalationLevel: escalationLevelEnum("escalation_level")
+      .notNull()
+      .default("CYBER_INCIDENT"),
+    escalatedAt: timestamp("escalated_at", { withTimezone: true }),
+    escalationReason: text("escalation_reason"),
+    managementLevel: managementLevelEnum("management_level")
+      .notNull()
+      .default("TECHNICAL"),
+    crossBorderImpact: boolean("cross_border_impact").notNull().default(false),
+    affectedMemberStates: jsonb("affected_member_states"),
+    csirtNotificationStatus: csirtNotificationStatusEnum("csirt_notification_status")
+      .notNull()
+      .default("NOT_REQUIRED"),
+    csirtContact: varchar("csirt_contact", { length: 255 }),
 
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

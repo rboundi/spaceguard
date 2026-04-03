@@ -1708,6 +1708,41 @@ export const deleteTailoringProfile = (profileId: string) =>
   api.delete(`/api/v1/tailoring/profiles/${profileId}`);
 
 // ---------------------------------------------------------------------------
+// Crisis Escalation
+// ---------------------------------------------------------------------------
+
+export interface EscalationEvaluation {
+  currentLevel: string;
+  recommendedLevel: string;
+  shouldEscalate: boolean;
+  criteriaEvaluation: Array<{ criterion: string; met: boolean; value: string; threshold: string }>;
+  managementLevel: string;
+  csirtRequired: boolean;
+}
+
+export const evaluateEscalation = (incidentId: string, organizationId: string) =>
+  api.get<EscalationEvaluation>(
+    `/api/v1/escalation/evaluate/${incidentId}?organizationId=${organizationId}`
+  );
+
+export const escalateIncidentApi = (incidentId: string, newLevel: string, reason: string, organizationId: string) =>
+  api.post<{ incidentId: string; previousLevel: string; newLevel: string }>(
+    `/api/v1/escalation/escalate/${incidentId}?organizationId=${organizationId}`,
+    { newLevel, reason }
+  );
+
+export const updateCsirtStatusApi = (incidentId: string, status: string, organizationId: string) =>
+  api.post<{ incidentId: string; csirtNotificationStatus: string }>(
+    `/api/v1/escalation/csirt/${incidentId}?organizationId=${organizationId}`,
+    { status }
+  );
+
+export const getCrisisTemplates = () =>
+  api.get<{ data: Array<{ id: string; name: string; level: string; template: string }> }>(
+    "/api/v1/escalation/templates"
+  );
+
+// ---------------------------------------------------------------------------
 // Cryptographic Posture Management
 // ---------------------------------------------------------------------------
 
