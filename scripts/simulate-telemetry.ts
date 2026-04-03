@@ -10,6 +10,10 @@
  *   npx tsx scripts/simulate-telemetry.ts --company nordsat      # only NordSat CubeSats
  *   npx tsx scripts/simulate-telemetry.ts --company medsat       # only MedSat-1 (GEO)
  *   npx tsx scripts/simulate-telemetry.ts --hours 6 --anomaly    # all companies, 6 hours, anomalies
+ *   npx tsx scripts/simulate-telemetry.ts --scenario rf-jamming  # RF jamming attack scenario
+ *   npx tsx scripts/simulate-telemetry.ts --scenario supply-chain-compromise
+ *   npx tsx scripts/simulate-telemetry.ts --scenario insider-threat
+ *   npx tsx scripts/simulate-telemetry.ts --scenario all         # all scenarios staggered
  *
  * Satellite profiles:
  *   Proba Space Systems:  3 LEO (EO constellation), SSO 615 km
@@ -25,7 +29,6 @@ const API = "http://localhost:3001/api/v1";
 // ---------------------------------------------------------------------------
 
 const args = process.argv.slice(2);
-const INJECT_ANOMALY = args.includes("--anomaly");
 const hoursFlag = args.find((a) => a === "--hours");
 const HOURS = hoursFlag
   ? Math.min(24, Math.max(0.1, parseFloat(args[args.indexOf("--hours") + 1] ?? "1")))
@@ -34,6 +37,11 @@ const companyFlag = args.find((a) => a === "--company");
 const COMPANY_FILTER = companyFlag
   ? (args[args.indexOf("--company") + 1] ?? "").toLowerCase()
   : null;
+const scenarioFlag = args.find((a) => a === "--scenario");
+const SCENARIO_NAME = scenarioFlag
+  ? (args[args.indexOf("--scenario") + 1] ?? "").toLowerCase()
+  : args.includes("--anomaly") ? "spacecraft-failure" : null;
+const INJECT_ANOMALY = SCENARIO_NAME === "spacecraft-failure" || args.includes("--anomaly");
 
 // ---------------------------------------------------------------------------
 // Satellite profile interface
@@ -323,6 +331,271 @@ function stationKeepingDeltaV(t: number): number {
 }
 
 // ---------------------------------------------------------------------------
+// Attack scenario definitions
+// ---------------------------------------------------------------------------
+
+interface ScenarioStep {
+  offsetSeconds: number;
+  parameterName: string;
+  generator: (t: number, stepStart: number) => number;
+  durationSeconds: number;
+  ruleId: string;
+  severity: string;
+  description: string;
+}
+
+interface ScenarioDefinition {
+  name: string;
+  description: string;
+  targetAssetPattern: string;
+  targetCompany: string;
+  steps: ScenarioStep[];
+  spartaTactics: string[];
+  detectionRules: string[];
+}
+
+const SCENARIOS: Record<string, ScenarioDefinition> = {
+  "rf-jamming": {
+    name: "rf-jamming",
+    description: "Broadband RF interference attack on satellite downlink",
+    targetAssetPattern: "Proba-EO-1",
+    targetCompany: "proba",
+    spartaTactics: ["Initial Access", "Impact"],
+    detectionRules: ["SG-RF-001", "SG-RF-003", "SG-RF-004"],
+    steps: [
+      {
+        offsetSeconds: 0,
+        parameterName: "rf.snr_db",
+        durationSeconds: 300,
+        ruleId: "SG-RF-001",
+        severity: "HIGH",
+        description: "SNR drops below 5.0 dB (jamming onset)",
+        generator: (t, s) => {
+          const elapsed = t - s;
+          if (elapsed < 0) return 15 + noise(0.5);          // nominal
+          if (elapsed < 30) return 15 - 12 * (elapsed / 30) + noise(0.3); // rapid drop
+          if (elapsed < 270) return 2.5 + noise(1.0);       // sustained jamming
+          return 2.5 + 12.5 * ((elapsed - 270) / 30) + noise(0.5); // recovery
+        },
+      },
+      {
+        offsetSeconds: 15,
+        parameterName: "rf.ber",
+        durationSeconds: 285,
+        ruleId: "SG-RF-003",
+        severity: "MEDIUM",
+        description: "BER spikes above 0.001",
+        generator: (t, s) => {
+          const elapsed = t - s;
+          if (elapsed < 0) return 1e-9;
+          if (elapsed < 10) return 1e-9 * Math.pow(1e6, elapsed / 10); // exponential rise
+          if (elapsed < 255) return 0.005 + noise(0.003);   // sustained high BER
+          return 0.005 * Math.pow(0.001, (elapsed - 255) / 30); // recovery
+        },
+      },
+      {
+        offsetSeconds: 20,
+        parameterName: "rf.agc_level_db",
+        durationSeconds: 280,
+        ruleId: "SG-RF-004",
+        severity: "HIGH",
+        description: "AGC rate of change exceeds 15 dB/s",
+        generator: (t, s) => {
+          const elapsed = t - s;
+          if (elapsed < 0) return -35 + noise(0.3);
+          // Rapid fluctuations simulating broadband interference
+          return -35 + 20 * Math.sin(elapsed * 3.7) * Math.sin(elapsed * 0.5) + noise(2);
+        },
+      },
+    ],
+  },
+  "supply-chain-compromise": {
+    name: "supply-chain-compromise",
+    description: "Firmware backdoor activation and data exfiltration",
+    targetAssetPattern: "Proba-EO-1",
+    targetCompany: "proba",
+    spartaTactics: ["Persistence", "Execution", "Exfiltration", "Defense Evasion"],
+    detectionRules: ["SG-PE-001", "SG-PE-004", "SG-DX-001", "SG-DX-002", "SG-PE-003"],
+    steps: [
+      {
+        offsetSeconds: 0,
+        parameterName: "pe.firmware_hash_mismatch_flag",
+        durationSeconds: 1200,
+        ruleId: "SG-PE-001",
+        severity: "CRITICAL",
+        description: "Firmware hash mismatch detected on OBC",
+        generator: () => 1,
+      },
+      {
+        offsetSeconds: 120,
+        parameterName: "pe.process_injection_flag",
+        durationSeconds: 1080,
+        ruleId: "SG-PE-004",
+        severity: "CRITICAL",
+        description: "Unexpected process spawned on OBC",
+        generator: () => 1,
+      },
+      {
+        offsetSeconds: 300,
+        parameterName: "dx.outbound_volume_mb",
+        durationSeconds: 600,
+        ruleId: "SG-DX-001",
+        severity: "HIGH",
+        description: "Outbound data volume ramps above 500 MB",
+        generator: (t, s) => {
+          const elapsed = t - s;
+          if (elapsed < 0) return 10 + noise(5);
+          return Math.min(800, 10 + 790 * (elapsed / 300)) + noise(10);
+        },
+      },
+      {
+        offsetSeconds: 600,
+        parameterName: "dx.unauthorized_dest_flag",
+        durationSeconds: 300,
+        ruleId: "SG-DX-002",
+        severity: "CRITICAL",
+        description: "Data transfer to unauthorized destination",
+        generator: () => 1,
+      },
+      {
+        offsetSeconds: 900,
+        parameterName: "pe.log_deletion_flag",
+        durationSeconds: 60,
+        ruleId: "SG-PE-003",
+        severity: "CRITICAL",
+        description: "Audit log deletion detected (covering tracks)",
+        generator: () => 1,
+      },
+    ],
+  },
+  "insider-threat": {
+    name: "insider-threat",
+    description: "Privileged user misuse on ground segment",
+    targetAssetPattern: "Brussels Mission Control",
+    targetCompany: "proba",
+    spartaTactics: ["Initial Access", "Persistence", "Exfiltration", "Defense Evasion"],
+    detectionRules: ["SG-AC-005", "SG-AC-001", "SG-GS-003", "SG-DX-005", "SG-DX-004", "SG-PE-003"],
+    steps: [
+      {
+        offsetSeconds: 0,
+        parameterName: "ac.after_hours_login_flag",
+        durationSeconds: 1200,
+        ruleId: "SG-AC-005",
+        severity: "MEDIUM",
+        description: "After-hours login to mission-critical system",
+        generator: () => 1,
+      },
+      {
+        offsetSeconds: 60,
+        parameterName: "ac.privilege_escalation_flag",
+        durationSeconds: 1140,
+        ruleId: "SG-AC-001",
+        severity: "CRITICAL",
+        description: "Privilege escalation detected",
+        generator: () => 1,
+      },
+      {
+        offsetSeconds: 180,
+        parameterName: "gs.config_change_flag",
+        durationSeconds: 60,
+        ruleId: "SG-GS-003",
+        severity: "HIGH",
+        description: "Configuration change outside maintenance window",
+        generator: () => 1,
+      },
+      {
+        offsetSeconds: 300,
+        parameterName: "dx.bulk_query_count",
+        durationSeconds: 600,
+        ruleId: "SG-DX-005",
+        severity: "HIGH",
+        description: "Bulk database queries ramping above 50",
+        generator: (t, s) => {
+          const elapsed = t - s;
+          if (elapsed < 0) return 2 + noise(1);
+          return Math.min(120, 2 + 118 * (elapsed / 300)) + noise(3);
+        },
+      },
+      {
+        offsetSeconds: 600,
+        parameterName: "dx.key_export_flag",
+        durationSeconds: 60,
+        ruleId: "SG-DX-004",
+        severity: "CRITICAL",
+        description: "Cryptographic key material export detected",
+        generator: () => 1,
+      },
+      {
+        offsetSeconds: 900,
+        parameterName: "pe.log_deletion_flag",
+        durationSeconds: 60,
+        ruleId: "SG-PE-003",
+        severity: "CRITICAL",
+        description: "Audit log deletion (covering tracks)",
+        generator: () => 1,
+      },
+    ],
+  },
+};
+
+function getActiveScenarios(): ScenarioDefinition[] {
+  if (!SCENARIO_NAME) return [];
+  if (SCENARIO_NAME === "spacecraft-failure") return []; // handled by existing anomaly injection
+  if (SCENARIO_NAME === "all") return Object.values(SCENARIOS);
+  const s = SCENARIOS[SCENARIO_NAME];
+  if (!s) {
+    console.error(`Unknown scenario: "${SCENARIO_NAME}". Options: ${Object.keys(SCENARIOS).join(", ")}, spacecraft-failure, all`);
+    process.exit(1);
+  }
+  return [s];
+}
+
+function generateScenarioPoints(
+  startMs: number,
+  durationS: number,
+  scenario: ScenarioDefinition,
+  scenarioOffsetS: number = 0,
+): Point[] {
+  const points: Point[] = [];
+  const t0 = durationS / 2 + scenarioOffsetS; // scenario starts at halfway + offset
+
+  for (const step of scenario.steps) {
+    const stepStart = t0 + step.offsetSeconds;
+    const stepEnd = stepStart + step.durationSeconds;
+    // Generate at 1 Hz for flag/threshold params
+    for (let t = Math.max(0, stepStart); t < Math.min(durationS, stepEnd); t += 1) {
+      const ts = new Date(startMs + t * 1000).toISOString();
+      const value = step.generator(t, stepStart);
+      points.push({
+        time: ts,
+        parameterName: step.parameterName,
+        valueNumeric: +value.toFixed(6),
+        quality: "SUSPECT",
+      });
+    }
+  }
+
+  return points.sort((a, b) => a.time.localeCompare(b.time));
+}
+
+function printScenarioTimeline(scenario: ScenarioDefinition, startMs: number, durationS: number, scenarioOffset: number = 0): void {
+  const t0S = durationS / 2 + scenarioOffset;
+  const t0Ms = startMs + t0S * 1000;
+  console.log(`\n  Scenario: ${scenario.name} (${scenario.description})`);
+  console.log(`  SPARTA tactics: ${scenario.spartaTactics.join(", ")}`);
+  console.log(`  ${"=".repeat(56)}`);
+  for (const step of scenario.steps) {
+    const mm = Math.floor(step.offsetSeconds / 60);
+    const ss = step.offsetSeconds % 60;
+    const timeStr = `t+${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+    const sevColor = step.severity === "CRITICAL" ? "!" : step.severity === "HIGH" ? "*" : " ";
+    console.log(`  ${timeStr}  ${step.parameterName.padEnd(36)} -> ${step.ruleId} (${step.severity}) ${sevColor}`);
+    console.log(`           ${step.description}`);
+  }
+  console.log(`  Absolute time: ${new Date(t0Ms).toISOString()}`);
+}
+
+// ---------------------------------------------------------------------------
 // API helpers
 // ---------------------------------------------------------------------------
 
@@ -505,9 +778,11 @@ function generateCommsPoints(startMs: number, durationS: number, anomalyStart: n
 async function simulateSatellite(
   orgId: string,
   assetId: string,
+  assetName: string,
   profile: SatelliteProfile,
   durationS: number,
   startMs: number,
+  scenarios: ScenarioDefinition[],
 ): Promise<{ name: string; totalPoints: number; elapsedMs: number }> {
   const anomalyStart = durationS / 2;
   const t0 = Date.now();
@@ -533,6 +808,23 @@ async function simulateSatellite(
     streams.push({ stream: commsStream, points: commsPoints, batch: 100 });
   }
 
+  // Inject scenario points into the HK stream (scenario params ride on the same stream)
+  const matchingScenarios = scenarios.filter(
+    (s) => assetName.includes(s.targetAssetPattern) || profile.name.includes(s.targetAssetPattern)
+  );
+  if (matchingScenarios.length > 0) {
+    for (let i = 0; i < matchingScenarios.length; i++) {
+      const scenario = matchingScenarios[i];
+      const offset = i * 1200; // stagger scenarios by 20 min when running "all"
+      const scenarioPoints = generateScenarioPoints(startMs, durationS, scenario, offset);
+      if (scenarioPoints.length > 0) {
+        const scenarioStream = await createStream(orgId, assetId, `${profile.name} ${scenario.name} Events`, apidBase + 300 + i, 1);
+        streams.push({ stream: scenarioStream, points: scenarioPoints, batch: 100 });
+        console.log(`    Scenario "${scenario.name}": ${scenarioPoints.length} injected points`);
+      }
+    }
+  }
+
   // Ingest all streams concurrently
   await Promise.all(streams.map((s) => ingestStream(s.stream, s.points, s.batch)));
 
@@ -544,7 +836,7 @@ async function simulateSatellite(
 // Per-company simulation
 // ---------------------------------------------------------------------------
 
-async function simulateCompany(company: CompanyConfig, durationS: number, startMs: number): Promise<void> {
+async function simulateCompany(company: CompanyConfig, durationS: number, startMs: number, scenarios: ScenarioDefinition[]): Promise<void> {
   console.log(`\n${"=".repeat(60)}`);
   console.log(`  ${company.name}`);
   console.log(`${"=".repeat(60)}`);
@@ -572,7 +864,8 @@ async function simulateCompany(company: CompanyConfig, durationS: number, startM
       continue;
     }
     console.log(`\n  Satellite: ${profile.name} (${asset.id.slice(0, 8)}...)`);
-    const result = await simulateSatellite(org.id, asset.id, profile, durationS, startMs);
+    const companyScenarios = scenarios.filter((s) => s.targetCompany === company.cliKey);
+    const result = await simulateSatellite(org.id, asset.id, asset.name, profile, durationS, startMs, companyScenarios);
     results.push(result);
     totalPoints += result.totalPoints;
   }
@@ -595,6 +888,7 @@ async function main(): Promise<void> {
   console.log("+----------------------------------------------------------+");
   console.log(`  Duration  : ${HOURS} hour${HOURS !== 1 ? "s" : ""}`);
   console.log(`  Anomalies : ${INJECT_ANOMALY ? "ENABLED" : "disabled"}`);
+  console.log(`  Scenario  : ${SCENARIO_NAME ?? "none"}`);
   console.log(`  Company   : ${COMPANY_FILTER ?? "all"}`);
   console.log(`  API       : ${API}\n`);
 
@@ -614,10 +908,23 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  const activeScenarios = getActiveScenarios();
+  if (activeScenarios.length > 0) {
+    console.log(`  Active scenarios: ${activeScenarios.map((s) => s.name).join(", ")}\n`);
+  }
+
   const globalT0 = Date.now();
 
   for (const company of companies) {
-    await simulateCompany(company, durationS, startMs);
+    await simulateCompany(company, durationS, startMs, activeScenarios);
+  }
+
+  // Print scenario timelines
+  if (activeScenarios.length > 0) {
+    console.log("\n  SCENARIO TIMELINE (expected detection rule triggers):");
+    for (let i = 0; i < activeScenarios.length; i++) {
+      printScenarioTimeline(activeScenarios[i], startMs, durationS, i * 1200);
+    }
   }
 
   const totalElapsed = ((Date.now() - globalT0) / 1000).toFixed(1);
