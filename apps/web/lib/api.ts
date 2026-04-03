@@ -1681,7 +1681,7 @@ export interface TailoredBaselineResponse {
   techniqueCount: { total: number; applicable: number; highRelevance: number };
   applicableTechniques: Array<{ spartaId: string; name: string; tactic: string; relevanceScore: number }>;
   countermeasures: Array<{ spartaId: string; name: string; category: string; priority: number; feasible: boolean; nistControls: string[]; techniquesAddressed: number }>;
-  controlBaseline: { total: number; alreadyCompliant: number; newGaps: number; notFeasible: number };
+  controlBaseline: { total: number; alreadyCompliant: number; newGaps: number; notFeasible: number; controls: Array<{ controlId: string; alreadyCompliant: boolean; countermeasures: string[]; sources: string[] }> };
   recommendations: Array<{ priority: number; action: string; effort: string; nistControls: string[] }>;
 }
 
